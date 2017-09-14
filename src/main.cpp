@@ -148,7 +148,9 @@ int main( int argc, const char** argv )
     core::Correspondence::VecPtr corr;
     {
         core::ScopedTimer t("Feature matching");
+        std::cout << "FUCK1" << '\n';
         corr = detect::computeRatioMatches(queryFeat, targetFeat);
+        std::cout << "FUCK2" << '\n';
     }
 
     /*
@@ -249,13 +251,6 @@ core::Detection pose_estimation_RANSAC(
         std::vector<int> object_indices(3);
         std::vector<int> target_indices(3);
 
-        // const core::Correspondence::Vec maybeInliers =
-        //         poseSampler.sampleCorrespondences(*correspondences, 3);
-        // for(size_t j = 0; j < _sampleSize; ++j) {
-        //     object_indices[j] = maybeInliers[j].query;
-        //     target_indices[j] = maybeInliers[j].match[0];
-        // }
-
         for(int j = 0; j < 3; j++) {
             const int index = gen.run();
             object_indices[j] = (*correspondences)[index].query;
@@ -341,7 +336,111 @@ core::Detection pose_estimation_RANSAC(
             result.outlierfrac = outlier_rate;
             result.penalty = penalty;
         }
-        std::cout << "Iteration: " << i << std::endl;
     }
+    return result;
+}
+
+core::detection RANSAC2()
+{
+    // Instantiate pose sampler
+    PoseSampler<PointT> poseSampler;
+    poseSampler.setSource(_source);
+    poseSampler.setTarget(_target);
+    std::vector<int> sources(_sampleSize);
+    std::vector<int> targets(_sampleSize);
+
+    // Instantiate fit evaluator
+    if(!_fitEvaluation) // Not even created
+        _fitEvaluation.reset(new FitEvaluation<PointT>);
+    _fitEvaluation->setInlierThreshold(_inlierThreshold);
+    if(!_fitEvaluation->getSearch()) { // Not initialized with a search object
+        if(_search && _search->getTarget() == _target) // Search object provided to this, and consistent
+            _fitEvaluation->setSearch(_search);
+        else // Nothing provided, set target for indexing
+            _fitEvaluation->setTarget(_target);
+    }
+
+    // Output detection(s)
+    core::Detection result;
+    _allDetections.clear();
+    if(_correspondences->size() < _sampleSize)
+        return result;
+
+    // Start main loop
+    for(size_t i = 0; i < _iterations; ++i) {
+
+        // Create a sample from data
+        const core::Correspondence::Vec maybeInliers =
+                poseSampler.sampleCorrespondences(*_correspondences, _sampleSize);
+        for(size_t j = 0; j < _sampleSize; ++j) {
+            sources[j] = maybeInliers[j].query;
+            targets[j] = maybeInliers[j].match[0];
+        }
+
+        // Apply prerejection
+        // if(_prerejection)
+        //     if(!poly.thresholdPolygon(sources, targets))
+        //         continue;
+
+        // Sample a pose model
+        Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
+
+        // Find consensus set
+        if(_fullEvaluation)
+            _fitEvaluation->update(_source, pose); // Using full models
+        else
+            _fitEvaluation->update(_source, pose, _correspondences); // Using input correspondences
+
+        // If number of inliers (consensus set) is high enough
+        if(_fitEvaluation->inlierFraction() >= _inlierFraction) {
+            // Reestimate pose using consensus set
+            if(_reestimatePose && _fitEvaluation->inliers() >= _sampleSize) {
+                pose = poseSampler.transformation(_fitEvaluation->getInliers());
+
+                // Evaluate updated model
+                if(_fullEvaluation)
+                    _fitEvaluation->update(_source, pose); // Using full models
+                else
+                    _fitEvaluation->update(_source, pose, _correspondences); // Using input correspondences
+            }
+
+            // Add to the list of all detections
+            _allDetections.push_back(core::Detection(pose,
+                                                     _fitEvaluation->rmse(),
+                                                     _fitEvaluation->penalty(),
+                                                     _fitEvaluation->inlierFraction(),
+                                                     _fitEvaluation->outlierFraction())
+            );
+
+            // Update result if updated model is the best so far (TODO: Allow for using other criteria here)
+            if(_fitEvaluation->penalty() < result.penalty) {
+                result.pose = pose;
+                result.rmse = _fitEvaluation->rmse();
+                result.inlierfrac = _fitEvaluation->inlierFraction();
+                result.outlierfrac = _fitEvaluation->outlierFraction();
+                result.penalty = _fitEvaluation->penalty();
+            }
+        }
+    }
+
+    // Collect translations and scores for all detections and perform NMS
+    if(!_allDetections.empty()) {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr trans(new pcl::PointCloud<pcl::PointXYZ>(_allDetections.size(), 1));
+        std::vector<float> scores(_allDetections.size());
+        for(size_t i = 0; i < _allDetections.size(); ++i) {
+            trans->points[i].x = _allDetections[i].pose(0,3);
+            trans->points[i].y = _allDetections[i].pose(1,3);
+            trans->points[i].z = _allDetections[i].pose(2,3);
+            scores[i] = 1 - _allDetections[i].penalty;
+        }
+
+        // Perform NMS
+        filter::NonMaximumSuppression<pcl::PointXYZ> nms(0.2 * computeDiagonal<PointT>(_source), 0.1);
+        nms.setScores(scores);
+        nms.filter(trans);
+        const std::vector<bool>& keep = nms.getMask();
+        _allDetections = core::mask(_allDetections, keep);
+    }
+
     return result;
 }

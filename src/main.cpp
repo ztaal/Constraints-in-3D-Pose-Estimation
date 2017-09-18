@@ -7,6 +7,8 @@ using namespace covis;
 
 #include <pcl/common/random.h>
 
+#include "/home/ztaal/covis/src/covis/detect/pose_sampler.h"
+
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
@@ -20,6 +22,11 @@ core::Detection pose_estimation_RANSAC(
     pcl::PointCloud<PointT>::Ptr target_cloud,
     core::Correspondence::VecPtr correspondences,
     float threshold, size_t iterations);
+
+core::Detection pose_estimation_RANSAC2(
+    pcl::PointCloud<PointT>::Ptr object_cloud,
+    pcl::PointCloud<PointT>::Ptr target_cloud,
+    core::Correspondence::VecPtr correspondences);
 
 int main( int argc, const char** argv )
 {
@@ -166,7 +173,8 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        d = pose_estimation_RANSAC(queryCloud, targetCloud, corr, 0.05, iterations);
+        // d = pose_estimation_RANSAC(queryCloud, targetCloud, corr, 0.05, iterations);
+        d = pose_estimation_RANSAC2(queryCloud, targetCloud, corr);
     }
     // core::Detection d;
     // {
@@ -340,10 +348,16 @@ core::Detection pose_estimation_RANSAC(
     return result;
 }
 
-core::detection RANSAC2()
+core::Detection pose_estimation_RANSAC2(
+    pcl::PointCloud<PointT>::Ptr _source,
+    pcl::PointCloud<PointT>::Ptr _target,
+    core::Correspondence::VecPtr _correspondences)
 {
+
+    int _sampleSize = 3;
+
     // Instantiate pose sampler
-    PoseSampler<PointT> poseSampler;
+    covis::detect::PoseSampler<PointT> poseSampler;
     poseSampler.setSource(_source);
     poseSampler.setTarget(_target);
     std::vector<int> sources(_sampleSize);
@@ -351,7 +365,7 @@ core::detection RANSAC2()
 
     // Instantiate fit evaluator
     if(!_fitEvaluation) // Not even created
-        _fitEvaluation.reset(new FitEvaluation<PointT>);
+        _fitEvaluation.reset(new covis::detect::FitEvaluation<PointT>);
     _fitEvaluation->setInlierThreshold(_inlierThreshold);
     if(!_fitEvaluation->getSearch()) { // Not initialized with a search object
         if(_search && _search->getTarget() == _target) // Search object provided to this, and consistent
@@ -386,10 +400,7 @@ core::detection RANSAC2()
         Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
 
         // Find consensus set
-        if(_fullEvaluation)
-            _fitEvaluation->update(_source, pose); // Using full models
-        else
-            _fitEvaluation->update(_source, pose, _correspondences); // Using input correspondences
+        _fitEvaluation->update(_source, pose); // Using full models
 
         // If number of inliers (consensus set) is high enough
         if(_fitEvaluation->inlierFraction() >= _inlierFraction) {
@@ -398,10 +409,7 @@ core::detection RANSAC2()
                 pose = poseSampler.transformation(_fitEvaluation->getInliers());
 
                 // Evaluate updated model
-                if(_fullEvaluation)
-                    _fitEvaluation->update(_source, pose); // Using full models
-                else
-                    _fitEvaluation->update(_source, pose, _correspondences); // Using input correspondences
+                _fitEvaluation->update(_source, pose); // Using full models
             }
 
             // Add to the list of all detections

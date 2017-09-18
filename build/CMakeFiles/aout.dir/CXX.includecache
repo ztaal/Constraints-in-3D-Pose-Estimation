@@ -15,6 +15,8 @@ pcl/point_types.h
 -
 pcl/common/random.h
 -
+/home/ztaal/covis/src/covis/detect/pose_sampler.h
+-
 
 /home/ztaal/covis/src/covis/calib/convert_input.h
 pcl/io/pcd_io.h

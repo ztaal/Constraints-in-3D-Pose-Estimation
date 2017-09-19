@@ -17,16 +17,13 @@ pcl::PointCloud<PointT>::Ptr querySurf, targetSurf;
 pcl::PointCloud<PointT>::Ptr queryCloud, targetCloud;
 feature::MatrixT queryFeat, targetFeat;
 
-core::Detection pose_estimation_RANSAC(
-    pcl::PointCloud<PointT>::Ptr object_cloud,
-    pcl::PointCloud<PointT>::Ptr target_cloud,
-    core::Correspondence::VecPtr correspondences,
-    float threshold, size_t iterations);
+core::Detection RANSAC(
+    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
+    core::Correspondence::VecPtr correspondences, float threshold, size_t iterations);
 
-core::Detection pose_estimation_RANSAC2(
-    pcl::PointCloud<PointT>::Ptr object_cloud,
-    pcl::PointCloud<PointT>::Ptr target_cloud,
-    core::Correspondence::VecPtr correspondences);
+core::Detection RANSAC2(
+    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
+    core::Correspondence::VecPtr correspondences, size_t _iterations);
 
 int main( int argc, const char** argv )
 {
@@ -155,9 +152,7 @@ int main( int argc, const char** argv )
     core::Correspondence::VecPtr corr;
     {
         core::ScopedTimer t("Feature matching");
-        std::cout << "FUCK1" << '\n';
         corr = detect::computeRatioMatches(queryFeat, targetFeat);
-        std::cout << "FUCK2" << '\n';
     }
 
     /*
@@ -173,8 +168,9 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        // d = pose_estimation_RANSAC(queryCloud, targetCloud, corr, 0.05, iterations);
-        d = pose_estimation_RANSAC2(queryCloud, targetCloud, corr);
+        pcl::ScopeTime t("RANSAC");
+        // d = RANSAC(queryCloud, targetCloud, corr, 0.05, iterations);
+        d = RANSAC2(queryCloud, targetCloud, corr, iterations);
     }
     // core::Detection d;
     // {
@@ -234,20 +230,16 @@ int main( int argc, const char** argv )
     return 0;
 }
 
-
-
-core::Detection pose_estimation_RANSAC(
-    pcl::PointCloud<PointT>::Ptr object_cloud,
-    pcl::PointCloud<PointT>::Ptr target_cloud,
-    core::Correspondence::VecPtr correspondences,
-    float threshold, size_t iterations)
+core::Detection RANSAC(
+    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
+    core::Correspondence::VecPtr correspondences, float threshold, size_t iterations)
 {
     pcl::ScopeTime t("RANSAC");
 
     core::Detection result;
 
     pcl::search::KdTree<PointT> kdtree;
-  	kdtree.setInputCloud(target_cloud);
+  	kdtree.setInputCloud(_target);
 
     pcl::common::UniformGenerator<int> gen(0, correspondences->size() - 1);
     pcl::PointCloud<PointT>::Ptr object_aligned(new pcl::PointCloud<PointT>);
@@ -272,10 +264,10 @@ core::Detection pose_estimation_RANSAC(
         double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
         double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
         for (int j = 0; j < 3; j++) {
-            double d_p = pcl::euclideanDistance(object_cloud->points[object_indices[j]],
-                                                object_cloud->points[object_indices[(j + 1) % 3]]);
-            double d_q = pcl::euclideanDistance(target_cloud->points[target_indices[j]],
-                                                target_cloud->points[target_indices[(j + 1) % 3]]);
+            double d_p = pcl::euclideanDistance(_source->points[object_indices[j]],
+                                                _source->points[object_indices[(j + 1) % 3]]);
+            double d_q = pcl::euclideanDistance(_target->points[target_indices[j]],
+                                                _target->points[target_indices[(j + 1) % 3]]);
             delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
 
             if (d_p > max_dist_obj) {
@@ -306,11 +298,11 @@ core::Detection pose_estimation_RANSAC(
         // Estimate transformation
         Eigen::Matrix4f transformation;
     	pcl::registration::TransformationEstimationSVD<PointT, PointT> svd;
-        svd.estimateRigidTransformation(*object_cloud, object_indices, *target_cloud,
+        svd.estimateRigidTransformation(*_source, object_indices, *_target,
             object_indices, transformation);
 
         // Apply transformation
-        pcl::transformPointCloud(*object_cloud, *object_aligned, transformation);
+        pcl::transformPointCloud(*_source, *object_aligned, transformation);
 
         // Validate
         std::vector<std::vector<int> > index;
@@ -329,7 +321,7 @@ core::Detection pose_estimation_RANSAC(
         rmse = sqrtf(rmse / inliers);
 
         // Evaluate a penalty function
-        const float outlier_rate = 1.0f - float(inliers) / object_cloud->size();
+        const float outlier_rate = 1.0f - float(inliers) / _source->size();
         const float penalty = outlier_rate;
 
 
@@ -348,13 +340,17 @@ core::Detection pose_estimation_RANSAC(
     return result;
 }
 
-core::Detection pose_estimation_RANSAC2(
-    pcl::PointCloud<PointT>::Ptr _source,
-    pcl::PointCloud<PointT>::Ptr _target,
-    core::Correspondence::VecPtr _correspondences)
+core::Detection RANSAC2(
+    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
+    core::Correspondence::VecPtr _correspondences, size_t _iterations)
 {
 
-    int _sampleSize = 3;
+    unsigned int _sampleSize = 3;
+    unsigned int _inlierThreshold = 5;
+    float _inlierFraction = 0.05;
+    detect::FitEvaluation<PointT>::Ptr _fitEvaluation(new detect::FitEvaluation<PointT>(_target));
+    detect::PointSearch<PointT>::Ptr _search;
+    core::Detection::Vec _allDetections;
 
     // Instantiate pose sampler
     covis::detect::PoseSampler<PointT> poseSampler;
@@ -392,9 +388,42 @@ core::Detection pose_estimation_RANSAC2(
         }
 
         // Apply prerejection
-        // if(_prerejection)
-        //     if(!poly.thresholdPolygon(sources, targets))
-        //         continue;
+        std::vector<double> delta(3);
+        int max_obj_index = 0, min_obj_index = 0;
+        int max_target_index = 0, min_target_index = 0;
+        double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
+        double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
+        for (unsigned int j = 0; j < _sampleSize; j++) {
+            double d_p = pcl::euclideanDistance(_source->points[sources[j]],
+                                                _source->points[sources[(j + 1) % _sampleSize]]);
+            double d_q = pcl::euclideanDistance(_target->points[targets[j]],
+                                                _target->points[targets[(j + 1) % _sampleSize]]);
+            delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
+
+            if (d_p > max_dist_obj) {
+                max_dist_obj = d_p;
+                max_obj_index = j;
+            }
+            if (d_q > max_dist_target) {
+                max_dist_target = d_q;
+                max_target_index = j;
+            }
+            if (d_p < min_dist_obj) {
+                min_dist_obj = d_p;
+                min_obj_index = j + 1;
+            }
+            if (d_q < min_dist_target) {
+                min_dist_target = d_q;
+                min_target_index = j + 1;
+            }
+        }
+        // If the index of shortest and furthest distance does not match continue
+        if (max_obj_index != max_target_index || min_obj_index != min_target_index)
+            continue;
+
+        // If dissimilarity is too large continue
+        if (fabs(std::max({delta[0], delta[1], delta[2]})) > 0.20)
+            continue;
 
         // Sample a pose model
         Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
@@ -405,7 +434,7 @@ core::Detection pose_estimation_RANSAC2(
         // If number of inliers (consensus set) is high enough
         if(_fitEvaluation->inlierFraction() >= _inlierFraction) {
             // Reestimate pose using consensus set
-            if(_reestimatePose && _fitEvaluation->inliers() >= _sampleSize) {
+            if(_fitEvaluation->inliers() >= _sampleSize) {
                 pose = poseSampler.transformation(_fitEvaluation->getInliers());
 
                 // Evaluate updated model
@@ -420,7 +449,7 @@ core::Detection pose_estimation_RANSAC2(
                                                      _fitEvaluation->outlierFraction())
             );
 
-            // Update result if updated model is the best so far (TODO: Allow for using other criteria here)
+            // Update result if updated model is the best so far
             if(_fitEvaluation->penalty() < result.penalty) {
                 result.pose = pose;
                 result.rmse = _fitEvaluation->rmse();
@@ -443,7 +472,7 @@ core::Detection pose_estimation_RANSAC2(
         }
 
         // Perform NMS
-        filter::NonMaximumSuppression<pcl::PointXYZ> nms(0.2 * computeDiagonal<PointT>(_source), 0.1);
+        filter::NonMaximumSuppression<pcl::PointXYZ> nms(0.2 * detect::computeDiagonal<PointT>(_source), 0.1);
         nms.setScores(scores);
         nms.filter(trans);
         const std::vector<bool>& keep = nms.getMask();

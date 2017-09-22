@@ -1,13 +1,10 @@
 #include <covis/covis.h>
 using namespace covis;
 
-// PCL
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
+// Ransac
+#include "../headers/ransac.hpp"
 
-#include <pcl/common/random.h>
-
-#include "/home/ztaal/covis/src/covis/detect/pose_sampler.h"
+// #include "/home/ztaal/covis/src/covis/detect/pose_sampler.h"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -168,38 +165,33 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        pcl::ScopeTime t("RANSAC");
-        // d = RANSAC(queryCloud, targetCloud, corr, 0.05, iterations);
-        d = RANSAC2(queryCloud, targetCloud, corr, iterations);
+        pcl::ScopeTime t( "RANSAC" );
+
+        detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
+        fe->setOcclusionReasoning(!noOcclusionReasoning);
+        fe->setViewAxis(viewAxis);
+        if(noOcclusionReasoning)
+            fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
+        else
+            fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
+
+        ransac ransac;
+        ransac.setSource( queryCloud );
+        ransac.setTarget( targetCloud );
+        ransac.setCorrespondences( corr );
+        ransac.setIterations( iterations );
+        ransac.setFitEvaluation( fe );
+        ransac.setInlierThreshold(inlierThreshold);
+        ransac.setInlierFraction(inlierFraction);
+        ransac.setReestimatePose(!noReestimate);
+        ransac.setFullEvaluation(fullEvaluation);
+        ransac.setPrerejection(prerejection);
+        ransac.setPrerejectionSimilarity(prerejectionSimilarty);
+
+        d = ransac.estimate();
+
+        //     ransac.setVerbose(true);
     }
-    // core::Detection d;
-    // {
-    //     core::ScopedTimer t("RANSAC");
-    //     detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
-    //     fe->setOcclusionReasoning(!noOcclusionReasoning);
-    //     fe->setViewAxis(viewAxis);
-    //     if(noOcclusionReasoning)
-    //         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
-    //     else
-    //         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
-    //
-    //     detect::Ransac<PointT> ransac;
-    //     ransac.setSource(queryCloud);
-    //     ransac.setTarget(targetCloud);
-    //     ransac.setCorrespondences(corr);
-    //     ransac.setFitEvaluation(fe);
-    //
-    //     ransac.setIterations(iterations);
-    //     ransac.setInlierThreshold(inlierThreshold);
-    //     ransac.setInlierFraction(inlierFraction);
-    //     ransac.setReestimatePose(!noReestimate);
-    //     ransac.setFullEvaluation(fullEvaluation);
-    //     ransac.setPrerejection(prerejection);
-    //     ransac.setPrerejectionSimilarity(prerejectionSimilarty);
-    //     ransac.setVerbose(true);
-    //
-    //     d = ransac.estimate();
-    // }
 
     if(d) {
         if(refine) {
@@ -230,254 +222,112 @@ int main( int argc, const char** argv )
     return 0;
 }
 
-core::Detection RANSAC(
-    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
-    core::Correspondence::VecPtr correspondences, float threshold, size_t iterations)
-{
-    pcl::ScopeTime t("RANSAC");
-
-    core::Detection result;
-
-    pcl::search::KdTree<PointT> kdtree;
-  	kdtree.setInputCloud(_target);
-
-    pcl::common::UniformGenerator<int> gen(0, correspondences->size() - 1);
-    pcl::PointCloud<PointT>::Ptr object_aligned(new pcl::PointCloud<PointT>);
-    float previous_penalty = std::numeric_limits<float>::max();
-
-    for(size_t i = 0; i < iterations; i++) {
-
-        // Get 3 random samples from object and target
-        std::vector<int> object_indices(3);
-        std::vector<int> target_indices(3);
-
-        for(int j = 0; j < 3; j++) {
-            const int index = gen.run();
-            object_indices[j] = (*correspondences)[index].query;
-            target_indices[j] = (*correspondences)[index].match[0];
-        }
-
-        // Threshold dissimilarity vector between points
-        std::vector<double> delta(3);
-        int max_obj_index = 0, min_obj_index = 0;
-        int max_target_index = 0, min_target_index = 0;
-        double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
-        double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
-        for (int j = 0; j < 3; j++) {
-            double d_p = pcl::euclideanDistance(_source->points[object_indices[j]],
-                                                _source->points[object_indices[(j + 1) % 3]]);
-            double d_q = pcl::euclideanDistance(_target->points[target_indices[j]],
-                                                _target->points[target_indices[(j + 1) % 3]]);
-            delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
-
-            if (d_p > max_dist_obj) {
-                max_dist_obj = d_p;
-                max_obj_index = j;
-            }
-            if (d_q > max_dist_target) {
-                max_dist_target = d_q;
-                max_target_index = j;
-            }
-            if (d_p < min_dist_obj) {
-                min_dist_obj = d_p;
-                min_obj_index = j + 1;
-            }
-            if (d_q < min_dist_target) {
-                min_dist_target = d_q;
-                min_target_index = j + 1;
-            }
-        }
-
-        if (fabs(std::max({delta[0], delta[1], delta[2]})) > 0.20)
-            continue;
-
-        // If the index of shortest and furthest distance does not match continue
-        if (max_obj_index != max_target_index || min_obj_index != min_target_index)
-            continue;
-
-        // Estimate transformation
-        Eigen::Matrix4f transformation;
-    	pcl::registration::TransformationEstimationSVD<PointT, PointT> svd;
-        svd.estimateRigidTransformation(*_source, object_indices, *_target,
-            object_indices, transformation);
-
-        // Apply transformation
-        pcl::transformPointCloud(*_source, *object_aligned, transformation);
-
-        // Validate
-        std::vector<std::vector<int> > index;
-        std::vector<std::vector<float> > distance;
-        kdtree.nearestKSearch(*object_aligned, std::vector<int>(), 1, index, distance);
-
-        // Compute inliers and RMSE
-        size_t inliers = 0;
-        float rmse = 0;
-        for(size_t j = 0; j < distance.size(); j++) {
-            if(distance[j][0] <= threshold) {
-                inliers++;
-                rmse += distance[j][0];
-            }
-        }
-        rmse = sqrtf(rmse / inliers);
-
-        // Evaluate a penalty function
-        const float outlier_rate = 1.0f - float(inliers) / _source->size();
-        const float penalty = outlier_rate;
-
-
-        // Update result
-        if(penalty < previous_penalty) {
-            std::cout << "\t-- Got a new model with " << inliers <<
-                " inliers after " << i << " iterations!" << std::endl;
-            previous_penalty = penalty;
-            result.pose = transformation;
-            result.rmse = rmse;
-            result.inlierfrac = inliers;
-            result.outlierfrac = outlier_rate;
-            result.penalty = penalty;
-        }
-    }
-    return result;
-}
-
-core::Detection RANSAC2(
-    pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
-    core::Correspondence::VecPtr _correspondences, size_t _iterations)
-{
-
-    unsigned int _sampleSize = 3;
-    unsigned int _inlierThreshold = 5;
-    float _inlierFraction = 0.05;
-    detect::FitEvaluation<PointT>::Ptr _fitEvaluation(new detect::FitEvaluation<PointT>(_target));
-    detect::PointSearch<PointT>::Ptr _search;
-    core::Detection::Vec _allDetections;
-
-    // Instantiate pose sampler
-    covis::detect::PoseSampler<PointT> poseSampler;
-    poseSampler.setSource(_source);
-    poseSampler.setTarget(_target);
-    std::vector<int> sources(_sampleSize);
-    std::vector<int> targets(_sampleSize);
-
-    // Instantiate fit evaluator
-    if(!_fitEvaluation) // Not even created
-        _fitEvaluation.reset(new covis::detect::FitEvaluation<PointT>);
-    _fitEvaluation->setInlierThreshold(_inlierThreshold);
-    if(!_fitEvaluation->getSearch()) { // Not initialized with a search object
-        if(_search && _search->getTarget() == _target) // Search object provided to this, and consistent
-            _fitEvaluation->setSearch(_search);
-        else // Nothing provided, set target for indexing
-            _fitEvaluation->setTarget(_target);
-    }
-
-    // Output detection(s)
-    core::Detection result;
-    _allDetections.clear();
-    if(_correspondences->size() < _sampleSize)
-        return result;
-
-    // Start main loop
-    for(size_t i = 0; i < _iterations; ++i) {
-
-        // Create a sample from data
-        const core::Correspondence::Vec maybeInliers =
-                poseSampler.sampleCorrespondences(*_correspondences, _sampleSize);
-        for(size_t j = 0; j < _sampleSize; ++j) {
-            sources[j] = maybeInliers[j].query;
-            targets[j] = maybeInliers[j].match[0];
-        }
-
-        // Apply prerejection
-        std::vector<double> delta(3);
-        int max_obj_index = 0, min_obj_index = 0;
-        int max_target_index = 0, min_target_index = 0;
-        double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
-        double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
-        for (unsigned int j = 0; j < _sampleSize; j++) {
-            double d_p = pcl::euclideanDistance(_source->points[sources[j]],
-                                                _source->points[sources[(j + 1) % _sampleSize]]);
-            double d_q = pcl::euclideanDistance(_target->points[targets[j]],
-                                                _target->points[targets[(j + 1) % _sampleSize]]);
-            delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
-
-            if (d_p > max_dist_obj) {
-                max_dist_obj = d_p;
-                max_obj_index = j;
-            }
-            if (d_q > max_dist_target) {
-                max_dist_target = d_q;
-                max_target_index = j;
-            }
-            if (d_p < min_dist_obj) {
-                min_dist_obj = d_p;
-                min_obj_index = j + 1;
-            }
-            if (d_q < min_dist_target) {
-                min_dist_target = d_q;
-                min_target_index = j + 1;
-            }
-        }
-        // If the index of shortest and furthest distance does not match continue
-        if (max_obj_index != max_target_index || min_obj_index != min_target_index)
-            continue;
-
-        // If dissimilarity is too large continue
-        if (fabs(std::max({delta[0], delta[1], delta[2]})) > 0.20)
-            continue;
-
-        // Sample a pose model
-        Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
-
-        // Find consensus set
-        _fitEvaluation->update(_source, pose); // Using full models
-
-        // If number of inliers (consensus set) is high enough
-        if(_fitEvaluation->inlierFraction() >= _inlierFraction) {
-            // Reestimate pose using consensus set
-            if(_fitEvaluation->inliers() >= _sampleSize) {
-                pose = poseSampler.transformation(_fitEvaluation->getInliers());
-
-                // Evaluate updated model
-                _fitEvaluation->update(_source, pose); // Using full models
-            }
-
-            // Add to the list of all detections
-            _allDetections.push_back(core::Detection(pose,
-                                                     _fitEvaluation->rmse(),
-                                                     _fitEvaluation->penalty(),
-                                                     _fitEvaluation->inlierFraction(),
-                                                     _fitEvaluation->outlierFraction())
-            );
-
-            // Update result if updated model is the best so far
-            if(_fitEvaluation->penalty() < result.penalty) {
-                result.pose = pose;
-                result.rmse = _fitEvaluation->rmse();
-                result.inlierfrac = _fitEvaluation->inlierFraction();
-                result.outlierfrac = _fitEvaluation->outlierFraction();
-                result.penalty = _fitEvaluation->penalty();
-            }
-        }
-    }
-
-    // Collect translations and scores for all detections and perform NMS
-    if(!_allDetections.empty()) {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr trans(new pcl::PointCloud<pcl::PointXYZ>(_allDetections.size(), 1));
-        std::vector<float> scores(_allDetections.size());
-        for(size_t i = 0; i < _allDetections.size(); ++i) {
-            trans->points[i].x = _allDetections[i].pose(0,3);
-            trans->points[i].y = _allDetections[i].pose(1,3);
-            trans->points[i].z = _allDetections[i].pose(2,3);
-            scores[i] = 1 - _allDetections[i].penalty;
-        }
-
-        // Perform NMS
-        filter::NonMaximumSuppression<pcl::PointXYZ> nms(0.2 * detect::computeDiagonal<PointT>(_source), 0.1);
-        nms.setScores(scores);
-        nms.filter(trans);
-        const std::vector<bool>& keep = nms.getMask();
-        _allDetections = core::mask(_allDetections, keep);
-    }
-
-    return result;
-}
+// core::Detection RANSAC(
+//     pcl::PointCloud<PointT>::Ptr _source, pcl::PointCloud<PointT>::Ptr _target,
+//     core::Correspondence::VecPtr correspondences, float threshold, size_t iterations)
+// {
+//     pcl::ScopeTime t("RANSAC");
+//
+//     core::Detection result;
+//
+//     pcl::search::KdTree<PointT> kdtree;
+//   	kdtree.setInputCloud(_target);
+//
+//     pcl::common::UniformGenerator<int> gen(0, correspondences->size() - 1);
+//     pcl::PointCloud<PointT>::Ptr object_aligned(new pcl::PointCloud<PointT>);
+//     float previous_penalty = std::numeric_limits<float>::max();
+//
+//     for(size_t i = 0; i < iterations; i++) {
+//
+//         // Get 3 random samples from object and target
+//         std::vector<int> object_indices(3);
+//         std::vector<int> target_indices(3);
+//
+//         for(int j = 0; j < 3; j++) {
+//             const int index = gen.run();
+//             object_indices[j] = (*correspondences)[index].query;
+//             target_indices[j] = (*correspondences)[index].match[0];
+//         }
+//
+//         // Threshold dissimilarity vector between points
+//         std::vector<double> delta(3);
+//         int max_obj_index = 0, min_obj_index = 0;
+//         int max_target_index = 0, min_target_index = 0;
+//         double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
+//         double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
+//         for (int j = 0; j < 3; j++) {
+//             double d_p = pcl::euclideanDistance(_source->points[object_indices[j]],
+//                                                 _source->points[object_indices[(j + 1) % 3]]);
+//             double d_q = pcl::euclideanDistance(_target->points[target_indices[j]],
+//                                                 _target->points[target_indices[(j + 1) % 3]]);
+//             delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
+//
+//             if (d_p > max_dist_obj) {
+//                 max_dist_obj = d_p;
+//                 max_obj_index = j;
+//             }
+//             if (d_q > max_dist_target) {
+//                 max_dist_target = d_q;
+//                 max_target_index = j;
+//             }
+//             if (d_p < min_dist_obj) {
+//                 min_dist_obj = d_p;
+//                 min_obj_index = j + 1;
+//             }
+//             if (d_q < min_dist_target) {
+//                 min_dist_target = d_q;
+//                 min_target_index = j + 1;
+//             }
+//         }
+//
+//         if (fabs(std::max({delta[0], delta[1], delta[2]})) > 0.20)
+//             continue;
+//
+//         // If the index of shortest and furthest distance does not match continue
+//         if (max_obj_index != max_target_index || min_obj_index != min_target_index)
+//             continue;
+//
+//         // Estimate transformation
+//         Eigen::Matrix4f transformation;
+//     	pcl::registration::TransformationEstimationSVD<PointT, PointT> svd;
+//         svd.estimateRigidTransformation(*_source, object_indices, *_target,
+//             object_indices, transformation);
+//
+//         // Apply transformation
+//         pcl::transformPointCloud(*_source, *object_aligned, transformation);
+//
+//         // Validate
+//         std::vector<std::vector<int> > index;
+//         std::vector<std::vector<float> > distance;
+//         kdtree.nearestKSearch(*object_aligned, std::vector<int>(), 1, index, distance);
+//
+//         // Compute inliers and RMSE
+//         size_t inliers = 0;
+//         float rmse = 0;
+//         for(size_t j = 0; j < distance.size(); j++) {
+//             if(distance[j][0] <= threshold) {
+//                 inliers++;
+//                 rmse += distance[j][0];
+//             }
+//         }
+//         rmse = sqrtf(rmse / inliers);
+//
+//         // Evaluate a penalty function
+//         const float outlier_rate = 1.0f - float(inliers) / _source->size();
+//         const float penalty = outlier_rate;
+//
+//
+//         // Update result
+//         if(penalty < previous_penalty) {
+//             std::cout << "\t-- Got a new model with " << inliers <<
+//                 " inliers after " << i << " iterations!" << std::endl;
+//             previous_penalty = penalty;
+//             result.pose = transformation;
+//             result.rmse = rmse;
+//             result.inlierfrac = inliers;
+//             result.outlierfrac = outlier_rate;
+//             result.penalty = penalty;
+//         }
+//     }
+//     return result;
+// }

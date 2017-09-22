@@ -150,6 +150,33 @@ src/main.cpp.s:
 	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/ransac.o: src/ransac.cpp.o
+
+.PHONY : src/ransac.o
+
+# target to build an object file
+src/ransac.cpp.o:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.o
+.PHONY : src/ransac.cpp.o
+
+src/ransac.i: src/ransac.cpp.i
+
+.PHONY : src/ransac.i
+
+# target to preprocess a source file
+src/ransac.cpp.i:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.i
+.PHONY : src/ransac.cpp.i
+
+src/ransac.s: src/ransac.cpp.s
+
+.PHONY : src/ransac.s
+
+# target to generate assembly for a file
+src/ransac.cpp.s:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.s
+.PHONY : src/ransac.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,6 +189,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/ransac.o"
+	@echo "... src/ransac.i"
+	@echo "... src/ransac.s"
 .PHONY : help
 
 

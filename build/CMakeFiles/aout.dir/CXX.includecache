@@ -6,17 +6,19 @@
 
 #IncludeRegexTransform: 
 
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
+covis/covis.h
+-
+
 /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/main.cpp
 covis/covis.h
 -
-pcl/point_cloud.h
--
-pcl/point_types.h
--
-pcl/common/random.h
--
-/home/ztaal/covis/src/covis/detect/pose_sampler.h
--
+../headers/ransac.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
+
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/ransac.cpp
+../headers/ransac.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
 
 /home/ztaal/covis/src/covis/calib/convert_input.h
 pcl/io/pcd_io.h
@@ -1978,12 +1980,6 @@ pcl/console/print.h
 pcl/cloud_iterator.h
 -
 
-/home/ztaal/pcl/common/include/pcl/common/impl/random.hpp
-boost/version.hpp
--
-pcl/pcl_macros.h
--
-
 /home/ztaal/pcl/common/include/pcl/common/impl/transforms.hpp
 
 /home/ztaal/pcl/common/include/pcl/common/impl/vector_average.hpp
@@ -2020,22 +2016,6 @@ pcl/common/eigen.h
 pcl/console/print.h
 -
 pcl/common/impl/projection_matrix.hpp
--
-
-/home/ztaal/pcl/common/include/pcl/common/random.h
-boost/random/uniform_real.hpp
--
-boost/random/uniform_int.hpp
--
-boost/random/variate_generator.hpp
--
-boost/random/normal_distribution.hpp
--
-boost/random/mersenne_twister.hpp
--
-pcl/pcl_macros.h
--
-pcl/common/impl/random.hpp
 -
 
 /home/ztaal/pcl/common/include/pcl/common/time.h

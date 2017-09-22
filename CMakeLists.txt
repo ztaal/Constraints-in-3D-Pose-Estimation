@@ -8,5 +8,5 @@ include_directories(${COVIS_INCLUDE_DIRS})
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-add_executable(aout src/main.cpp)
+add_executable(aout src/main.cpp src/ransac.cpp)
 target_link_libraries(aout ${COVIS_LIBRARIES})

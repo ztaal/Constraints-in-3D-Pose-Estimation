@@ -1,10 +1,10 @@
+// Covis
 #include <covis/covis.h>
 using namespace covis;
 
 // Ransac
 #include "../headers/ransac.hpp"
-
-// #include "/home/ztaal/covis/src/covis/detect/pose_sampler.h"
+#include "../headers/ransac_benchmark.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;

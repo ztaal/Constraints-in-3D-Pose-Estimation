@@ -69,6 +69,46 @@ void ransac::setPrerejectionSimilarity( float _prerejectionSimilarty )
 }
 
 
+void ransac::setRootPath( std::string _rootPath )
+{
+    this->rootPath = _rootPath;
+}
+
+void ransac::setObjectDir( std::string _objDir )
+{
+    this->objDir = _objDir;
+}
+
+void ransac::setSceneDir( std::string _sceneDir )
+{
+    this->sceneDir = _sceneDir;
+}
+
+void ransac::setPoseDir( std::string _poseDir )
+{
+    this->poseDir = _poseDir;
+}
+
+void ransac::setObjExt( std::string _objExt )
+{
+    this->objExt = _objExt;
+}
+
+void ransac::setSceneExt( std::string _sceneExt )
+{
+    this->sceneExt = _sceneExt;
+}
+
+void ransac::setPoseExt( std::string _poseExt )
+{
+    this->poseExt = _poseExt;
+}
+
+void ransac::setPoseSep( std::string _PoseSep )
+{
+    this->PoseSep = _PoseSep;
+}
+
 core::Detection ransac::estimate()
 {
     detect::PointSearch<PointT>::Ptr _search;
@@ -159,7 +199,8 @@ core::Detection ransac::estimate()
             source_sides[j] = d_p;
             target_sides[j] = d_q;
         }
-                // If the index of shortest and furthest distance does not match continue
+
+        // If the index of shortest and furthest distance does not match continue
         if (max_obj_index != max_target_index || min_obj_index != min_target_index)
             continue;
 
@@ -251,4 +292,43 @@ core::Detection ransac::estimate()
     }
 
     return result;
+}
+
+
+void ransac::benchmark()
+{
+    // Sanity checks
+    COVIS_ASSERT(
+            this->rootPath.empty() &&
+            this->objDir.empty() &&
+            this->sceneDir.empty() &&
+            this->poseDir.empty() &&
+            this->objExt.empty() &&
+            this->sceneExt.empty() &&
+            this->poseExt.empty() &&
+            this->PoseSep.empty()
+    );
+
+    // Load dataset
+    util::DatasetLoader dataset(
+            this->rootPath,
+            this->objDir,
+            this->sceneDir,
+            this->poseDir,
+            this->objExt,
+            this->sceneExt,
+            this->poseExt,
+            this->PoseSep
+    );
+
+    // dataset.setRegexObject(po.getValue("object-regex"));
+    // dataset.setRegexScene(po.getValue("scene-regex"));
+    dataset.parse();
+
+
+    COVIS_MSG(dataset);
+
+    // Load object point clouds
+    std::vector<util::DatasetLoader::ModelPtr> objectMesh = dataset.getObjects();
+    COVIS_ASSERT(!objectMesh.empty());
 }

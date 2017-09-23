@@ -1,5 +1,6 @@
 #pragma once
 
+// Covis
 #include <covis/covis.h>
 using namespace covis;
 
@@ -13,6 +14,7 @@ class ransac
         ransac();
         ~ransac();
 
+        // Ransac
         void setSource( pcl::PointCloud<PointT>::Ptr _source );
         void setTarget( pcl::PointCloud<PointT>::Ptr _target );
         void setCorrespondences( core::Correspondence::VecPtr corr );
@@ -29,7 +31,20 @@ class ransac
 
         core::Detection estimate();
 
+        // benchmark
+        void setRootPath( std::string _rootPath );
+        void setObjectDir( std::string _objDir );
+        void setSceneDir( std::string _sceneDir );
+        void setPoseDir( std::string _poseDir );
+        void setObjExt( std::string _objExt );
+        void setSceneExt( std::string _sceneExt );
+        void setPoseExt( std::string _poseExt );
+        void setPoseSep( std::string _PoseSep );
+
+        void benchmark();
+
     private:
+        // Ransac variables
         pcl::PointCloud<PointT>::Ptr source;
         pcl::PointCloud<PointT>::Ptr target;
         core::Correspondence::VecPtr corr;
@@ -44,4 +59,14 @@ class ransac
         bool fullEvaluation = false;
         bool occlusionRemoval = false;
         bool verbose = false;
+
+        // Benchmark variables
+        std::string rootPath;
+        std::string objDir;
+        std::string sceneDir;
+        std::string poseDir;
+        std::string objExt;
+        std::string sceneExt;
+        std::string poseExt;
+        std::string PoseSep;
 };

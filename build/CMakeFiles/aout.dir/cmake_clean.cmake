@@ -1,7 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/aout.dir/src/main.cpp.o"
   "CMakeFiles/aout.dir/src/ransac.cpp.o"
-  "CMakeFiles/aout.dir/src/ransac_benchmark.cpp.o"
   "aout.pdb"
   "aout"
 )

@@ -177,33 +177,6 @@ src/ransac.cpp.s:
 	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.s
 .PHONY : src/ransac.cpp.s
 
-src/ransac_benchmark.o: src/ransac_benchmark.cpp.o
-
-.PHONY : src/ransac_benchmark.o
-
-# target to build an object file
-src/ransac_benchmark.cpp.o:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac_benchmark.cpp.o
-.PHONY : src/ransac_benchmark.cpp.o
-
-src/ransac_benchmark.i: src/ransac_benchmark.cpp.i
-
-.PHONY : src/ransac_benchmark.i
-
-# target to preprocess a source file
-src/ransac_benchmark.cpp.i:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac_benchmark.cpp.i
-.PHONY : src/ransac_benchmark.cpp.i
-
-src/ransac_benchmark.s: src/ransac_benchmark.cpp.s
-
-.PHONY : src/ransac_benchmark.s
-
-# target to generate assembly for a file
-src/ransac_benchmark.cpp.s:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac_benchmark.cpp.s
-.PHONY : src/ransac_benchmark.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -219,9 +192,6 @@ help:
 	@echo "... src/ransac.o"
 	@echo "... src/ransac.i"
 	@echo "... src/ransac.s"
-	@echo "... src/ransac_benchmark.o"
-	@echo "... src/ransac_benchmark.i"
-	@echo "... src/ransac_benchmark.s"
 .PHONY : help
 
 

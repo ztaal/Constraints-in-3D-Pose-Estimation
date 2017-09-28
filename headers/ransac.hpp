@@ -7,7 +7,9 @@ using namespace covis;
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
-// template<typename PointT>
+// Point and feature types
+typedef pcl::PointCloud<PointT> CloudT;
+
 class ransac
 {
     public:
@@ -39,7 +41,7 @@ class ransac
         void setObjExt( std::string _objExt );
         void setSceneExt( std::string _sceneExt );
         void setPoseExt( std::string _poseExt );
-        void setPoseSep( std::string _PoseSep );
+        void setPoseSep( std::string _poseSep );
 
         void benchmark();
 
@@ -58,7 +60,18 @@ class ransac
         bool reestimatePose = true;
         bool fullEvaluation = false;
         bool occlusionRemoval = false;
-        bool verbose = false;
+        bool verbose = true;
+
+        // Feature matching
+        float resolution = 1;
+        float objectScale = 1;
+        float far = -1;
+        float radiusNormal = 5;
+        float resolutionQuery = 5;
+        float resolutionTarget = 5;
+        float radiusFeature = 25;
+        float cutoff = 50;
+        std::string feature = "si";
 
         // Benchmark variables
         std::string rootPath;
@@ -68,5 +81,5 @@ class ransac
         std::string objExt;
         std::string sceneExt;
         std::string poseExt;
-        std::string PoseSep;
+        std::string poseSep;
 };

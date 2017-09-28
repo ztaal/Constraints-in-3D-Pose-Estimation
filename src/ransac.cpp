@@ -104,9 +104,9 @@ void ransac::setPoseExt( std::string _poseExt )
     this->poseExt = _poseExt;
 }
 
-void ransac::setPoseSep( std::string _PoseSep )
+void ransac::setPoseSep( std::string _poseSep )
 {
-    this->PoseSep = _PoseSep;
+    this->poseSep = _poseSep;
 }
 
 core::Detection ransac::estimate()
@@ -211,13 +211,13 @@ core::Detection ransac::estimate()
         // If the difference between the distances is to great continue
         float max_diff = max_dist_obj * 0.05;
         if (max_dist_target > max_dist_obj + max_diff || max_dist_target < max_dist_obj - max_diff ) {
-            std::cout << "Max break" << '\n';
+            // std::cout << "Max break" << '\n';
             continue;
         }
 
         float min_diff = min_dist_obj * 0.05;
         if (min_dist_target > min_dist_obj + min_diff || min_dist_target < min_dist_obj - min_diff ) {
-            std::cout << "Min break" << '\n';
+            // std::cout << "Min break" << '\n';
             continue;
         }
 
@@ -233,7 +233,7 @@ core::Detection ransac::estimate()
 
         double area_diff = source_area * 0.05;
         if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-            std::cout << "Areak break" << '\n';
+            // std::cout << "Areak break" << '\n';
             continue;
         }
 
@@ -297,18 +297,6 @@ core::Detection ransac::estimate()
 
 void ransac::benchmark()
 {
-    // Sanity checks
-    COVIS_ASSERT(
-            this->rootPath.empty() &&
-            this->objDir.empty() &&
-            this->sceneDir.empty() &&
-            this->poseDir.empty() &&
-            this->objExt.empty() &&
-            this->sceneExt.empty() &&
-            this->poseExt.empty() &&
-            this->PoseSep.empty()
-    );
-
     // Load dataset
     util::DatasetLoader dataset(
             this->rootPath,
@@ -318,17 +306,158 @@ void ransac::benchmark()
             this->objExt,
             this->sceneExt,
             this->poseExt,
-            this->PoseSep
+            this->poseSep
     );
 
     // dataset.setRegexObject(po.getValue("object-regex"));
     // dataset.setRegexScene(po.getValue("scene-regex"));
     dataset.parse();
 
-
     COVIS_MSG(dataset);
 
-    // Load object point clouds
+    // Load object and scene point clouds
     std::vector<util::DatasetLoader::ModelPtr> objectMesh = dataset.getObjects();
-    COVIS_ASSERT(!objectMesh.empty());
+    std::vector<util::DatasetLoader::ModelPtr> sceneMesh;
+    for(size_t i = 0; i < dataset.size(); ++i) {
+        util::DatasetLoader::SceneEntry scene = dataset.at(i);
+        sceneMesh.push_back(scene.scene);
+    }
+    COVIS_ASSERT(!objectMesh.empty() && !sceneMesh.empty());
+
+    // Loaded point clouds
+    std::vector<CloudT::Ptr> objectSurf, objectCloud;
+    std::vector<CloudT::Ptr> sceneSurf, sceneCloud;
+
+    // Surfaces and normals
+    const bool resolutionInput = (this->resolution > 0.0f);
+    if(!resolutionInput)
+        this->resolution = 0;
+    float diag = 0;
+    for(size_t i = 0; i < objectMesh.size(); ++i) {
+        if(!resolutionInput)
+            this->resolution += detect::computeResolution(objectMesh[i]) * this->objectScale;
+        diag += detect::computeDiagonal(objectMesh[i]) * this->objectScale;
+        if(objectScale != 1)
+            objectMesh[i] = filter::scale(objectMesh[i], this->objectScale);
+    }
+    if(!resolutionInput)
+        this->resolution /= float(objectMesh.size());
+    diag /= float(objectMesh.size());
+
+    const float nrad =
+            this->radiusNormal > 0.0 ?
+            this->radiusNormal * this->resolution :
+            2 * this->resolution;
+
+    // Features and matching
+    const float resQuery =
+            this->resolutionQuery > 0.0 ?
+            this->resolutionQuery * this->resolution :
+            5 * this->resolution;
+    const float resTarget =
+            this->resolutionTarget > 0.0 ?
+            this->resolutionTarget * this->resolution :
+            5 * this->resolution;
+    const float frad =
+            this->radiusFeature > 0.0 ?
+            this->radiusFeature * this->resolution :
+            25 * this->resolution;
+    const size_t cutoff = this->cutoff;
+    COVIS_ASSERT(cutoff > 0 && cutoff <= 100);
+
+    // Estimation
+    const float inlierThreshold =
+            (this->inlierThreshold > 0.0 ?
+            this->inlierThreshold * this->resolution :
+            5 * this->resolution);
+
+    // Preprocess
+    objectSurf.resize(objectMesh.size());
+    for(size_t i = 0; i < objectMesh.size(); ++i) {
+        objectSurf[i] = filter::preprocess<PointT>(objectMesh[i], 1, true, this->far, this->resolution, nrad, false,
+                                                  false, false);
+        COVIS_ASSERT(!objectSurf[i]->empty());
+    }
+
+    sceneSurf.resize(sceneMesh.size());
+    for(size_t i = 0; i < sceneMesh.size(); ++i) {
+        sceneSurf[i] = filter::preprocess<PointT>(sceneMesh[i], 1, true, this->far, this->resolution, nrad, false,
+                                                  false, false);
+        COVIS_ASSERT(!sceneSurf[i]->empty());
+    }
+
+    // Generate feature points
+    objectCloud.resize(objectSurf.size());
+    for(size_t i = 0; i < objectSurf.size(); ++i) {
+        objectCloud[i] = filter::downsample<PointT>(objectSurf[i], resQuery);
+
+        COVIS_ASSERT(!objectCloud[i]->empty());
+    }
+
+    sceneCloud.resize(sceneSurf.size());
+    for(size_t i = 0; i < sceneSurf.size(); ++i) {
+        sceneCloud[i] = filter::downsample<PointT>(sceneSurf[i], resTarget);
+
+        COVIS_ASSERT(!sceneCloud[i]->empty());
+    }
+
+    // Compute features
+    std::vector<feature::MatrixT> objectFeat, sceneFeat;
+    objectFeat.resize(objectSurf.size());
+    for(size_t i = 0; i < objectSurf.size(); ++i) {
+        objectFeat[i] = feature::computeFeature<PointT>(this->feature, objectCloud[i], objectSurf[i], frad);
+    }
+
+    sceneFeat.resize(sceneSurf.size());
+    for(size_t i = 0; i < sceneSurf.size(); ++i) {
+        sceneFeat[i] = feature::computeFeature<PointT>(this->feature, sceneCloud[i], sceneSurf[i], frad);
+    }
+
+     // Match features
+    std::vector< std::vector<core::Correspondence::VecPtr> > corr;
+    for (size_t i = 0; i < sceneFeat.size(); i++) {
+        corr[i].resize(objectFeat.size());
+        for (size_t j = 0; j < objectFeat.size(); j++) {
+            corr[i][j] = detect::computeRatioMatches(objectFeat[j], sceneFeat[i]);
+
+            // Sort correspondences and cutoff at <cutoff> %
+            if(cutoff < 100) {
+                core::sort(*corr[i][j]);
+                corr[i][j]->resize(corr[i][j]->size() * cutoff / 100);
+            }
+        }
+    }
+
+    // Benchmark
+    std::vector<std::vector<core::Detection> > d;
+    {
+        // Start timer
+        core::ScopedTimer::Ptr t;
+
+        // Run through scenes and estimate pose of each object
+        for (size_t i = 0; i < sceneFeat.size(); i++) {
+            d[i].resize(objectFeat.size());
+            for (size_t j = 0; j < objectFeat.size(); j++) {
+
+                if(this->verbose)
+                    t->intermediate("Ransac time elapsed");
+
+                setSource( objectCloud[j] );
+                setTarget( sceneCloud[i] );
+                setCorrespondences( corr[i][j] );
+                d[i][j] = estimate();
+                // result.pose = pose;
+                // result.rmse = this->fe->rmse();
+                // result.inlierfrac = this->fe->inlierFraction();
+                // result.outlierfrac = this->fe->outlierFraction();
+                // result.penalty = this->fe->penalty();
+            }
+        }
+
+
+
+    }
+
+
+
 }

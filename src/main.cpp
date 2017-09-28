@@ -4,7 +4,6 @@ using namespace covis;
 
 // Ransac
 #include "../headers/ransac.hpp"
-#include "../headers/ransac_benchmark.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -31,6 +30,7 @@ int main( int argc, const char** argv )
     core::ProgramOptions po;
     po.addPositional("query", "mesh or point cloud file for query model");
     po.addPositional("target", "mesh or point cloud file for target model");
+    po.addPositional("root-path", "root path of your dataset");
 
     // Surfaces and normals
     po.addOption("resolution", 'r', 0.001, "downsample point clouds to this resolution (<= 0 for disabled)");
@@ -62,6 +62,18 @@ int main( int argc, const char** argv )
 
     // Misc.
     po.addFlag('v', "visualize", "show additional results");
+
+    // Benchmark
+    po.addFlag('b', "benchmark", "benchmark ransac");
+    po.addOption("object-dir", 'o', "objects", "subdirectory for the object models");
+    po.addOption("scene-dir", 's', "scenes", "subdirectory for the scene models");
+    po.addOption("pose-dir", 'p', "ground_truth", "subdirectory for the ground truth pose models");
+    po.addOption("object-ext", ".ply", "object file extension");
+    po.addOption("scene-ext", ".ply", "scene file extension");
+    po.addOption("pose-ext", ".xf", "pose file extension");
+    po.addOption("pose-sep", "-", "pose file separator");
+    po.addOption("object-regex", "", "set this option to use a regular expression search when collecting object files");
+    po.addOption("scene-regex", "", "set this option to use a regular expression search when collecting scene files");
 
     // Parse
     if(!po.parse(argc, argv))
@@ -123,8 +135,8 @@ int main( int argc, const char** argv )
     const bool visualize = po.getFlag("visualize");
 
     // Preprocess
-    querySurf = filter::preprocess<PointT>(queryMesh, 1, true, far, res, nrad, po.getFlag("orient-query-normals"), false, true);
-    targetSurf = filter::preprocess<PointT>(targetMesh, 1, true, far, res, nrad, false, false, true);
+    querySurf = filter::preprocess<PointT>(queryMesh, 1, true, far, res, nrad, po.getFlag("orient-query-normals"), false, false);
+    targetSurf = filter::preprocess<PointT>(targetMesh, 1, true, far, res, nrad, false, false, false);
     COVIS_ASSERT(!querySurf->empty() && !targetSurf->empty());
 
     // Generate feature points
@@ -166,7 +178,7 @@ int main( int argc, const char** argv )
     core::Detection d;
     {
         pcl::ScopeTime t( "RANSAC" );
-
+        
         detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
         fe->setOcclusionReasoning(!noOcclusionReasoning);
         fe->setViewAxis(viewAxis);
@@ -176,19 +188,34 @@ int main( int argc, const char** argv )
             fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
 
         ransac ransac;
+
+        // ransac variables
         ransac.setSource( queryCloud );
         ransac.setTarget( targetCloud );
         ransac.setCorrespondences( corr );
         ransac.setIterations( iterations );
         ransac.setFitEvaluation( fe );
-        ransac.setInlierThreshold(inlierThreshold);
-        ransac.setInlierFraction(inlierFraction);
-        ransac.setReestimatePose(!noReestimate);
-        ransac.setFullEvaluation(fullEvaluation);
-        ransac.setPrerejection(prerejection);
-        ransac.setPrerejectionSimilarity(prerejectionSimilarty);
+        ransac.setInlierThreshold( inlierThreshold );
+        ransac.setInlierFraction( inlierFraction );
+        ransac.setReestimatePose( !noReestimate );
+        ransac.setFullEvaluation( fullEvaluation );
+        ransac.setPrerejection( prerejection );
+        ransac.setPrerejectionSimilarity( prerejectionSimilarty );
+
+        // Benchmark variables
+        ransac.setRootPath( po.getValue("root-path") );
+        ransac.setObjectDir( po.getValue("object-dir") );
+        ransac.setSceneDir( po.getValue("scene-dir") );
+        ransac.setPoseDir( po.getValue("pose-dir") );
+        ransac.setObjExt( po.getValue("object-ext") );
+        ransac.setSceneExt( po.getValue("scene-ext") );
+        ransac.setPoseExt( po.getValue("pose-ext") );
+        ransac.setPoseSep( po.getValue("pose-sep") );
 
         d = ransac.estimate();
+
+        if( po.getFlag("benchmark") )
+            ransac.benchmark();
 
         //     ransac.setVerbose(true);
     }

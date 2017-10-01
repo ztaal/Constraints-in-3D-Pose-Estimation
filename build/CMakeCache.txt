@@ -187,7 +187,7 @@ COVIS_LIBRARY:STRING=covis
 COVIS_LIBRARY_DIRS:STRING=/home/ztaal/pcl/build/lib;/home/ztaal/covis/build/lib
 
 //CoViS revision
-COVIS_REVISION:STRING=779
+COVIS_REVISION:STRING=794
 
 //CoViS version
 COVIS_VERSION:STRING=1.0.0
@@ -200,6 +200,9 @@ Constraints-in-3D-Pose-Estimation_BINARY_DIR:STATIC=/home/ztaal/Desktop/Constrai
 
 //Value Computed by CMake
 Constraints-in-3D-Pose-Estimation_SOURCE_DIR:STATIC=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation
+
+//The directory containing a CMake configuration file for Eigen3.
+Eigen3_DIR:PATH=/usr/lib/cmake/eigen3
 
 //OpenMP find status
 OPENMP_FOUND:STRING=TRUE

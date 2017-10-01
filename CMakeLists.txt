@@ -13,6 +13,9 @@ include( ${VTK_USE_FILE} )
 add_executable( aout src/main.cpp src/ransac.cpp )
 target_link_libraries( aout ${COVIS_LIBRARIES} )
 
+find_package(Eigen3 3.3.2 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 add_definitions(
     -Wno-deprecated-declarations
 )

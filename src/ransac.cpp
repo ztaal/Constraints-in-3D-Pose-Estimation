@@ -453,11 +453,75 @@ void ransac::benchmark()
                 // result.penalty = this->fe->penalty();
             }
         }
-
-
-
     }
-
-
-
 }
+
+
+
+
+// /** \brief Polygonal rejection of a single polygon, indexed by two point index vectors
+// * \param source_indices indices of polygon points in \ref input_, must have a size equal to \ref cardinality_
+// * \param target_indices corresponding indices of polygon points in \ref target_, must have a size equal to \ref cardinality_
+// * \return true if all edge length ratios are larger than or equal to \ref similarity_threshold_
+// */
+// inline bool thresholdPolygon (const std::vector<int>& source_indices, const std::vector<int>& target_indices)
+// {
+//     // Convert indices to correspondences and an index vector pointing to each element
+//     pcl::Correspondences corr (cardinality_);
+//     std::vector<int> idx (cardinality_);
+//
+//     for (int i = 0; i < cardinality_; ++i) {
+//         corr[i].index_query = source_indices[i];
+//         corr[i].index_match = target_indices[i];
+//         idx[i] = i;
+//     }
+//
+//     return (thresholdPolygon (corr, idx));
+// }
+//
+// inline bool thresholdPolygon (const pcl::Correspondences& corr, const std::vector<int>& idx)
+// {
+//     if (cardinality_ == 2) {// Special case: when two points are considered, we only have one edge
+//         return (thresholdEdgeLength (corr[ idx[0] ].index_query, corr[ idx[1] ].index_query,
+//                                      corr[ idx[0] ].index_match, corr[ idx[1] ].index_match,
+//                                      cardinality_));
+//      } else { // Otherwise check all edges
+//         for (int i = 0; i < cardinality_; ++i)
+//             if (!thresholdEdgeLength (corr[ idx[i] ].index_query, corr[ idx[(i+1)%cardinality_] ].index_query,
+//                                       corr[ idx[i] ].index_match, corr[ idx[(i+1)%cardinality_] ].index_match,
+//                                       similarity_threshold_squared_))
+//                 return (false);
+//         return (true);
+//     }
+// }
+//
+// /** \brief Edge length similarity thresholding
+// * \param index_query_1 index of first source vertex
+// * \param index_query_2 index of second source vertex
+// * \param index_match_1 index of first target vertex
+// * \param index_match_2 index of second target vertex
+// * \param simsq squared similarity threshold in [0,1]
+// * \return true if edge length ratio is larger than or equal to threshold
+// */
+// inline bool thresholdEdgeLength (int index_query_1, int index_query_2,
+//                                  int index_match_1, int index_match_2,
+//                                  float simsq)
+// {
+//     // Distance between source points
+//     const float dist_src = computeSquaredDistance ((*input_)[index_query_1], (*input_)[index_query_2]);
+//     // Distance between target points
+//     const float dist_tgt = computeSquaredDistance ((*target_)[index_match_1], (*target_)[index_match_2]);
+//     // Edge length similarity [0,1] where 1 is a perfect match
+//     const float edge_sim = (dist_src < dist_tgt ? dist_src / dist_tgt : dist_tgt / dist_src);
+//
+//     return (edge_sim >= simsq);
+// }
+//
+// inline float computeSquaredDistance (const SourceT& p1, const TargetT& p2)
+// {
+//     const float dx = p2.x - p1.x;
+//     const float dy = p2.y - p1.y;
+//     const float dz = p2.z - p1.z;
+//
+//    return (dx*dx + dy*dy + dz*dz
+// }

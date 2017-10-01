@@ -23,8 +23,7 @@ core::Detection RANSAC2(
 
 int main( int argc, const char** argv )
 {
-    pcl::ScopeTime( "Main" );
-    printf( " -- Initialized Program\n" );
+    printf( " -- Initialized Program\n\n" );
 
     // Setup program options
     core::ProgramOptions po;
@@ -136,115 +135,115 @@ int main( int argc, const char** argv )
 
     // Preprocess
     querySurf = filter::preprocess<PointT>(queryMesh, 1, true, far, res, nrad, po.getFlag("orient-query-normals"), false, false);
-    targetSurf = filter::preprocess<PointT>(targetMesh, 1, true, far, res, nrad, false, false, false);
-    COVIS_ASSERT(!querySurf->empty() && !targetSurf->empty());
+    // targetSurf = filter::preprocess<PointT>(targetMesh, 1, true, far, res, nrad, false, false, false);
+    // COVIS_ASSERT(!querySurf->empty() && !targetSurf->empty());
 
     // Generate feature points
-    queryCloud = filter::downsample<PointT>(querySurf, resQuery);
-    targetCloud = filter::downsample<PointT>(targetSurf, resTarget);
-    COVIS_ASSERT(!queryCloud->empty() && !targetCloud->empty());
+    // queryCloud = filter::downsample<PointT>(querySurf, resQuery);
+    // targetCloud = filter::downsample<PointT>(targetSurf, resTarget);
+    // COVIS_ASSERT(!queryCloud->empty() && !targetCloud->empty());
 
-    /*
-     * Compute features
-     */
-    {
-        const std::string feat = po.getValue("feature");
-        core::ScopedTimer t("Features (" + feat + ")");
-        queryFeat = feature::computeFeature<PointT>(feat, queryCloud, querySurf, frad);
-        targetFeat = feature::computeFeature<PointT>(feat, targetCloud, targetSurf, frad);
-        COVIS_MSG("\tComputed " << queryFeat.cols() << "/" << targetFeat.cols() << " query/target features");
-    }
-
-    /*
-     * Match features
-     */
-    core::Correspondence::VecPtr corr;
-    {
-        core::ScopedTimer t("Feature matching");
-        corr = detect::computeRatioMatches(queryFeat, targetFeat);
-    }
-
-    /*
-     * Sort correspondences and cutoff at <cutoff> %
-     */
-    if(cutoff < 100) {
-        core::sort(*corr);
-        corr->resize(corr->size() * cutoff / 100);
-    }
-
-    /*
-     * Execute RANSAC
-     */
-    core::Detection d;
-    {
-        pcl::ScopeTime t( "RANSAC" );
-        
-        detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
-        fe->setOcclusionReasoning(!noOcclusionReasoning);
-        fe->setViewAxis(viewAxis);
-        if(noOcclusionReasoning)
-            fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
-        else
-            fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
-
-        ransac ransac;
-
-        // ransac variables
-        ransac.setSource( queryCloud );
-        ransac.setTarget( targetCloud );
-        ransac.setCorrespondences( corr );
-        ransac.setIterations( iterations );
-        ransac.setFitEvaluation( fe );
-        ransac.setInlierThreshold( inlierThreshold );
-        ransac.setInlierFraction( inlierFraction );
-        ransac.setReestimatePose( !noReestimate );
-        ransac.setFullEvaluation( fullEvaluation );
-        ransac.setPrerejection( prerejection );
-        ransac.setPrerejectionSimilarity( prerejectionSimilarty );
-
-        // Benchmark variables
-        ransac.setRootPath( po.getValue("root-path") );
-        ransac.setObjectDir( po.getValue("object-dir") );
-        ransac.setSceneDir( po.getValue("scene-dir") );
-        ransac.setPoseDir( po.getValue("pose-dir") );
-        ransac.setObjExt( po.getValue("object-ext") );
-        ransac.setSceneExt( po.getValue("scene-ext") );
-        ransac.setPoseExt( po.getValue("pose-ext") );
-        ransac.setPoseSep( po.getValue("pose-sep") );
-
-        d = ransac.estimate();
-
-        if( po.getFlag("benchmark") )
-            ransac.benchmark();
-
-        //     ransac.setVerbose(true);
-    }
-
-    if(d) {
-        if(refine) {
-            core::ScopedTimer t("ICP");
-            pcl::IterativeClosestPoint<PointT,PointT> icp;
-            icp.setInputSource(queryCloud);
-            icp.setInputTarget(targetCloud);
-            icp.setMaximumIterations(icpIterations);
-            icp.setMaxCorrespondenceDistance(inlierThreshold);
-            pcl::PointCloud<PointT> tmp;
-            icp.align(tmp, d.pose);
-            if(icp.hasConverged()) {
-                d.pose = icp.getFinalTransformation();
-                d.rmse = icp.getFitnessScore();
-            } else {
-                COVIS_MSG_WARN("ICP failed!");
-            }
-        }
-
-        // Print result and visualize
-        COVIS_MSG(d);
-        if(visualize)
-            visu::showDetection(queryMesh, targetMesh, d.pose);
-    } else {
-        COVIS_MSG_WARN("RANSAC failed!");
-    }
+    // /*
+    //  * Compute features
+    //  */
+    // {
+    //     const std::string feat = po.getValue("feature");
+    //     core::ScopedTimer t("Features (" + feat + ")");
+    //     queryFeat = feature::computeFeature<PointT>(feat, queryCloud, querySurf, frad);
+    //     targetFeat = feature::computeFeature<PointT>(feat, targetCloud, targetSurf, frad);
+    //     COVIS_MSG("\tComputed " << queryFeat.cols() << "/" << targetFeat.cols() << " query/target features");
+    // }
+    //
+    // /*
+    //  * Match features
+    //  */
+    // core::Correspondence::VecPtr corr;
+    // {
+    //     core::ScopedTimer t("Feature matching");
+    //     corr = detect::computeRatioMatches(queryFeat, targetFeat);
+    // }
+    //
+    // /*
+    //  * Sort correspondences and cutoff at <cutoff> %
+    //  */
+    // if(cutoff < 100) {
+    //     core::sort(*corr);
+    //     corr->resize(corr->size() * cutoff / 100);
+    // }
+    //
+    // /*
+    //  * Execute RANSAC
+    //  */
+    // core::Detection d;
+    // {
+    //     pcl::ScopeTime t( "RANSAC" );
+    //
+    //     detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
+    //     fe->setOcclusionReasoning(!noOcclusionReasoning);
+    //     fe->setViewAxis(viewAxis);
+    //     if(noOcclusionReasoning)
+    //         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
+    //     else
+    //         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
+    //
+    //     ransac ransac;
+    //
+    //     // ransac variables
+    //     ransac.setSource( queryCloud );
+    //     ransac.setTarget( targetCloud );
+    //     ransac.setCorrespondences( corr );
+    //     ransac.setIterations( iterations );
+    //     ransac.setFitEvaluation( fe );
+    //     ransac.setInlierThreshold( inlierThreshold );
+    //     ransac.setInlierFraction( inlierFraction );
+    //     ransac.setReestimatePose( !noReestimate );
+    //     ransac.setFullEvaluation( fullEvaluation );
+    //     ransac.setPrerejection( prerejection );
+    //     ransac.setPrerejectionSimilarity( prerejectionSimilarty );
+    //
+    //     // Benchmark variables
+    //     ransac.setRootPath( po.getValue("root-path") );
+    //     ransac.setObjectDir( po.getValue("object-dir") );
+    //     ransac.setSceneDir( po.getValue("scene-dir") );
+    //     ransac.setPoseDir( po.getValue("pose-dir") );
+    //     ransac.setObjExt( po.getValue("object-ext") );
+    //     ransac.setSceneExt( po.getValue("scene-ext") );
+    //     ransac.setPoseExt( po.getValue("pose-ext") );
+    //     ransac.setPoseSep( po.getValue("pose-sep") );
+    //
+    //     d = ransac.estimate();
+    //
+    //     if( po.getFlag("benchmark") )
+    //         ransac.benchmark();
+    //
+    //     //     ransac.setVerbose(true);
+    // }
+    //
+    // if(d) {
+    //     if(refine) {
+    //         core::ScopedTimer t("ICP");
+    //         pcl::IterativeClosestPoint<PointT,PointT> icp;
+    //         icp.setInputSource(queryCloud);
+    //         icp.setInputTarget(targetCloud);
+    //         icp.setMaximumIterations(icpIterations);
+    //         icp.setMaxCorrespondenceDistance(inlierThreshold);
+    //         pcl::PointCloud<PointT> tmp;
+    //         icp.align(tmp, d.pose);
+    //         if(icp.hasConverged()) {
+    //             d.pose = icp.getFinalTransformation();
+    //             d.rmse = icp.getFitnessScore();
+    //         } else {
+    //             COVIS_MSG_WARN("ICP failed!");
+    //         }
+    //     }
+    //
+    //     // Print result and visualize
+    //     COVIS_MSG(d);
+    //     if(visualize)
+    //         visu::showDetection(queryMesh, targetMesh, d.pose);
+    // } else {
+    //     COVIS_MSG_WARN("RANSAC failed!");
+    // }
 
     return 0;
 }

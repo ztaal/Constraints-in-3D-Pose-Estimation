@@ -297,7 +297,10 @@ core::Detection ransac::estimate()
 
 void ransac::benchmark()
 {
+    printf( " -- Benchmark --\n" );
+
     // Load dataset
+    printf( " -- Loading dataset\n" );
     util::DatasetLoader dataset(
             this->rootPath,
             this->objDir,
@@ -329,6 +332,7 @@ void ransac::benchmark()
     std::vector<CloudT::Ptr> sceneSurf, sceneCloud;
 
     // Surfaces and normals
+    printf( " -- Computing surfaces and normals\n" );
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
         this->resolution = 0;
@@ -387,6 +391,7 @@ void ransac::benchmark()
     }
 
     // Generate feature points
+    printf( " -- Generating feature points\n" );
     objectCloud.resize(objectSurf.size());
     for(size_t i = 0; i < objectSurf.size(); ++i) {
         objectCloud[i] = filter::downsample<PointT>(objectSurf[i], resQuery);
@@ -402,6 +407,7 @@ void ransac::benchmark()
     }
 
     // Compute features
+    printf( " -- Computing features\n" );
     std::vector<feature::MatrixT> objectFeat, sceneFeat;
     objectFeat.resize(objectSurf.size());
     for(size_t i = 0; i < objectSurf.size(); ++i) {
@@ -414,8 +420,9 @@ void ransac::benchmark()
     }
 
      // Match features
-    std::vector< std::vector<core::Correspondence::VecPtr> > corr;
-    for (size_t i = 0; i < sceneFeat.size(); i++) {
+     printf( " -- Matching features\n" );
+     std::vector< std::vector<core::Correspondence::VecPtr> > corr;
+     for (size_t i = 0; i < sceneFeat.size(); i++) {
         corr[i].resize(objectFeat.size());
         for (size_t j = 0; j < objectFeat.size(); j++) {
             corr[i][j] = detect::computeRatioMatches(objectFeat[j], sceneFeat[i]);
@@ -426,17 +433,19 @@ void ransac::benchmark()
                 corr[i][j]->resize(corr[i][j]->size() * cutoff / 100);
             }
         }
-    }
+     }
 
-    // Benchmark
-    std::vector<std::vector<core::Detection> > d;
-    {
-        // Start timer
-        core::ScopedTimer::Ptr t;
+     // Benchmark
+     printf( " -- Starting benchmark\n" );
+     std::vector<std::vector<core::Detection> > d;
+     {
+         // Start timer
+         core::ScopedTimer::Ptr t;
 
-        // Run through scenes and estimate pose of each object
+         // Run through scenes and estimate pose of each object
         for (size_t i = 0; i < sceneFeat.size(); i++) {
             d[i].resize(objectFeat.size());
+            printf( " -- Matching features\n" );
             for (size_t j = 0; j < objectFeat.size(); j++) {
 
                 if(this->verbose)
@@ -452,6 +461,7 @@ void ransac::benchmark()
                 // result.outlierfrac = this->fe->outlierFraction();
                 // result.penalty = this->fe->penalty();
             }
+            std::cout << "Iteration: " << i << " of " << sceneFeat.size() << '\n';
         }
     }
 }

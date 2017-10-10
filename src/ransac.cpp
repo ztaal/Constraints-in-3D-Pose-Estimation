@@ -487,6 +487,7 @@ void ransac::benchmark()
                 // result.outlierfrac = fe->outlierFraction();
                 // result.penalty = fe->penalty();
             }
+            std::cout << "Iteration: " << i << " of " << sceneCloud.size() << '\n';
         }
     }
 }

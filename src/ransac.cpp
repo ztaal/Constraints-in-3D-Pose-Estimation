@@ -33,11 +33,6 @@ void ransac::setSampleSize( size_t _sampleSize )
     this->sampleSize = _sampleSize;
 }
 
-void ransac::setFitEvaluation( detect::FitEvaluation<PointT>::Ptr _fe )
-{
-    this->fe = _fe;
-}
-
 void ransac::setInlierThreshold( float _inlierThreshold )
 {
     this->inlierThreshold = _inlierThreshold;
@@ -68,6 +63,15 @@ void ransac::setPrerejectionSimilarity( float _prerejectionSimilarty )
     this->prerejectionSimilarty = _prerejectionSimilarty;
 }
 
+void ransac::setOcclusionReasoning( bool _occlusionReasoning )
+{
+    this->occlusionReasoning = _occlusionReasoning;
+}
+
+void ransac::setViewAxis( int _viewAxis )
+{
+    this->viewAxis = _viewAxis;
+}
 
 void ransac::setRootPath( std::string _rootPath )
 {
@@ -109,6 +113,11 @@ void ransac::setPoseSep( std::string _poseSep )
     this->poseSep = _poseSep;
 }
 
+void ransac::setVerbose( bool _verbose )
+{
+  this->verbose = _verbose;
+}
+
 core::Detection ransac::estimate()
 {
     detect::PointSearch<PointT>::Ptr _search;
@@ -136,15 +145,23 @@ core::Detection ransac::estimate()
     std::vector<int> sources(this->sampleSize);
     std::vector<int> targets(this->sampleSize);
 
+    detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(this->target));
+    fe->setOcclusionReasoning( !this->occlusionReasoning );
+    fe->setViewAxis( this->viewAxis );
+    if( this->occlusionReasoning )
+        fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
+    else
+        fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
+
     // Instantiate fit evaluator
-    if(!this->fe) // Not even created
-        this->fe.reset(new covis::detect::FitEvaluation<PointT>);
-    this->fe->setInlierThreshold(this->inlierThreshold);
-    if(!this->fe->getSearch()) { // Not initialized with a search object
+    if(!fe) // Not even created
+        fe.reset(new covis::detect::FitEvaluation<PointT>);
+    fe->setInlierThreshold(this->inlierThreshold);
+    if(!fe->getSearch()) { // Not initialized with a search object
         if(_search && _search->getTarget() == this->target) // Search object provided to this, and consistent
-            this->fe->setSearch(_search);
+            fe->setSearch(_search);
         else // Nothing provided, set target for indexing
-            this->fe->setTarget(this->target);
+            fe->setTarget(this->target);
     }
 
     // Output detection(s)
@@ -241,33 +258,33 @@ core::Detection ransac::estimate()
         Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
 
         // Find consensus set
-        this->fe->update(this->source, pose); // Using full models
+        fe->update(this->source, pose); // Using full models
 
         // If number of inliers (consensus set) is high enough
-        if(this->fe->inlierFraction() >= this->inlierFraction) {
+        if(fe->inlierFraction() >= this->inlierFraction) {
             // Reestimate pose using consensus set
-            if(this->fe->inliers() >= this->sampleSize) {
-                pose = poseSampler.transformation(this->fe->getInliers());
+            if(fe->inliers() >= this->sampleSize) {
+                pose = poseSampler.transformation(fe->getInliers());
 
                 // Evaluate updated model
-                this->fe->update(this->source, pose); // Using full models
+                fe->update(this->source, pose); // Using full models
             }
 
             // Add to the list of all detections
             _allDetections.push_back(core::Detection(pose,
-                                                     this->fe->rmse(),
-                                                     this->fe->penalty(),
-                                                     this->fe->inlierFraction(),
-                                                     this->fe->outlierFraction())
+                                                     fe->rmse(),
+                                                     fe->penalty(),
+                                                     fe->inlierFraction(),
+                                                     fe->outlierFraction())
             );
 
             // Update result if updated model is the best so far
-            if(this->fe->penalty() < result.penalty) {
+            if(fe->penalty() < result.penalty) {
                 result.pose = pose;
-                result.rmse = this->fe->rmse();
-                result.inlierfrac = this->fe->inlierFraction();
-                result.outlierfrac = this->fe->outlierFraction();
-                result.penalty = this->fe->penalty();
+                result.rmse = fe->rmse();
+                result.inlierfrac = fe->inlierFraction();
+                result.outlierfrac = fe->outlierFraction();
+                result.penalty = fe->penalty();
             }
         }
     }
@@ -294,8 +311,8 @@ core::Detection ransac::estimate()
     return result;
 }
 
-
-void ransac::benchmark()
+void ransac::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
 {
     // Load dataset
     util::DatasetLoader dataset(
@@ -316,33 +333,35 @@ void ransac::benchmark()
     COVIS_MSG(dataset);
 
     // Load object and scene point clouds
-    std::vector<util::DatasetLoader::ModelPtr> objectMesh = dataset.getObjects();
-    std::vector<util::DatasetLoader::ModelPtr> sceneMesh;
+    *objectMesh = dataset.getObjects();
     for(size_t i = 0; i < dataset.size(); ++i) {
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
-        sceneMesh.push_back(scene.scene);
+        (*sceneMesh).push_back(scene.scene);
     }
-    COVIS_ASSERT(!objectMesh.empty() && !sceneMesh.empty());
+    COVIS_ASSERT(!objectMesh->empty() && !sceneMesh->empty());
 
-    // Loaded point clouds
-    std::vector<CloudT::Ptr> objectSurf, objectCloud;
-    std::vector<CloudT::Ptr> sceneSurf, sceneCloud;
+}
+
+void ransac::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                                    std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
+{
+    std::vector<CloudT::Ptr> objectSurf, sceneSurf;
 
     // Surfaces and normals
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
         this->resolution = 0;
     float diag = 0;
-    for(size_t i = 0; i < objectMesh.size(); ++i) {
+    for(size_t i = 0; i < objectMesh->size(); ++i) {
         if(!resolutionInput)
-            this->resolution += detect::computeResolution(objectMesh[i]) * this->objectScale;
-        diag += detect::computeDiagonal(objectMesh[i]) * this->objectScale;
+            this->resolution += detect::computeResolution((*objectMesh)[i]) * this->objectScale;
+        diag += detect::computeDiagonal((*objectMesh)[i]) * this->objectScale;
         if(objectScale != 1)
-            objectMesh[i] = filter::scale(objectMesh[i], this->objectScale);
+            (*objectMesh)[i] = filter::scale((*objectMesh)[i], this->objectScale);
     }
     if(!resolutionInput)
-        this->resolution /= float(objectMesh.size());
-    diag /= float(objectMesh.size());
+        this->resolution /= float(objectMesh->size());
+    diag /= float(objectMesh->size());
 
     const float nrad =
             this->radiusNormal > 0.0 ?
@@ -372,156 +391,102 @@ void ransac::benchmark()
             5 * this->resolution);
 
     // Preprocess
-    objectSurf.resize(objectMesh.size());
-    for(size_t i = 0; i < objectMesh.size(); ++i) {
-        objectSurf[i] = filter::preprocess<PointT>(objectMesh[i], 1, true, this->far, this->resolution, nrad, false,
+    objectSurf.resize(objectMesh->size());
+    for(size_t i = 0; i < objectMesh->size(); ++i) {
+        objectSurf[i] = filter::preprocess<PointT>((*objectMesh)[i], 1, true, this->far, this->resolution, nrad, false,
                                                   false, false);
         COVIS_ASSERT(!objectSurf[i]->empty());
     }
 
-    sceneSurf.resize(sceneMesh.size());
-    for(size_t i = 0; i < sceneMesh.size(); ++i) {
-        sceneSurf[i] = filter::preprocess<PointT>(sceneMesh[i], 1, true, this->far, this->resolution, nrad, false,
+    sceneSurf.resize(sceneMesh->size());
+    for(size_t i = 0; i < sceneMesh->size(); ++i) {
+        sceneSurf[i] = filter::preprocess<PointT>((*sceneMesh)[i], 1, true, this->far, this->resolution, nrad, false,
                                                   false, false);
         COVIS_ASSERT(!sceneSurf[i]->empty());
     }
 
     // Generate feature points
-    objectCloud.resize(objectSurf.size());
+    this->objectCloud.resize(objectSurf.size());
     for(size_t i = 0; i < objectSurf.size(); ++i) {
-        objectCloud[i] = filter::downsample<PointT>(objectSurf[i], resQuery);
+        this->objectCloud[i] = filter::downsample<PointT>(objectSurf[i], resQuery);
 
-        COVIS_ASSERT(!objectCloud[i]->empty());
+        COVIS_ASSERT(!this->objectCloud[i]->empty());
     }
 
-    sceneCloud.resize(sceneSurf.size());
+    this->sceneCloud.resize(sceneSurf.size());
     for(size_t i = 0; i < sceneSurf.size(); ++i) {
-        sceneCloud[i] = filter::downsample<PointT>(sceneSurf[i], resTarget);
+        this->sceneCloud[i] = filter::downsample<PointT>(sceneSurf[i], resTarget);
 
-        COVIS_ASSERT(!sceneCloud[i]->empty());
+        COVIS_ASSERT(!this->sceneCloud[i]->empty());
     }
 
     // Compute features
     std::vector<feature::MatrixT> objectFeat, sceneFeat;
     objectFeat.resize(objectSurf.size());
     for(size_t i = 0; i < objectSurf.size(); ++i) {
-        objectFeat[i] = feature::computeFeature<PointT>(this->feature, objectCloud[i], objectSurf[i], frad);
+        objectFeat[i] = feature::computeFeature<PointT>(feature, this->objectCloud[i], objectSurf[i], frad);
     }
 
     sceneFeat.resize(sceneSurf.size());
     for(size_t i = 0; i < sceneSurf.size(); ++i) {
-        sceneFeat[i] = feature::computeFeature<PointT>(this->feature, sceneCloud[i], sceneSurf[i], frad);
+        sceneFeat[i] = feature::computeFeature<PointT>(feature, this->sceneCloud[i], sceneSurf[i], frad);
     }
 
      // Match features
-    std::vector< std::vector<core::Correspondence::VecPtr> > corr;
+    this->correspondences.resize(sceneFeat.size());
     for (size_t i = 0; i < sceneFeat.size(); i++) {
-        corr[i].resize(objectFeat.size());
+        this->correspondences[i].resize(objectFeat.size());
         for (size_t j = 0; j < objectFeat.size(); j++) {
-            corr[i][j] = detect::computeRatioMatches(objectFeat[j], sceneFeat[i]);
+            this->correspondences[i][j] = detect::computeRatioMatches(objectFeat[j], sceneFeat[i]);
 
             // Sort correspondences and cutoff at <cutoff> %
             if(cutoff < 100) {
-                core::sort(*corr[i][j]);
-                corr[i][j]->resize(corr[i][j]->size() * cutoff / 100);
-            }
-        }
-    }
-
-    // Benchmark
-    std::vector<std::vector<core::Detection> > d;
-    {
-        // Start timer
-        core::ScopedTimer::Ptr t;
-
-        // Run through scenes and estimate pose of each object
-        for (size_t i = 0; i < sceneFeat.size(); i++) {
-            d[i].resize(objectFeat.size());
-            for (size_t j = 0; j < objectFeat.size(); j++) {
-
-                if(this->verbose)
-                    t->intermediate("Ransac time elapsed");
-
-                setSource( objectCloud[j] );
-                setTarget( sceneCloud[i] );
-                setCorrespondences( corr[i][j] );
-                d[i][j] = estimate();
-                // result.pose = pose;
-                // result.rmse = this->fe->rmse();
-                // result.inlierfrac = this->fe->inlierFraction();
-                // result.outlierfrac = this->fe->outlierFraction();
-                // result.penalty = this->fe->penalty();
+                core::sort(*this->correspondences[i][j]);
+                this->correspondences[i][j]->resize(this->correspondences[i][j]->size() * cutoff / 100);
             }
         }
     }
 }
 
+void ransac::initBenchmark()
+{
+    printf("Loading data\n");
+    std::vector<util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
+    loadData( &objectMesh, &sceneMesh );
+    computeCorrespondence( &objectMesh, &sceneMesh );
+}
 
+void ransac::benchmark()
+{
+    printf("Benchmark initiated\n");
 
+    // Call init if it has not been called before
+    boost::call_once([this]{initBenchmark();}, this->flagInit);
 
-// /** \brief Polygonal rejection of a single polygon, indexed by two point index vectors
-// * \param source_indices indices of polygon points in \ref input_, must have a size equal to \ref cardinality_
-// * \param target_indices corresponding indices of polygon points in \ref target_, must have a size equal to \ref cardinality_
-// * \return true if all edge length ratios are larger than or equal to \ref similarity_threshold_
-// */
-// inline bool thresholdPolygon (const std::vector<int>& source_indices, const std::vector<int>& target_indices)
-// {
-//     // Convert indices to correspondences and an index vector pointing to each element
-//     pcl::Correspondences corr (cardinality_);
-//     std::vector<int> idx (cardinality_);
-//
-//     for (int i = 0; i < cardinality_; ++i) {
-//         corr[i].index_query = source_indices[i];
-//         corr[i].index_match = target_indices[i];
-//         idx[i] = i;
-//     }
-//
-//     return (thresholdPolygon (corr, idx));
-// }
-//
-// inline bool thresholdPolygon (const pcl::Correspondences& corr, const std::vector<int>& idx)
-// {
-//     if (cardinality_ == 2) {// Special case: when two points are considered, we only have one edge
-//         return (thresholdEdgeLength (corr[ idx[0] ].index_query, corr[ idx[1] ].index_query,
-//                                      corr[ idx[0] ].index_match, corr[ idx[1] ].index_match,
-//                                      cardinality_));
-//      } else { // Otherwise check all edges
-//         for (int i = 0; i < cardinality_; ++i)
-//             if (!thresholdEdgeLength (corr[ idx[i] ].index_query, corr[ idx[(i+1)%cardinality_] ].index_query,
-//                                       corr[ idx[i] ].index_match, corr[ idx[(i+1)%cardinality_] ].index_match,
-//                                       similarity_threshold_squared_))
-//                 return (false);
-//         return (true);
-//     }
-// }
-//
-// /** \brief Edge length similarity thresholding
-// * \param index_query_1 index of first source vertex
-// * \param index_query_2 index of second source vertex
-// * \param index_match_1 index of first target vertex
-// * \param index_match_2 index of second target vertex
-// * \param simsq squared similarity threshold in [0,1]
-// * \return true if edge length ratio is larger than or equal to threshold
-// */
-// inline bool thresholdEdgeLength (int index_query_1, int index_query_2,
-//                                  int index_match_1, int index_match_2,
-//                                  float simsq)
-// {
-//     // Distance between source points
-//     const float dist_src = computeSquaredDistance ((*input_)[index_query_1], (*input_)[index_query_2]);
-//     // Distance between target points
-//     const float dist_tgt = computeSquaredDistance ((*target_)[index_match_1], (*target_)[index_match_2]);
-//     // Edge length similarity [0,1] where 1 is a perfect match
-//     const float edge_sim = (dist_src < dist_tgt ? dist_src / dist_tgt : dist_tgt / dist_src);
-//
-//     return (edge_sim >= simsq);
-// }
-//
-// inline float computeSquaredDistance (const SourceT& p1, const TargetT& p2)
-// {
-//     const float dx = p2.x - p1.x;
-//     const float dy = p2.y - p1.y;
-//     const float dz = p2.z - p1.z;
-//
-//    return (dx*dx + dy*dy + dz*dz
-// }
+    // Benchmark
+    std::vector<std::vector<core::Detection> > d(sceneCloud.size());
+    {
+        // Start timer
+        core::ScopedTimer t( "Benchmark" );
+
+        // Run through scenes and estimate pose of each object
+        for (size_t i = 0; i < sceneCloud.size(); i++) {
+            d[i].resize(objectCloud.size());
+            for (size_t j = 0; j < objectCloud.size(); j++) {
+
+                if(this->verbose)
+                    t.intermediate("Ransac time elapsed");
+
+                setSource( this->objectCloud[j] );
+                setTarget( this->sceneCloud[i] );
+                setCorrespondences( this->correspondences[i][j] );
+                d[i][j] = estimate();
+                // result.pose = pose;
+                // result.rmse = fe->rmse();
+                // result.inlierfrac = fe->inlierFraction();
+                // result.outlierfrac = fe->outlierFraction();
+                // result.penalty = fe->penalty();
+            }
+        }
+    }
+}

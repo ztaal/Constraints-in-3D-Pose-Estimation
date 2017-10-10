@@ -22,14 +22,15 @@ class ransac
         void setCorrespondences( core::Correspondence::VecPtr corr );
         void setIterations( size_t _iterations );
         void setSampleSize( size_t _sampleSize );
-        void setFitEvaluation( detect::FitEvaluation<PointT>::Ptr _fe );
         void setInlierThreshold( float _inlierThreshold );
         void setInlierFraction( float _inlierFraction );
         void setReestimatePose( bool _reestimatePose );
         void setFullEvaluation( bool _fullEvaluation );
         void setPrerejection( bool _prerejection );
         void setPrerejectionSimilarity( float _prerejectionSimilarty );
-        //     setVerbose(true);
+        void setOcclusionReasoning( bool _occlusionReasoning );
+        void setViewAxis( int _viewAxis );
+        void setVerbose( bool _verbose );
 
         core::Detection estimate();
 
@@ -44,6 +45,11 @@ class ransac
         void setPoseSep( std::string _poseSep );
 
         void benchmark();
+        void initBenchmark();
+        void loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+        void computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                                    std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
 
     private:
         // Ransac variables
@@ -52,15 +58,16 @@ class ransac
         core::Correspondence::VecPtr corr;
         size_t iterations = 10000;
         size_t sampleSize = 3;
-        detect::FitEvaluation<PointT>::Ptr fe;
         bool prerejection = true;
         float prerejectionSimilarty = 0.9;
         float inlierThreshold = 0.01;
         float inlierFraction = 0.1;
         bool reestimatePose = true;
         bool fullEvaluation = false;
+        bool occlusionReasoning = false;
         bool occlusionRemoval = false;
-        bool verbose = true;
+        int viewAxis = 0;
+        bool verbose = false;
 
         // Feature matching
         float resolution = 1;
@@ -82,4 +89,8 @@ class ransac
         std::string sceneExt;
         std::string poseExt;
         std::string poseSep;
+        boost::once_flag flagInit = BOOST_ONCE_INIT;
+        std::vector<CloudT::Ptr> objectCloud;
+        std::vector<CloudT::Ptr> sceneCloud;
+        std::vector< std::vector<core::Correspondence::VecPtr> > correspondences;
 };

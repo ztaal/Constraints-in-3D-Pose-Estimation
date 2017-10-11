@@ -46,6 +46,7 @@ int main( int argc, const char** argv )
     po.addOption("icp-iterations", 25, "number of ICP iterations");
 
     // Misc.
+    po.addFlag('v', "verbose", "show additional information");
     po.addFlag('v', "visualize", "show additional results");
 
     // Benchmark
@@ -57,13 +58,16 @@ int main( int argc, const char** argv )
     po.addOption("scene-ext", ".ply", "scene file extension");
     po.addOption("pose-ext", ".xf", "pose file extension");
     po.addOption("pose-sep", "-", "pose file separator");
-    po.addOption("object-regex", "", "set this option to use a regular expression search when collecting object files");
-    po.addOption("scene-regex", "", "set this option to use a regular expression search when collecting scene files");
+    // po.addOption("object-regex", "", "set this option to use a regular expression search when collecting object files");
+    // po.addOption("scene-regex", "", "set this option to use a regular expression search when collecting scene files");
 
     // Parse
     if(!po.parse(argc, argv))
         return 1;
     po.print();
+
+    // Misc.
+    const bool verbose = po.getFlag("verbose");
 
     // Estimation
     float res = po.getValue<float>("resolution");
@@ -96,8 +100,8 @@ int main( int argc, const char** argv )
         ransac ransac;
 
         // ransac variables
-        ransac.setIterations( iterations );
         // ransac.setFitEvaluation( fe );
+        ransac.setIterations( iterations );
         ransac.setInlierThreshold( inlierThreshold );
         ransac.setInlierFraction( inlierFraction );
         ransac.setReestimatePose( !noReestimate );
@@ -105,6 +109,7 @@ int main( int argc, const char** argv )
         ransac.setPrerejection( prerejection );
         ransac.setOcclusionReasoning( noOcclusionReasoning );
         ransac.setPrerejectionSimilarity( prerejectionSimilarty );
+        ransac.setVerbose( verbose );
 
         // Benchmark variables
         ransac.setRootPath( po.getValue("root-path") );
@@ -116,12 +121,15 @@ int main( int argc, const char** argv )
         ransac.setPoseExt( po.getValue("pose-ext") );
         ransac.setPoseSep( po.getValue("pose-sep") );
 
-
         if( po.getFlag("benchmark") ) {
-            ransac.benchmark();
+            ransac.setPrerejection( false );
+            ransac.benchmark( "Base case" );
+            ransac.setPrerejection( true );
+            ransac.benchmark( "Prerejection 1" );
+            ransac.benchmark( "Prerejection 2" );
+            ransac.benchmark( "Prerejection 3" );
         }
-
-         //     ransac.setVerbose(true);
+        ransac.printResults();
      }
 
     //  if(d) {

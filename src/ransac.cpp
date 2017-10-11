@@ -182,76 +182,78 @@ core::Detection ransac::estimate()
         }
 
         // Apply prerejection
-        std::vector<double> delta(3);
-        int max_obj_index = 0, min_obj_index = 0;
-        int max_target_index = 0, min_target_index = 0;
-        double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
-        double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
-        std::vector<double> source_sides(3);
-        std::vector<double> target_sides(3);
-        for (unsigned int j = 0; j < this->sampleSize; j++) {
-            double d_p = pcl::euclideanDistance(this->source->points[sources[j]],
-                                                this->source->points[sources[(j + 1) % this->sampleSize]]);
-            double d_q = pcl::euclideanDistance(this->target->points[targets[j]],
-                                                this->target->points[targets[(j + 1) % this->sampleSize]]);
-            delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
+        if ( this->prerejection ) {
+            std::vector<double> delta(3);
+            int max_obj_index = 0, min_obj_index = 0;
+            int max_target_index = 0, min_target_index = 0;
+            double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
+            double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
+            std::vector<double> source_sides(3);
+            std::vector<double> target_sides(3);
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                double d_p = pcl::euclideanDistance(this->source->points[sources[j]],
+                                                    this->source->points[sources[(j + 1) % this->sampleSize]]);
+                double d_q = pcl::euclideanDistance(this->target->points[targets[j]],
+                                                    this->target->points[targets[(j + 1) % this->sampleSize]]);
+                delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
 
-            if (d_p > max_dist_obj) {
-                max_dist_obj = d_p;
-                max_obj_index = j;
+                if (d_p > max_dist_obj) {
+                    max_dist_obj = d_p;
+                    max_obj_index = j;
+                }
+                if (d_q > max_dist_target) {
+                    max_dist_target = d_q;
+                    max_target_index = j;
+                }
+                if (d_p < min_dist_obj) {
+                    min_dist_obj = d_p;
+                    min_obj_index = j + 1;
+                }
+                if (d_q < min_dist_target) {
+                    min_dist_target = d_q;
+                    min_target_index = j + 1;
+                }
+
+                source_sides[j] = d_p;
+                target_sides[j] = d_q;
             }
-            if (d_q > max_dist_target) {
-                max_dist_target = d_q;
-                max_target_index = j;
+
+            // If the index of shortest and furthest distance does not match continue
+            if (max_obj_index != max_target_index || min_obj_index != min_target_index)
+                continue;
+
+            // If dissimilarity is too large continue
+            if (fabs(std::max({delta[0], delta[1], delta[2]})) > 1 - this->prerejectionSimilarty)
+                continue;
+
+            // If the difference between the distances is to great continue
+            float max_diff = max_dist_obj * 0.05;
+            if (max_dist_target > max_dist_obj + max_diff || max_dist_target < max_dist_obj - max_diff ) {
+                // std::cout << "Max break" << '\n';
+                continue;
             }
-            if (d_p < min_dist_obj) {
-                min_dist_obj = d_p;
-                min_obj_index = j + 1;
-            }
-            if (d_q < min_dist_target) {
-                min_dist_target = d_q;
-                min_target_index = j + 1;
+
+            float min_diff = min_dist_obj * 0.05;
+            if (min_dist_target > min_dist_obj + min_diff || min_dist_target < min_dist_obj - min_diff ) {
+                // std::cout << "Min break" << '\n';
+                continue;
             }
 
-            source_sides[j] = d_p;
-            target_sides[j] = d_q;
-        }
+            // Area dissimilarity
+            double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
+            double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
+            double source_area = sqrt(source_p * (source_p - source_sides[0])
+                                   * (source_p * source_sides[1])
+                                   * (source_p - source_sides[2]));
+            double target_area = sqrt(target_p * (target_p - target_sides[0])
+                                   * (target_p * target_sides[1])
+                                   * (target_p - target_sides[2]));
 
-        // If the index of shortest and furthest distance does not match continue
-        if (max_obj_index != max_target_index || min_obj_index != min_target_index)
-            continue;
-
-        // If dissimilarity is too large continue
-        if (fabs(std::max({delta[0], delta[1], delta[2]})) > 1 - this->prerejectionSimilarty)
-            continue;
-
-        // If the difference between the distances is to great continue
-        float max_diff = max_dist_obj * 0.05;
-        if (max_dist_target > max_dist_obj + max_diff || max_dist_target < max_dist_obj - max_diff ) {
-            // std::cout << "Max break" << '\n';
-            continue;
-        }
-
-        float min_diff = min_dist_obj * 0.05;
-        if (min_dist_target > min_dist_obj + min_diff || min_dist_target < min_dist_obj - min_diff ) {
-            // std::cout << "Min break" << '\n';
-            continue;
-        }
-
-        // Area dissimilarity
-        double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
-        double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
-        double source_area = sqrt(source_p * (source_p - source_sides[0])
-                               * (source_p * source_sides[1])
-                               * (source_p - source_sides[2]));
-        double target_area = sqrt(target_p * (target_p - target_sides[0])
-                               * (target_p * target_sides[1])
-                               * (target_p - target_sides[2]));
-
-        double area_diff = source_area * 0.05;
-        if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-            // std::cout << "Areak break" << '\n';
-            continue;
+            double area_diff = source_area * 0.05;
+            if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
+                // std::cout << "Areak break" << '\n';
+                continue;
+            }
         }
 
         // Sample a pose model
@@ -330,7 +332,8 @@ void ransac::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
     // dataset.setRegexScene(po.getValue("scene-regex"));
     dataset.parse();
 
-    COVIS_MSG(dataset);
+    if(this->verbose)
+        COVIS_MSG(dataset);
 
     // Load object and scene point clouds
     *objectMesh = dataset.getObjects();
@@ -339,7 +342,7 @@ void ransac::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
         (*sceneMesh).push_back(scene.scene);
     }
     COVIS_ASSERT(!objectMesh->empty() && !sceneMesh->empty());
-
+    this->objectLabels = dataset.getObjectLabels();
 }
 
 void ransac::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
@@ -450,44 +453,103 @@ void ransac::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *o
 
 void ransac::initBenchmark()
 {
-    printf("Loading data\n");
+    if(this->verbose)
+        printf("Loading data\n");
     std::vector<util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
     loadData( &objectMesh, &sceneMesh );
     computeCorrespondence( &objectMesh, &sceneMesh );
+    this->seed = std::time(0);
 }
 
-void ransac::benchmark()
+void ransac::benchmark( std::string funcName )
 {
-    printf("Benchmark initiated\n");
-
     // Call init if it has not been called before
     boost::call_once([this]{initBenchmark();}, this->flagInit);
 
+    core::randgen.seed( this->seed );
+
+    benchmarkResult result;
+
     // Benchmark
-    std::vector<std::vector<core::Detection> > d(sceneCloud.size());
     {
+        // printf("Benchmark %s initiated\n", funcName.c_str() );
+        std::vector<std::vector<core::Detection> > d(sceneCloud.size());
+        std::vector<std::vector<double> > time(sceneCloud.size());
+
         // Start timer
-        core::ScopedTimer t( "Benchmark" );
+        core::ScopedTimer t( "\nBenchmark " + funcName );
 
         // Run through scenes and estimate pose of each object
-        for (size_t i = 0; i < sceneCloud.size(); i++) {
+        core::ProgressDisplay pd(sceneCloud.size());
+        for (size_t i = 0; i < sceneCloud.size(); i++, ++pd) {
             d[i].resize(objectCloud.size());
+            time[i].resize(objectCloud.size());
+            double previousTime = t.seconds();
             for (size_t j = 0; j < objectCloud.size(); j++) {
 
-                if(this->verbose)
-                    t.intermediate("Ransac time elapsed");
+                // if(this->verbose)
+                //     t.intermediate("Ransac time elapsed");
 
                 setSource( this->objectCloud[j] );
                 setTarget( this->sceneCloud[i] );
                 setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = estimate();
-                // result.pose = pose;
-                // result.rmse = fe->rmse();
-                // result.inlierfrac = fe->inlierFraction();
-                // result.outlierfrac = fe->outlierFraction();
-                // result.penalty = fe->penalty();
+                double currentTime = t.seconds();
+                time[i][j] = currentTime - previousTime;
+                previousTime = currentTime;
             }
-            std::cout << "Iteration: " << i << " of " << sceneCloud.size() << '\n';
+        }
+        result.d = d;
+        result.time = time;
+        result.name = funcName;
+        result.totalTime = t.seconds();
+    }
+    this->results.push_back(result);
+}
+
+void ransac::printResults()
+{
+    // Sanity checks
+    // BOOST_ASSERT(this->flagInit == );
+
+    // Header
+    printf( "\n\n\n\033[1m%42s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%20s\033[m\n", "Function Name", "Avg Time",
+            "Avg RMSE", "Avg InlierFrac" );
+
+    // Data
+    std::vector<double> avgObjTime( objectCloud.size() );
+    std::vector<double> avgObjRMSE( objectCloud.size() );
+    std::vector<double> avgObjInliers( objectCloud.size() );
+    for( auto &result : this->results ) {
+        // Calculate averages
+        double avgRMSE = 0, avgInliers = 0;
+        for (unsigned int i = 0; i < objectCloud.size(); i++ ) {
+            double objTime = 0, objRMSE = 0, objInliers = 0;
+            for (unsigned int j = 0; j < sceneCloud.size(); j++ ) {
+                avgRMSE += result.d[j][i].rmse;
+                avgInliers += result.d[j][i].inlierfrac;
+                objTime += result.time[j][i];
+                objRMSE += result.d[j][i].rmse;
+                objInliers += result.d[j][i].inlierfrac;
+            }
+            avgObjTime[i] = objTime / sceneCloud.size();
+            avgObjRMSE[i] = objRMSE / sceneCloud.size();
+            avgObjInliers[i] = objInliers / sceneCloud.size();
+        }
+        avgRMSE = avgRMSE / ( sceneCloud.size() * objectCloud.size() );
+        avgInliers = avgInliers / ( sceneCloud.size() * objectCloud.size() );
+
+        // Print information
+        printf("%s\n",std::string(67,'-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.5g%20.4f\033[m\n", result.name.c_str(),
+            result.totalTime, avgRMSE, avgInliers );
+
+        // Print information about each object
+        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
+            printf( "\033[3m%15s\033[m%20.4f%15.5g%20.4f\n", objectLabels[i].c_str(),
+                avgObjTime[i], avgObjRMSE[i], avgObjInliers[i] );
         }
     }
+    printf("%s\n\n\n",std::string(67,'-').c_str());
 }

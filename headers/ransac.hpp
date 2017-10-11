@@ -10,6 +10,14 @@ typedef pcl::PointXYZRGBNormal PointT;
 // Point and feature types
 typedef pcl::PointCloud<PointT> CloudT;
 
+struct benchmarkResult
+{
+    std::string name;
+    std::vector<std::vector<core::Detection> > d;
+    std::vector<std::vector<double> > time;
+    double totalTime;
+};
+
 class ransac
 {
     public:
@@ -44,12 +52,8 @@ class ransac
         void setPoseExt( std::string _poseExt );
         void setPoseSep( std::string _poseSep );
 
-        void benchmark();
-        void initBenchmark();
-        void loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
-        void computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                                    std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+        void benchmark( std::string _funcName );
+        void printResults();
 
     private:
         // Ransac variables
@@ -81,6 +85,7 @@ class ransac
         std::string feature = "si";
 
         // Benchmark variables
+        size_t seed;
         std::string rootPath;
         std::string objDir;
         std::string sceneDir;
@@ -93,4 +98,13 @@ class ransac
         std::vector<CloudT::Ptr> objectCloud;
         std::vector<CloudT::Ptr> sceneCloud;
         std::vector< std::vector<core::Correspondence::VecPtr> > correspondences;
+        std::vector<benchmarkResult> results;
+        std::vector<std::string> objectLabels;
+
+        // Benchmark functions
+        void initBenchmark();
+        void loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+        void computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                                    std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
 };

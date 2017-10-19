@@ -4,6 +4,9 @@
 #include <covis/covis.h>
 using namespace covis;
 
+// Timer
+#include "../headers/Timer.hpp"
+
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
@@ -34,13 +37,19 @@ class ransac
         void setInlierFraction( float _inlierFraction );
         void setReestimatePose( bool _reestimatePose );
         void setFullEvaluation( bool _fullEvaluation );
-        void setPrerejection( bool _prerejection );
-        void setPrerejectionSimilarity( float _prerejectionSimilarty );
+        void setPrerejectionSimilarity( float _prerejectionSimilarity );
         void setOcclusionReasoning( bool _occlusionReasoning );
         void setViewAxis( int _viewAxis );
         void setVerbose( bool _verbose );
 
+        void setPrerejectionD( bool _prerejectionD );
+        void setPrerejectionG( bool _prerejectionG );
+        void setPrerejectionL( bool _prerejectionL );
+        void setPrerejectionA( bool _prerejectionA );
+
         core::Detection estimate();
+
+        inline bool sortAscending (double i, double j) { return (i < j); }
 
         // benchmark
         void setRootPath( std::string _rootPath );
@@ -62,10 +71,13 @@ class ransac
         core::Correspondence::VecPtr corr;
         size_t iterations = 10000;
         size_t sampleSize = 3;
-        bool prerejection = true;
-        float prerejectionSimilarty = 0.9;
-        float inlierThreshold = 0.01;
-        float inlierFraction = 0.1;
+        bool prerejection_d = false;
+        bool prerejection_g = false;
+        bool prerejection_l = false;
+        bool prerejection_a = false;
+        float prerejectionSimilarity = 0.9;
+        float inlierThreshold = 5;
+        float inlierFraction = 0.05;
         bool reestimatePose = true;
         bool fullEvaluation = false;
         bool occlusionReasoning = false;

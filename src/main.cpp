@@ -1,3 +1,4 @@
+
 // Covis
 #include <covis/covis.h>
 using namespace covis;
@@ -29,6 +30,7 @@ int main( int argc, const char** argv )
     po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)");
     po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
     po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
+    po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
@@ -58,8 +60,6 @@ int main( int argc, const char** argv )
     po.addOption("scene-ext", ".ply", "scene file extension");
     po.addOption("pose-ext", ".xf", "pose file extension");
     po.addOption("pose-sep", "-", "pose file separator");
-    // po.addOption("object-regex", "", "set this option to use a regular expression search when collecting object files");
-    // po.addOption("scene-regex", "", "set this option to use a regular expression search when collecting scene files");
 
     // Parse
     if(!po.parse(argc, argv))
@@ -70,6 +70,7 @@ int main( int argc, const char** argv )
     const bool verbose = po.getFlag("verbose");
 
     // Estimation
+    const int sampleSize = po.getValue<int>("sample-size");
     float res = po.getValue<float>("resolution");
     const size_t iterations = po.getValue<size_t>("iterations");
     const float inlierThreshold =
@@ -89,24 +90,16 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        // detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(targetCloud));
-        // fe->setOcclusionReasoning(!noOcclusionReasoning);
-        // fe->setViewAxis(viewAxis);
-        // if(noOcclusionReasoning)
-        //     fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
-        // else
-        //     fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
-
         ransac ransac;
 
         // ransac variables
-        // ransac.setFitEvaluation( fe );
         ransac.setIterations( iterations );
+        ransac.setSampleSize( sampleSize );
         ransac.setInlierThreshold( inlierThreshold );
         ransac.setInlierFraction( inlierFraction );
         ransac.setReestimatePose( !noReestimate );
         ransac.setFullEvaluation( fullEvaluation );
-        ransac.setPrerejection( prerejection );
+        // ransac.setPrerejection( prerejection );
         ransac.setOcclusionReasoning( noOcclusionReasoning );
         ransac.setPrerejectionSimilarity( prerejectionSimilarty );
         ransac.setVerbose( verbose );
@@ -122,41 +115,69 @@ int main( int argc, const char** argv )
         ransac.setPoseSep( po.getValue("pose-sep") );
 
         if( po.getFlag("benchmark") ) {
-            ransac.setPrerejection( false );
             ransac.benchmark( "Base case" );
-            ransac.setPrerejection( true );
+            ransac.setPrerejectionD( true );
             ransac.benchmark( "Prerejection 1" );
+            ransac.setPrerejectionG( true );
             ransac.benchmark( "Prerejection 2" );
+            ransac.setPrerejectionL( true );
             ransac.benchmark( "Prerejection 3" );
-        }
-        ransac.printResults();
-     }
+            ransac.setPrerejectionA( true );
+            ransac.benchmark( "Prerejection 4" );
 
-    //  if(d) {
-    //      if(refine) {
-    //          core::ScopedTimer t("ICP");
-    //          pcl::IterativeClosestPoint<PointT,PointT> icp;
-    //          icp.setInputSource(queryCloud);
-    //          icp.setInputTarget(targetCloud);
-    //          icp.setMaximumIterations(icpIterations);
-    //          icp.setMaxCorrespondenceDistance(inlierThreshold);
-    //          pcl::PointCloud<PointT> tmp;
-    //          icp.align(tmp, d.pose);
-    //          if(icp.hasConverged()) {
-    //              d.pose = icp.getFinalTransformation();
-    //              d.rmse = icp.getFitnessScore();
-    //          } else {
-    //              COVIS_MSG_WARN("ICP failed!");
-    //          }
-    //      }
-     //
-    //      // Print result and visualize
-    //      COVIS_MSG(d);
-    //      if(visualize)
-    //          visu::showDetection(queryMesh, targetMesh, d.pose);
-    //  } else {
-    //      COVIS_MSG_WARN("RANSAC failed!");
-    //  }
+            // ransac.benchmark( "Base case" );
+            // ransac.setPrerejectionD( true );
+            // ransac.benchmark( "Prerejection D" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.benchmark( "Prerejection G" );
+            // ransac.setPrerejectionG( false );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection L" );
+            // ransac.setPrerejectionL( false );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection A" );
+            // ransac.setPrerejectionA( false );
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionG( true );
+            // ransac.benchmark( "Prerejection DG" );
+            // ransac.setPrerejectionG( false );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection DL" );
+            // ransac.setPrerejectionL( false );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection DA" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionA( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection GL" );
+            // ransac.setPrerejectionL( false );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection GA" );
+            // ransac.setPrerejectionG( false );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection LA" );
+            // ransac.setPrerejectionA( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection DGL" );
+            // ransac.setPrerejectionL( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection DGA" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.setPrerejectionL( true );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection GLA" );
+            // ransac.setPrerejectionD( true );
+            // ransac.benchmark( "Prerejection ALL" );
+            ransac.printResults();
+        }
+     }
 
     return 0;
 }

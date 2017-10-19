@@ -53,14 +53,29 @@ void ransac::setFullEvaluation( bool _fullEvaluation )
     this->fullEvaluation = _fullEvaluation;
 }
 
-void ransac::setPrerejection( bool _prerejection )
+void ransac::setPrerejectionD( bool _prerejection_d )
 {
-    this->prerejection = _prerejection;
+    this->prerejection_d = _prerejection_d;
 }
 
-void ransac::setPrerejectionSimilarity( float _prerejectionSimilarty )
+void ransac::setPrerejectionG( bool _prerejection_g )
 {
-    this->prerejectionSimilarty = _prerejectionSimilarty;
+    this->prerejection_g = _prerejection_g;
+}
+
+void ransac::setPrerejectionL( bool _prerejection_l )
+{
+    this->prerejection_l = _prerejection_l;
+}
+
+void ransac::setPrerejectionA( bool _prerejection_a )
+{
+    this->prerejection_a = _prerejection_a;
+}
+
+void ransac::setPrerejectionSimilarity( float _prerejectionSimilarity )
+{
+    this->prerejectionSimilarity = _prerejectionSimilarity;
 }
 
 void ransac::setOcclusionReasoning( bool _occlusionReasoning )
@@ -120,7 +135,7 @@ void ransac::setVerbose( bool _verbose )
 
 core::Detection ransac::estimate()
 {
-    detect::PointSearch<PointT>::Ptr _search;
+    // detect::PointSearch<PointT>::Ptr _search;
     core::Detection::Vec _allDetections;
 
     // Sanity checks
@@ -154,20 +169,26 @@ core::Detection ransac::estimate()
         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
 
     // Instantiate fit evaluator
-    if(!fe) // Not even created
-        fe.reset(new covis::detect::FitEvaluation<PointT>);
-    fe->setInlierThreshold(this->inlierThreshold);
-    if(!fe->getSearch()) { // Not initialized with a search object
-        if(_search && _search->getTarget() == this->target) // Search object provided to this, and consistent
-            fe->setSearch(_search);
-        else // Nothing provided, set target for indexing
-            fe->setTarget(this->target);
-    }
+    // if(!fe) // Not even created
+    // fe.reset(new covis::detect::FitEvaluation<PointT>);
+    fe->setInlierThreshold( this->inlierThreshold );
+    // if(!fe->getSearch()) { // Not initialized with a search object
+    //     if(_search && _search->getTarget() == this->target) // Search object provided to this, and consistent
+    //         fe->setSearch(_search);
+    //     else // Nothing provided, set target for indexing
+    // }
+    fe->setTarget(this->target);
+
+    // Instantiate polygonal prerejector
+    pcl::registration::CorrespondenceRejectorPoly<PointT,PointT> poly;
+    poly.setInputSource( this->source );
+    poly.setInputTarget( this->target );
+    poly.setSimilarityThreshold( this->prerejectionSimilarity );
 
     // Output detection(s)
     core::Detection result;
     _allDetections.clear();
-    if(this->corr->size() < this->sampleSize)
+    if( this->corr->size() < this->sampleSize )
         return result;
 
     // Start main loop
@@ -182,64 +203,73 @@ core::Detection ransac::estimate()
         }
 
         // Apply prerejection
-        if ( this->prerejection ) {
-            std::vector<double> delta(3);
-            int max_obj_index = 0, min_obj_index = 0;
-            int max_target_index = 0, min_target_index = 0;
-            double max_dist_obj = 0, min_dist_obj = std::numeric_limits<double>::max();
-            double max_dist_target = 0, min_dist_target = std::numeric_limits<double>::max();
-            std::vector<double> source_sides(3);
-            std::vector<double> target_sides(3);
+        // Prerejection dissimilarity
+        if ( this->prerejection_d ) {
+            if(!poly.thresholdPolygon(sources, targets))
+                continue;
+        }
+
+        // Prerejection geometric
+        if ( this->prerejection_g ) {
+            bool reject = false;
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
             for (unsigned int j = 0; j < this->sampleSize; j++) {
-                double d_p = pcl::euclideanDistance(this->source->points[sources[j]],
-                                                    this->source->points[sources[(j + 1) % this->sampleSize]]);
-                double d_q = pcl::euclideanDistance(this->target->points[targets[j]],
-                                                    this->target->points[targets[(j + 1) % this->sampleSize]]);
-                delta[j] = fabs(d_p - d_q) / std::max(d_p, d_q);
-
-                if (d_p > max_dist_obj) {
-                    max_dist_obj = d_p;
-                    max_obj_index = j;
-                }
-                if (d_q > max_dist_target) {
-                    max_dist_target = d_q;
-                    max_target_index = j;
-                }
-                if (d_p < min_dist_obj) {
-                    min_dist_obj = d_p;
-                    min_obj_index = j + 1;
-                }
-                if (d_q < min_dist_target) {
-                    min_dist_target = d_q;
-                    min_target_index = j + 1;
-                }
-
-                source_sides[j] = d_p;
-                target_sides[j] = d_q;
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
             }
-
-            // If the index of shortest and furthest distance does not match continue
-            if (max_obj_index != max_target_index || min_obj_index != min_target_index)
-                continue;
-
-            // If dissimilarity is too large continue
-            if (fabs(std::max({delta[0], delta[1], delta[2]})) > 1 - this->prerejectionSimilarty)
-                continue;
-
-            // If the difference between the distances is to great continue
-            float max_diff = max_dist_obj * 0.05;
-            if (max_dist_target > max_dist_obj + max_diff || max_dist_target < max_dist_obj - max_diff ) {
-                // std::cout << "Max break" << '\n';
-                continue;
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
+                int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
+                if ( idx != jdx ) {
+                    reject = true;
+                    break;
+                } else {
+                    source_sides.erase( source_sides.begin() + idx );
+                    target_sides.erase( target_sides.begin() + jdx );
+                }
             }
-
-            float min_diff = min_dist_obj * 0.05;
-            if (min_dist_target > min_dist_obj + min_diff || min_dist_target < min_dist_obj - min_diff ) {
-                // std::cout << "Min break" << '\n';
+            if ( reject )
                 continue;
-            }
+        }
 
-            // Area dissimilarity
+        // Prerejection length dissimilarity
+        if ( this->prerejection_l ) {
+            bool reject = false;
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
+            }
+            std::sort( source_sides.begin(), source_sides.end() );
+            std::sort( target_sides.begin(), target_sides.end() );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                // If the difference between the distances is to great continue
+                float max_diff = source_sides[j] * 0.05;
+                if (target_sides[j] > source_sides[j] + max_diff || target_sides[j] < source_sides[j] - max_diff ) {
+                    reject = true;
+                    break;
+                }
+            }
+            if ( reject )
+                continue;
+        }
+
+        // Prerejection area dissimilarity
+        if ( this->prerejection_a && this->sampleSize == 3 ) {
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
+            }
             double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
             double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
             double source_area = sqrt(source_p * (source_p - source_sides[0])
@@ -251,19 +281,18 @@ core::Detection ransac::estimate()
 
             double area_diff = source_area * 0.05;
             if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-                // std::cout << "Areak break" << '\n';
                 continue;
             }
         }
 
         // Sample a pose model
-        Eigen::Matrix4f pose = poseSampler.transformation(sources, targets);
+        Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
 
         // Find consensus set
-        fe->update(this->source, pose); // Using full models
+        fe->update( this->source, pose, this->corr ); // Using full models
 
         // If number of inliers (consensus set) is high enough
-        if(fe->inlierFraction() >= this->inlierFraction) {
+        if( fe->inlierFraction() >= this->inlierFraction ) {
             // Reestimate pose using consensus set
             if(fe->inliers() >= this->sampleSize) {
                 pose = poseSampler.transformation(fe->getInliers());
@@ -310,6 +339,7 @@ core::Detection ransac::estimate()
         _allDetections = core::mask(_allDetections, keep);
     }
 
+    // COVIS_MSG(result);
     return result;
 }
 
@@ -466,37 +496,33 @@ void ransac::benchmark( std::string funcName )
     // Call init if it has not been called before
     boost::call_once([this]{initBenchmark();}, this->flagInit);
 
+    // Seed all benchmarks with same seed
     core::randgen.seed( this->seed );
 
     benchmarkResult result;
 
     // Benchmark
     {
-        // printf("Benchmark %s initiated\n", funcName.c_str() );
-        std::vector<std::vector<core::Detection> > d(sceneCloud.size());
-        std::vector<std::vector<double> > time(sceneCloud.size());
+        printf( "Benchmarking %s: \n", funcName.c_str() );
+        std::vector<std::vector<core::Detection> > d( sceneCloud.size() );
+        std::vector<std::vector<double> > time( sceneCloud.size() );
+
+        core::ProgressDisplay pd( sceneCloud.size(), true );
 
         // Start timer
-        core::ScopedTimer t( "\nBenchmark " + funcName );
+        core::Timer t;
 
         // Run through scenes and estimate pose of each object
-        core::ProgressDisplay pd(sceneCloud.size());
-        for (size_t i = 0; i < sceneCloud.size(); i++, ++pd) {
-            d[i].resize(objectCloud.size());
-            time[i].resize(objectCloud.size());
-            double previousTime = t.seconds();
-            for (size_t j = 0; j < objectCloud.size(); j++) {
-
-                // if(this->verbose)
-                //     t.intermediate("Ransac time elapsed");
-
+        for ( size_t i = 0; i < sceneCloud.size(); i++, ++pd ) {
+            d[i].resize( objectCloud.size() );
+            time[i].resize( objectCloud.size() );
+            t.intermediate();
+            for ( size_t j = 0; j < objectCloud.size(); j++ ) {
                 setSource( this->objectCloud[j] );
                 setTarget( this->sceneCloud[i] );
                 setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = estimate();
-                double currentTime = t.seconds();
-                time[i][j] = currentTime - previousTime;
-                previousTime = currentTime;
+                time[i][j] = t.intermediate();
             }
         }
         result.d = d;
@@ -504,52 +530,76 @@ void ransac::benchmark( std::string funcName )
         result.name = funcName;
         result.totalTime = t.seconds();
     }
-    this->results.push_back(result);
+    // Store results of the benchmark
+    this->results.push_back( result );
 }
 
 void ransac::printResults()
 {
     // Sanity checks
-    // BOOST_ASSERT(this->flagInit == );
+    COVIS_ASSERT_MSG( this->results.size() > 0,
+        "Run benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%42s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%20s\033[m\n", "Function Name", "Avg Time",
-            "Avg RMSE", "Avg InlierFrac" );
+    printf( "\n\n\n\033[1m%67s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac" );
 
     // Data
+    std::vector<int> objSuccessful( objectCloud.size() );
     std::vector<double> avgObjTime( objectCloud.size() );
     std::vector<double> avgObjRMSE( objectCloud.size() );
+    std::vector<double> avgObjPenalty( objectCloud.size() );
     std::vector<double> avgObjInliers( objectCloud.size() );
+
     for( auto &result : this->results ) {
         // Calculate averages
-        double avgRMSE = 0, avgInliers = 0;
-        for (unsigned int i = 0; i < objectCloud.size(); i++ ) {
-            double objTime = 0, objRMSE = 0, objInliers = 0;
-            for (unsigned int j = 0; j < sceneCloud.size(); j++ ) {
-                avgRMSE += result.d[j][i].rmse;
-                avgInliers += result.d[j][i].inlierfrac;
-                objTime += result.time[j][i];
-                objRMSE += result.d[j][i].rmse;
-                objInliers += result.d[j][i].inlierfrac;
+        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
+        int successful = 0;
+        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
+            objSuccessful[i] = 0;
+            double objTime = 0, objRMSE = 0, objInliers = 0, objPenalty = 0;
+            for ( unsigned int j = 0; j < sceneCloud.size(); j++ ) {
+                if ( result.d[j][i] ) {
+                    objTime += result.time[j][i];
+                    objRMSE += result.d[j][i].rmse;
+                    objPenalty += result.d[j][i].penalty;
+                    objInliers += result.d[j][i].inlierfrac;
+                    objSuccessful[i]++;
+                }
             }
-            avgObjTime[i] = objTime / sceneCloud.size();
-            avgObjRMSE[i] = objRMSE / sceneCloud.size();
-            avgObjInliers[i] = objInliers / sceneCloud.size();
+            avgRMSE += objRMSE;
+            avgPenalty += objPenalty;
+            avgInliers += objInliers;
+            successful += objSuccessful[i];
+            avgObjTime[i] = objTime;
+            avgObjRMSE[i] = objRMSE / objSuccessful[i];
+            avgObjPenalty[i] = objPenalty / objSuccessful[i];
+            avgObjInliers[i] = objInliers / objSuccessful[i];
         }
-        avgRMSE = avgRMSE / ( sceneCloud.size() * objectCloud.size() );
-        avgInliers = avgInliers / ( sceneCloud.size() * objectCloud.size() );
+        int totalIterations = sceneCloud.size() * objectCloud.size();
+        avgRMSE = avgRMSE / successful;
+        avgInliers = avgInliers / successful;
+        avgPenalty = avgPenalty / successful;
+        double avgTime = result.totalTime / successful;
+        double failed = totalIterations - successful;
+        auto failedPercent = (failed / totalIterations) * 100;
 
         // Print information
-        printf("%s\n",std::string(67,'-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.5g%20.4f\033[m\n", result.name.c_str(),
-            result.totalTime, avgRMSE, avgInliers );
+        printf("%s\n",std::string(115, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f\033[m\n",
+            result.name.c_str(), result.totalTime, avgTime, failedPercent,
+            avgRMSE, avgPenalty, avgInliers );
 
         // Print information about each object
         for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
-            printf( "\033[3m%15s\033[m%20.4f%15.5g%20.4f\n", objectLabels[i].c_str(),
-                avgObjTime[i], avgObjRMSE[i], avgObjInliers[i] );
+            auto objFailedPercent = ((sceneCloud.size() - objSuccessful[i])
+                                        / sceneCloud.size()) * 100;
+            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f\n",
+                objectLabels[i].c_str(), avgObjTime[i],
+                avgObjTime[i] / objSuccessful[i], objFailedPercent,
+                avgObjRMSE[i], avgObjPenalty[i], avgObjInliers[i] );
         }
     }
-    printf("%s\n\n\n",std::string(67,'-').c_str());
+    printf("%s\n\n\n",std::string(115,'-').c_str());
 }

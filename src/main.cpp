@@ -1,10 +1,22 @@
 
+ /**  Todo list:
+  * TODO Move benchmark to seperate class
+  * TODO Check that the numbers printed from the benchmark are correct
+  * TODO Clean up ransac class and make it look like covis code
+  * TODO Test constraints speed on UWA
+  * TODO Expand benchmark to test the quality of each rejection
+  * TODO Test constraints quality on UWA
+  * TODO Test with 3+ sample size
+  * TODO Start working on pose priors
+  */
+
 // Covis
 #include <covis/covis.h>
 using namespace covis;
 
 // Ransac
-#include "../headers/ransac.hpp"
+#include "../headers/Ransac.hpp"
+#include "../headers/Benchmark.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -90,7 +102,7 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        ransac ransac;
+        class covis::detect::ransac ransac;
 
         // ransac variables
         ransac.setIterations( iterations );
@@ -105,25 +117,29 @@ int main( int argc, const char** argv )
         ransac.setVerbose( verbose );
 
         // Benchmark variables
-        ransac.setRootPath( po.getValue("root-path") );
-        ransac.setObjectDir( po.getValue("object-dir") );
-        ransac.setSceneDir( po.getValue("scene-dir") );
-        ransac.setPoseDir( po.getValue("pose-dir") );
-        ransac.setObjExt( po.getValue("object-ext") );
-        ransac.setSceneExt( po.getValue("scene-ext") );
-        ransac.setPoseExt( po.getValue("pose-ext") );
-        ransac.setPoseSep( po.getValue("pose-sep") );
+        covis::detect::Benchmark benchmark;
+        benchmark.setRootPath( po.getValue("root-path") );
+        benchmark.setObjectDir( po.getValue("object-dir") );
+        benchmark.setSceneDir( po.getValue("scene-dir") );
+        benchmark.setPoseDir( po.getValue("pose-dir") );
+        benchmark.setObjExt( po.getValue("object-ext") );
+        benchmark.setSceneExt( po.getValue("scene-ext") );
+        benchmark.setPoseExt( po.getValue("pose-ext") );
+        benchmark.setPoseSep( po.getValue("pose-sep") );
+        benchmark.setVerbose( verbose );
 
         if( po.getFlag("benchmark") ) {
-            ransac.benchmark( "Base case" );
+            // ransac.benchmark( "Base case" );
+            benchmark.run( &ransac, "Base case" );
             ransac.setPrerejectionD( true );
-            ransac.benchmark( "Prerejection 1" );
-            ransac.setPrerejectionG( true );
-            ransac.benchmark( "Prerejection 2" );
-            ransac.setPrerejectionL( true );
-            ransac.benchmark( "Prerejection 3" );
-            ransac.setPrerejectionA( true );
-            ransac.benchmark( "Prerejection 4" );
+            benchmark.run( &ransac, "Prerejection 1" );
+            // ransac.benchmark( "Prerejection 1" );
+            // ransac.setPrerejectionG( true );
+            // ransac.benchmark( "Prerejection 2" );
+            // ransac.setPrerejectionL( true );
+            // ransac.benchmark( "Prerejection 3" );
+            // ransac.setPrerejectionA( true );
+            // ransac.benchmark( "Prerejection 4" );
 
             // ransac.benchmark( "Base case" );
             // ransac.setPrerejectionD( true );
@@ -175,7 +191,8 @@ int main( int argc, const char** argv )
             // ransac.benchmark( "Prerejection GLA" );
             // ransac.setPrerejectionD( true );
             // ransac.benchmark( "Prerejection ALL" );
-            ransac.printResults();
+            // ransac.printResults();
+            benchmark.printResults();
         }
      }
 

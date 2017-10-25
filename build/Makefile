@@ -123,6 +123,60 @@ aout/fast:
 	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/build
 .PHONY : aout/fast
 
+src/Benchmark.o: src/Benchmark.cpp.o
+
+.PHONY : src/Benchmark.o
+
+# target to build an object file
+src/Benchmark.cpp.o:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Benchmark.cpp.o
+.PHONY : src/Benchmark.cpp.o
+
+src/Benchmark.i: src/Benchmark.cpp.i
+
+.PHONY : src/Benchmark.i
+
+# target to preprocess a source file
+src/Benchmark.cpp.i:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Benchmark.cpp.i
+.PHONY : src/Benchmark.cpp.i
+
+src/Benchmark.s: src/Benchmark.cpp.s
+
+.PHONY : src/Benchmark.s
+
+# target to generate assembly for a file
+src/Benchmark.cpp.s:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Benchmark.cpp.s
+.PHONY : src/Benchmark.cpp.s
+
+src/Ransac.o: src/Ransac.cpp.o
+
+.PHONY : src/Ransac.o
+
+# target to build an object file
+src/Ransac.cpp.o:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Ransac.cpp.o
+.PHONY : src/Ransac.cpp.o
+
+src/Ransac.i: src/Ransac.cpp.i
+
+.PHONY : src/Ransac.i
+
+# target to preprocess a source file
+src/Ransac.cpp.i:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Ransac.cpp.i
+.PHONY : src/Ransac.cpp.i
+
+src/Ransac.s: src/Ransac.cpp.s
+
+.PHONY : src/Ransac.s
+
+# target to generate assembly for a file
+src/Ransac.cpp.s:
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Ransac.cpp.s
+.PHONY : src/Ransac.cpp.s
+
 src/Timer.o: src/Timer.cpp.o
 
 .PHONY : src/Timer.o
@@ -177,33 +231,6 @@ src/main.cpp.s:
 	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
-src/ransac.o: src/ransac.cpp.o
-
-.PHONY : src/ransac.o
-
-# target to build an object file
-src/ransac.cpp.o:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.o
-.PHONY : src/ransac.cpp.o
-
-src/ransac.i: src/ransac.cpp.i
-
-.PHONY : src/ransac.i
-
-# target to preprocess a source file
-src/ransac.cpp.i:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.i
-.PHONY : src/ransac.cpp.i
-
-src/ransac.s: src/ransac.cpp.s
-
-.PHONY : src/ransac.s
-
-# target to generate assembly for a file
-src/ransac.cpp.s:
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.s
-.PHONY : src/ransac.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -213,15 +240,18 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... aout"
+	@echo "... src/Benchmark.o"
+	@echo "... src/Benchmark.i"
+	@echo "... src/Benchmark.s"
+	@echo "... src/Ransac.o"
+	@echo "... src/Ransac.i"
+	@echo "... src/Ransac.s"
 	@echo "... src/Timer.o"
 	@echo "... src/Timer.i"
 	@echo "... src/Timer.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
-	@echo "... src/ransac.o"
-	@echo "... src/ransac.i"
-	@echo "... src/ransac.s"
 .PHONY : help
 
 

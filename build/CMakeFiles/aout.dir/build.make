@@ -81,28 +81,28 @@ CMakeFiles/aout.dir/src/main.cpp.o.provides: CMakeFiles/aout.dir/src/main.cpp.o.
 CMakeFiles/aout.dir/src/main.cpp.o.provides.build: CMakeFiles/aout.dir/src/main.cpp.o
 
 
-CMakeFiles/aout.dir/src/ransac.cpp.o: CMakeFiles/aout.dir/flags.make
-CMakeFiles/aout.dir/src/ransac.cpp.o: ../src/ransac.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/aout.dir/src/ransac.cpp.o"
-	/usr/bin/clang++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/aout.dir/src/ransac.cpp.o -c /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/ransac.cpp
+CMakeFiles/aout.dir/src/Ransac.cpp.o: CMakeFiles/aout.dir/flags.make
+CMakeFiles/aout.dir/src/Ransac.cpp.o: ../src/Ransac.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/aout.dir/src/Ransac.cpp.o"
+	/usr/bin/clang++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/aout.dir/src/Ransac.cpp.o -c /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Ransac.cpp
 
-CMakeFiles/aout.dir/src/ransac.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/aout.dir/src/ransac.cpp.i"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/ransac.cpp > CMakeFiles/aout.dir/src/ransac.cpp.i
+CMakeFiles/aout.dir/src/Ransac.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/aout.dir/src/Ransac.cpp.i"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Ransac.cpp > CMakeFiles/aout.dir/src/Ransac.cpp.i
 
-CMakeFiles/aout.dir/src/ransac.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/aout.dir/src/ransac.cpp.s"
-	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/ransac.cpp -o CMakeFiles/aout.dir/src/ransac.cpp.s
+CMakeFiles/aout.dir/src/Ransac.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/aout.dir/src/Ransac.cpp.s"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Ransac.cpp -o CMakeFiles/aout.dir/src/Ransac.cpp.s
 
-CMakeFiles/aout.dir/src/ransac.cpp.o.requires:
+CMakeFiles/aout.dir/src/Ransac.cpp.o.requires:
 
-.PHONY : CMakeFiles/aout.dir/src/ransac.cpp.o.requires
+.PHONY : CMakeFiles/aout.dir/src/Ransac.cpp.o.requires
 
-CMakeFiles/aout.dir/src/ransac.cpp.o.provides: CMakeFiles/aout.dir/src/ransac.cpp.o.requires
-	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/ransac.cpp.o.provides.build
-.PHONY : CMakeFiles/aout.dir/src/ransac.cpp.o.provides
+CMakeFiles/aout.dir/src/Ransac.cpp.o.provides: CMakeFiles/aout.dir/src/Ransac.cpp.o.requires
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Ransac.cpp.o.provides.build
+.PHONY : CMakeFiles/aout.dir/src/Ransac.cpp.o.provides
 
-CMakeFiles/aout.dir/src/ransac.cpp.o.provides.build: CMakeFiles/aout.dir/src/ransac.cpp.o
+CMakeFiles/aout.dir/src/Ransac.cpp.o.provides.build: CMakeFiles/aout.dir/src/Ransac.cpp.o
 
 
 CMakeFiles/aout.dir/src/Timer.cpp.o: CMakeFiles/aout.dir/flags.make
@@ -129,18 +129,44 @@ CMakeFiles/aout.dir/src/Timer.cpp.o.provides: CMakeFiles/aout.dir/src/Timer.cpp.
 CMakeFiles/aout.dir/src/Timer.cpp.o.provides.build: CMakeFiles/aout.dir/src/Timer.cpp.o
 
 
+CMakeFiles/aout.dir/src/Benchmark.cpp.o: CMakeFiles/aout.dir/flags.make
+CMakeFiles/aout.dir/src/Benchmark.cpp.o: ../src/Benchmark.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/aout.dir/src/Benchmark.cpp.o"
+	/usr/bin/clang++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/aout.dir/src/Benchmark.cpp.o -c /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Benchmark.cpp
+
+CMakeFiles/aout.dir/src/Benchmark.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/aout.dir/src/Benchmark.cpp.i"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Benchmark.cpp > CMakeFiles/aout.dir/src/Benchmark.cpp.i
+
+CMakeFiles/aout.dir/src/Benchmark.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/aout.dir/src/Benchmark.cpp.s"
+	/usr/bin/clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Benchmark.cpp -o CMakeFiles/aout.dir/src/Benchmark.cpp.s
+
+CMakeFiles/aout.dir/src/Benchmark.cpp.o.requires:
+
+.PHONY : CMakeFiles/aout.dir/src/Benchmark.cpp.o.requires
+
+CMakeFiles/aout.dir/src/Benchmark.cpp.o.provides: CMakeFiles/aout.dir/src/Benchmark.cpp.o.requires
+	$(MAKE) -f CMakeFiles/aout.dir/build.make CMakeFiles/aout.dir/src/Benchmark.cpp.o.provides.build
+.PHONY : CMakeFiles/aout.dir/src/Benchmark.cpp.o.provides
+
+CMakeFiles/aout.dir/src/Benchmark.cpp.o.provides.build: CMakeFiles/aout.dir/src/Benchmark.cpp.o
+
+
 # Object files for target aout
 aout_OBJECTS = \
 "CMakeFiles/aout.dir/src/main.cpp.o" \
-"CMakeFiles/aout.dir/src/ransac.cpp.o" \
-"CMakeFiles/aout.dir/src/Timer.cpp.o"
+"CMakeFiles/aout.dir/src/Ransac.cpp.o" \
+"CMakeFiles/aout.dir/src/Timer.cpp.o" \
+"CMakeFiles/aout.dir/src/Benchmark.cpp.o"
 
 # External object files for target aout
 aout_EXTERNAL_OBJECTS =
 
 aout: CMakeFiles/aout.dir/src/main.cpp.o
-aout: CMakeFiles/aout.dir/src/ransac.cpp.o
+aout: CMakeFiles/aout.dir/src/Ransac.cpp.o
 aout: CMakeFiles/aout.dir/src/Timer.cpp.o
+aout: CMakeFiles/aout.dir/src/Benchmark.cpp.o
 aout: CMakeFiles/aout.dir/build.make
 aout: /usr/lib/x86_64-linux-gnu/libboost_program_options.so
 aout: /usr/lib/x86_64-linux-gnu/libboost_python.so
@@ -361,7 +387,7 @@ aout: /usr/lib/x86_64-linux-gnu/libvtksys-6.3.so.6.3.0
 aout: /usr/lib/x86_64-linux-gnu/libproj.so
 aout: /usr/lib/x86_64-linux-gnu/libvtkCommonCore-6.3.so.6.3.0
 aout: CMakeFiles/aout.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable aout"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable aout"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/aout.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -370,8 +396,9 @@ CMakeFiles/aout.dir/build: aout
 .PHONY : CMakeFiles/aout.dir/build
 
 CMakeFiles/aout.dir/requires: CMakeFiles/aout.dir/src/main.cpp.o.requires
-CMakeFiles/aout.dir/requires: CMakeFiles/aout.dir/src/ransac.cpp.o.requires
+CMakeFiles/aout.dir/requires: CMakeFiles/aout.dir/src/Ransac.cpp.o.requires
 CMakeFiles/aout.dir/requires: CMakeFiles/aout.dir/src/Timer.cpp.o.requires
+CMakeFiles/aout.dir/requires: CMakeFiles/aout.dir/src/Benchmark.cpp.o.requires
 
 .PHONY : CMakeFiles/aout.dir/requires
 

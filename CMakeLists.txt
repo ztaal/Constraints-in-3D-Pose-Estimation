@@ -10,7 +10,7 @@ include_directories( ${COVIS_INCLUDE_DIRS} )
 find_package( VTK 6.2 REQUIRED NO_MODULE )
 include( ${VTK_USE_FILE} )
 
-add_executable( aout src/main.cpp src/ransac.cpp src/Timer.cpp )
+add_executable( aout src/main.cpp src/Ransac.cpp src/Timer.cpp src/Benchmark.cpp )
 target_link_libraries( aout ${COVIS_LIBRARIES} )
 
 find_package(Eigen3 3.3.2 REQUIRED)

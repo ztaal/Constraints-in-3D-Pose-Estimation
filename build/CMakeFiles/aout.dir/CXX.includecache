@@ -6,6 +6,18 @@
 
 #IncludeRegexTransform: 
 
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Benchmark.hpp
+covis/covis.h
+-
+../headers/Timer.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Timer.hpp
+../headers/Ransac.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Ransac.hpp
+
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Ransac.hpp
+covis/covis.h
+-
+
 /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Timer.hpp
 boost/shared_ptr.hpp
 -
@@ -14,27 +26,25 @@ ostream
 opencv2/core/core.hpp
 -
 
-/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
-covis/covis.h
--
-../headers/Timer.hpp
-/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Timer.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Benchmark.cpp
+../headers/Benchmark.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Benchmark.hpp
+
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Ransac.cpp
+../headers/Ransac.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Ransac.hpp
 
 /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/Timer.cpp
 ../headers/Timer.hpp
 /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Timer.hpp
-limits
--
 
 /home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/main.cpp
 covis/covis.h
 -
-../headers/ransac.hpp
-/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
-
-/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/src/ransac.cpp
-../headers/ransac.hpp
-/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/ransac.hpp
+../headers/Ransac.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Ransac.hpp
+../headers/Benchmark.hpp
+/home/ztaal/Desktop/Constraints-in-3D-Pose-Estimation/headers/Benchmark.hpp
 
 /home/ztaal/covis/src/covis/calib/convert_input.h
 pcl/io/pcd_io.h

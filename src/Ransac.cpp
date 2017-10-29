@@ -29,26 +29,6 @@
 
 using namespace covis::detect;
 
-void ransac::setPrerejectionD( bool _prerejection_d )
-{
-    this->prerejection_d = _prerejection_d;
-}
-
-void ransac::setPrerejectionG( bool _prerejection_g )
-{
-    this->prerejection_g = _prerejection_g;
-}
-
-void ransac::setPrerejectionL( bool _prerejection_l )
-{
-    this->prerejection_l = _prerejection_l;
-}
-
-void ransac::setPrerejectionA( bool _prerejection_a )
-{
-    this->prerejection_a = _prerejection_a;
-}
-
 covis::core::Detection ransac::estimate()
 {
     // detect::PointSearch<PointT>::Ptr _search;

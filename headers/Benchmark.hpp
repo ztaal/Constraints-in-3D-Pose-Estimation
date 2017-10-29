@@ -57,7 +57,7 @@ namespace covis {
          */
         class Benchmark {
             public:
-
+                // TODO add missing functions
                 /** TODO FIX LIST
                  * Constructor: set default parameters:
                  *   - resolution (@ref setIterations()): 1
@@ -81,13 +81,6 @@ namespace covis {
                     radiusFeature(25),
                     cutoff(50),
                     feature("si"),
-                    inlierThreshold(5),
-                    inlierFraction(0.05),
-                    reestimatePose(true),
-                    fullEvaluation(false),
-                    occlusionReasoning(false),
-                    occlusionRemoval(false),
-                    viewAxis(0),
                     verbose(false) {}
 
                 /// Empty destructor
@@ -244,44 +237,23 @@ namespace covis {
                 /// Depth of which target points are considered
                 float far;
 
-                /// Verbose flag TODO FIX
+                /// TODO FIX
                 float radiusNormal;
 
-                /// Verbose flag TODO FIX
+                /// TODO FIX
                 float resolutionQuery;
 
-                /// Verbose flag TODO FIX
+                /// TODO FIX
                 float resolutionTarget;
 
-                /// Verbose flag TODO FIX
+                /// TODO FIX
                 float radiusFeature;
 
-                /// Verbose flag TODO FIX
+                /// TODO FIX
                 float cutoff;
 
                 /// Feature used for feature matching
                 std::string feature;
-
-                /// Verbose flag TODO FIX
-                float inlierThreshold;
-
-                /// Verbose flag TODO FIX
-                float inlierFraction;
-
-                /// Verbose flag TODO FIX
-                bool reestimatePose;
-
-                /// Verbose flag TODO FIX
-                bool fullEvaluation;
-
-                /// Verbose flag TODO FIX
-                bool occlusionReasoning;
-
-                /// Verbose flag TODO FIX
-                bool occlusionRemoval;
-
-                /// Verbose flag TODO FIX
-                int viewAxis;
 
                 /// Verbose flag
                 bool verbose;

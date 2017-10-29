@@ -103,12 +103,6 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
     const size_t cutoff = this->cutoff;
     COVIS_ASSERT(cutoff > 0 && cutoff <= 100);
 
-    // Estimation
-    const float inlierThreshold =
-            (this->inlierThreshold > 0.0 ?
-            this->inlierThreshold * this->resolution :
-            5 * this->resolution);
-
     // Preprocess
     objectSurf.resize( objectMesh->size() );
     for(size_t i = 0; i < objectMesh->size(); ++i) {
@@ -269,7 +263,7 @@ void Benchmark::printResults()
         avgPenalty = avgPenalty / successful;
         double avgTime = result.totalTime / successful;
         double failed = totalIterations - successful;
-        auto failedPercent = (failed / totalIterations) * 100;
+        double failedPercent = (failed / totalIterations) * 100;
 
         // Print information
         printf("%s\n",std::string(115, '-').c_str());
@@ -279,7 +273,7 @@ void Benchmark::printResults()
 
         // Print information about each object
         for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
-            auto objFailedPercent = ((sceneCloud.size() - objSuccessful[i])
+            double objFailedPercent = ((sceneCloud.size() - objSuccessful[i])
                                         / sceneCloud.size()) * 100;
             printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f\n",
                 objectLabels[i].c_str(), avgObjTime[i],

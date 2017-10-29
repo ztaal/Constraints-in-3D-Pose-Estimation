@@ -1,6 +1,5 @@
 
  /**  Todo list:
-  * TODO Move benchmark to seperate class
   * TODO Check that the numbers printed from the benchmark are correct
   * TODO Clean up ransac class and make it look like covis code
   * TODO Test constraints speed on UWA
@@ -111,6 +110,7 @@ int main( int argc, const char** argv )
         ransac.setInlierFraction( inlierFraction );
         ransac.setReestimatePose( !noReestimate );
         ransac.setFullEvaluation( fullEvaluation );
+        ransac.setViewAxis( viewAxis );
         // ransac.setPrerejection( prerejection );
         ransac.setOcclusionReasoning( noOcclusionReasoning );
         ransac.setPrerejectionSimilarity( prerejectionSimilarty );

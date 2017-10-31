@@ -219,6 +219,9 @@ namespace covis {
                 /// scene cloud TODO check if this is neeeded here
                 std::vector<CloudT::Ptr> sceneCloud;
 
+                /// ground truth poses
+                std::vector<std::vector<Eigen::Matrix4f> > poses;
+
                 /// correspondences
                 std::vector< std::vector<covis::core::Correspondence::VecPtr> > correspondences;
 
@@ -267,9 +270,11 @@ namespace covis {
                  * Load data set
                  * @param pointer to objectMesh
                  * @param pointer to sceneMesh
+                 * @param pointer to poses
                  */
                 void loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                                std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+                                std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
+                                std::vector<std::vector<Eigen::Matrix4f> > *poses);
 
                 /**
                 * Compute correspondences of each object with each scene

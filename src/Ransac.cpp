@@ -120,7 +120,7 @@ covis::core::Detection ransac::estimate()
                 target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
                                         this->target->points[targets[(j + 1) % this->sampleSize]]) );
             }
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
+            while (source_sides.size()) {
                 int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
                 int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
                 if ( idx != jdx ) {
@@ -241,4 +241,156 @@ covis::core::Detection ransac::estimate()
 
     // COVIS_MSG(result);
     return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+void ransac::benchmark( Eigen::Matrix4f ground_truth )
+{
+    // detect::PointSearch<PointT>::Ptr _search;
+    covis::core::Detection::Vec _allDetections;
+
+    // Sanity checks
+    COVIS_ASSERT(this->source && this->target && this->corr);
+    bool allEmpty = true;
+    for(size_t i = 0; i < this->corr->size(); ++i) {
+        if (!(*this->corr)[i].empty()) {
+            allEmpty = false;
+            break;
+        }
+    }
+    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
+    COVIS_ASSERT(this->sampleSize >= 3);
+    COVIS_ASSERT(this->iterations > 0);
+    COVIS_ASSERT(this->inlierThreshold > 0);
+    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
+
+    // Instantiate pose sampler
+    covis::detect::PoseSampler<PointT> poseSampler;
+    poseSampler.setSource(this->source);
+    poseSampler.setTarget(this->target);
+    std::vector<int> sources( this->sampleSize );
+    std::vector<int> targets( this->sampleSize );
+
+    // Instantiate polygonal prerejector
+    pcl::registration::CorrespondenceRejectorPoly<PointT,PointT> poly;
+    poly.setInputSource( this->source );
+    poly.setInputTarget( this->target );
+    poly.setSimilarityThreshold( this->prerejectionSimilarity );
+
+    // Start main loop
+    for(size_t i = 0; i < this->iterations; ++i) {
+
+        // Create a sample from data
+        const core::Correspondence::Vec maybeInliers =
+                poseSampler.sampleCorrespondences(*this->corr, this->sampleSize);
+        for(size_t j = 0; j < this->sampleSize; ++j) {
+            sources[j] = maybeInliers[j].query;
+            targets[j] = maybeInliers[j].match[0];
+        }
+
+        // Apply prerejection
+        // Prerejection dissimilarity
+        if ( this->prerejection_d ) {
+            if( !poly.thresholdPolygon(sources, targets) )
+                continue;
+        }
+
+        // Prerejection geometric
+        // if ( this->prerejection_g ) {
+        //     if( !geometricConstraint(sources, targets) )
+        //     continue;
+        // }
+        if ( this->prerejection_g ) {
+            bool reject = false;
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
+            }
+            while (source_sides.size()) {
+                int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
+                int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
+                if ( idx != jdx ) {
+                    reject = true;
+                    break;
+                } else {
+                    source_sides.erase( source_sides.begin() + idx );
+                    target_sides.erase( target_sides.begin() + jdx );
+                }
+            }
+            if ( reject )
+                continue;
+        }
+
+        // Prerejection length dissimilarity
+        if ( this->prerejection_l ) {
+            bool reject = false;
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
+            }
+            std::sort( source_sides.begin(), source_sides.end() );
+            std::sort( target_sides.begin(), target_sides.end() );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                // If the difference between the distances is to great continue
+                float max_diff = source_sides[j] * 0.05;
+                if (target_sides[j] > source_sides[j] + max_diff || target_sides[j] < source_sides[j] - max_diff ) {
+                    reject = true;
+                    break;
+                }
+            }
+            if ( reject )
+                continue;
+        }
+
+        // Prerejection area dissimilarity
+        if ( this->prerejection_a && this->sampleSize == 3 ) {
+            std::vector<double> source_sides( this->sampleSize );
+            std::vector<double> target_sides( this->sampleSize );
+            for (unsigned int j = 0; j < this->sampleSize; j++) {
+                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
+                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
+                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
+                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
+            }
+            double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
+            double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
+            double source_area = sqrt(source_p * (source_p - source_sides[0])
+                                   * (source_p * source_sides[1])
+                                   * (source_p - source_sides[2]));
+            double target_area = sqrt(target_p * (target_p - target_sides[0])
+                                   * (target_p * target_sides[1])
+                                   * (target_p - target_sides[2]));
+
+            double area_diff = source_area * 0.05;
+            if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
+                continue;
+            }
+        }
+
+        // Sample a pose model
+        Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+
+        // Calculate distance between pose and ground truth
+        auto pose_tranlation = pose.block(0,0,3,1);
+        auto gt_translation = ground_truth.block(0,0,3,1);
+        auto distance = pcl::euclideanDistance( pose_tranlation, gt_translation );
+        std::cout << "Distance: " << distance << '\n';
+    }
 }

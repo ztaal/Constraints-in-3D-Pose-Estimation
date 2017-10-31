@@ -213,6 +213,11 @@ namespace covis {
                  */
                 core::Detection estimate();
 
+                /**
+                 * Benchmark RANSAC
+                 */
+                void benchmark( Eigen::Matrix4f ground_truth );
+
             private:
                 /// Source point cloud
                 pcl::PointCloud<PointT>::Ptr source;

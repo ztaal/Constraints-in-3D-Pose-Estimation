@@ -30,7 +30,8 @@
 using namespace covis::detect;
 
 void Benchmark::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
+                        std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
+                        std::vector<std::vector<Eigen::Matrix4f> > *poses)
 {
     // Load dataset
     util::DatasetLoader dataset(
@@ -51,11 +52,16 @@ void Benchmark::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
     if(this->verbose)
         COVIS_MSG(dataset);
 
-    // Load object and scene point clouds
+    (*poses).resize(dataset.size());
+
+    // Load object cloud, scene clouds and GT poses
     *objectMesh = dataset.getObjects();
     for(size_t i = 0; i < dataset.size(); ++i) {
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
         (*sceneMesh).push_back(scene.scene);
+        for(size_t j = 0; j < scene.poses.size(); ++j) {
+            (*poses)[i].push_back( scene.poses[j] );
+        }
     }
     COVIS_ASSERT(!objectMesh->empty() && !sceneMesh->empty());
     this->objectLabels = dataset.getObjectLabels();
@@ -166,7 +172,7 @@ void Benchmark::initialize()
     if(this->verbose)
         printf("Loading data\n");
     std::vector<util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
-    loadData( &objectMesh, &sceneMesh );
+    loadData( &objectMesh, &sceneMesh, &this->poses );
     computeCorrespondence( &objectMesh, &sceneMesh );
     this->seed = std::time(0);
 }
@@ -203,6 +209,7 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 instance->setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
+                instance->benchmark( this->poses[i][j] );
             }
         }
         result.d = d;

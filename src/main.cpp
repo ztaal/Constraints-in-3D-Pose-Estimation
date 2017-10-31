@@ -133,6 +133,8 @@ int main( int argc, const char** argv )
             benchmark.run( &ransac, "Base case" );
             ransac.setPrerejectionD( true );
             benchmark.run( &ransac, "Prerejection 1" );
+            ransac.setPrerejectionG( true );
+            benchmark.run( &ransac, "Prerejection 2" );
             // ransac.benchmark( "Prerejection 1" );
             // ransac.setPrerejectionG( true );
             // ransac.benchmark( "Prerejection 2" );

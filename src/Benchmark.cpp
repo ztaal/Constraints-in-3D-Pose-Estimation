@@ -209,7 +209,14 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 instance->setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
-                instance->benchmark( this->poses[i][j] );
+
+                result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+
+                if (this->verbose) {
+                    COVIS_MSG( d[i][j].pose );
+                    visu::showDetection<PointT>( this->objectCloud[j], this->sceneCloud[i], d[i][j].pose );
+                }
+
             }
         }
         result.d = d;
@@ -228,7 +235,7 @@ void Benchmark::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%67s\033[m\n", "Benchmark RESULTS" );
+    printf( "\n\n\n\033[1m%67s\033[m\n", "BENCHMARK RESULTS" );
     printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s\033[m\n", "Function Name   ",
         "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac" );
 
@@ -239,6 +246,7 @@ void Benchmark::printResults()
     std::vector<double> avgObjPenalty( objectCloud.size() );
     std::vector<double> avgObjInliers( objectCloud.size() );
 
+    // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
         double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
@@ -289,4 +297,36 @@ void Benchmark::printResults()
         }
     }
     printf("%s\n\n\n",std::string(115,'-').c_str());
+}
+
+void Benchmark::printPrerejectionResults()
+{
+
+    int numPrerejction = this->results[0].prerejectionStats[0].size();
+    std::vector<int> tp( numPrerejction ), tn( numPrerejction ), fp( numPrerejction ), fn( numPrerejction );
+
+    for( auto &result : this->results ) {
+        for ( auto &prerejectionStat : result.prerejectionStats ) {
+            for ( int k = 0; k < numPrerejction; k++ ) {
+                tp[k] += prerejectionStat[k].tp;
+                tn[k] += prerejectionStat[k].tn;
+                fp[k] += prerejectionStat[k].fp;
+                fn[k] += prerejectionStat[k].fn;
+            }
+        }
+    }
+
+    // Prerejection information
+    printf( "\n\033[1m%67s\033[m\n", "PREREJECTION RESULTS" );
+    for ( int i = 0; i < numPrerejction; i++ ) {
+        printf( " \033[1m%-13s%d\033[m\n", "Prerejection ", i );
+        printf("%s\n",std::string(115, '-').c_str());
+        printf( " \033[1m%-20s%20s%20s\033[m\n",
+            "", "Accecpt", "Reject" );
+        printf( " \033[1m%-20s%20d%20d\033[m\n",
+            "Positive outcome", tp[i], fp[i] );
+        printf( " \033[1m%-20s%20d%20d\033[m\n",
+            "Negative outcome", fn[i], tn[i] );
+        printf( "%s\n\n\n",std::string(115, '-').c_str() );
+    }
 }

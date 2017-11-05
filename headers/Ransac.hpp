@@ -37,6 +37,15 @@ typedef pcl::PointXYZRGBNormal PointT;
 // Point and feature types
 typedef pcl::PointCloud<PointT> CloudT;
 
+// Rejection statistics TODO maybe move to benchmark class
+struct binaryClassification
+{
+    int tp = 0; // True-positive (correct accept)
+    int tn = 0; // True-negative (correct reject)
+    int fp = 0; // False-positive (reject positive)
+    int fn = 0; // False-negative (accept negative)
+};
+
 namespace covis {
     namespace detect {
         /**
@@ -216,7 +225,7 @@ namespace covis {
                 /**
                  * Benchmark RANSAC
                  */
-                void benchmark( Eigen::Matrix4f ground_truth );
+                std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
 
             private:
                 /// Source point cloud

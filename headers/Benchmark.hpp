@@ -30,6 +30,7 @@
 
 // Covis
 #include <covis/covis.h>
+// #include "visu_3d.h"
 
 // Timer
 #include "../headers/Timer.hpp"
@@ -172,12 +173,16 @@ namespace covis {
                  */
                 void printResults();
 
+                // TODO add description
+                void printPrerejectionResults();
+
             private:
 
                 /// struct contaning all benchmark results
                 struct Result
                 {
                     std::string name;
+                    std::vector<std::vector<binaryClassification> > prerejectionStats;
                     std::vector<std::vector<covis::core::Detection> > d;
                     std::vector<std::vector<double> > time;
                     double totalTime;

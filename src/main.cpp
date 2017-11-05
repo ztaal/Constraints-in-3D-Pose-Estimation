@@ -195,6 +195,7 @@ int main( int argc, const char** argv )
             // ransac.benchmark( "Prerejection ALL" );
             // ransac.printResults();
             benchmark.printResults();
+            benchmark.printPrerejectionResults();
         }
      }
 

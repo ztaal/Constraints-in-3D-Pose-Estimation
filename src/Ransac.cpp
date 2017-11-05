@@ -253,7 +253,7 @@ covis::core::Detection ransac::estimate()
 
 
 
-void ransac::benchmark( Eigen::Matrix4f ground_truth )
+std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_truth )
 {
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
@@ -270,8 +270,6 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
     COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
     COVIS_ASSERT(this->sampleSize >= 3);
     COVIS_ASSERT(this->iterations > 0);
-    COVIS_ASSERT(this->inlierThreshold > 0);
-    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
 
     // Instantiate pose sampler
     covis::detect::PoseSampler<PointT> poseSampler;
@@ -286,8 +284,20 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
     poly.setInputTarget( this->target );
     poly.setSimilarityThreshold( this->prerejectionSimilarity );
 
+    // Prerejection statistics
+    std::vector<binaryClassification> results;
+    binaryClassification dissimilarity;
+    binaryClassification geometric;
+    binaryClassification length;
+    binaryClassification area;
+
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
+
+        bool rejectDissimilarity = false;
+        bool rejectGeometric = false;
+        bool rejectLength = false;
+        bool rejectArea = false;
 
         // Create a sample from data
         const core::Correspondence::Vec maybeInliers =
@@ -299,18 +309,13 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
 
         // Apply prerejection
         // Prerejection dissimilarity
-        if ( this->prerejection_d ) {
+        {
             if( !poly.thresholdPolygon(sources, targets) )
-                continue;
+                rejectDissimilarity = true;
         }
 
         // Prerejection geometric
-        // if ( this->prerejection_g ) {
-        //     if( !geometricConstraint(sources, targets) )
-        //     continue;
-        // }
-        if ( this->prerejection_g ) {
-            bool reject = false;
+        {
             std::vector<double> source_sides( this->sampleSize );
             std::vector<double> target_sides( this->sampleSize );
             for (unsigned int j = 0; j < this->sampleSize; j++) {
@@ -323,20 +328,17 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
                 int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
                 int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
                 if ( idx != jdx ) {
-                    reject = true;
+                    rejectGeometric = true;
                     break;
                 } else {
                     source_sides.erase( source_sides.begin() + idx );
                     target_sides.erase( target_sides.begin() + jdx );
                 }
             }
-            if ( reject )
-                continue;
         }
 
         // Prerejection length dissimilarity
-        if ( this->prerejection_l ) {
-            bool reject = false;
+        {
             std::vector<double> source_sides( this->sampleSize );
             std::vector<double> target_sides( this->sampleSize );
             for (unsigned int j = 0; j < this->sampleSize; j++) {
@@ -349,18 +351,16 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
             std::sort( target_sides.begin(), target_sides.end() );
             for (unsigned int j = 0; j < this->sampleSize; j++) {
                 // If the difference between the distances is to great continue
-                float max_diff = source_sides[j] * 0.05;
+                float max_diff = source_sides[j] * 0.1;
                 if (target_sides[j] > source_sides[j] + max_diff || target_sides[j] < source_sides[j] - max_diff ) {
-                    reject = true;
+                    rejectLength = true;
                     break;
                 }
             }
-            if ( reject )
-                continue;
         }
 
         // Prerejection area dissimilarity
-        if ( this->prerejection_a && this->sampleSize == 3 ) {
+        if ( this->sampleSize == 3 ) {
             std::vector<double> source_sides( this->sampleSize );
             std::vector<double> target_sides( this->sampleSize );
             for (unsigned int j = 0; j < this->sampleSize; j++) {
@@ -378,9 +378,9 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
                                    * (target_p * target_sides[1])
                                    * (target_p - target_sides[2]));
 
-            double area_diff = source_area * 0.05;
+            double area_diff = source_area * 0.1;
             if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-                continue;
+                rejectArea = true;
             }
         }
 
@@ -388,9 +388,37 @@ void ransac::benchmark( Eigen::Matrix4f ground_truth )
         Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
 
         // Calculate distance between pose and ground truth
-        auto pose_tranlation = pose.block(0,0,3,1);
-        auto gt_translation = ground_truth.block(0,0,3,1);
-        auto distance = pcl::euclideanDistance( pose_tranlation, gt_translation );
-        std::cout << "Distance: " << distance << '\n';
+        CloudT poseCloud, gtCloud;
+        for (size_t j = 0; j < this->sampleSize; j++) {
+            poseCloud.push_back(this->source->points[sources[j]]);
+            gtCloud.push_back(this->source->points[sources[j]]);
+        }
+
+        covis::core::transform(poseCloud, pose);
+        covis::core::transform(gtCloud, ground_truth);
+        Eigen::Vector4f poseCentroid, gtCentroid;
+        pcl::compute3DCentroid(poseCloud, poseCentroid);
+        pcl::compute3DCentroid(gtCloud, gtCentroid);
+        pcl::PointXYZ poseTranslation( poseCentroid(0), poseCentroid(1), poseCentroid(2) );
+        pcl::PointXYZ gtTranslation( gtCentroid(0), gtCentroid(1), gtCentroid(2) );
+        auto distance = pcl::euclideanDistance( poseTranslation, gtTranslation );
+
+        // Determine if rejections were correct
+        if ( distance < 1 ) {
+            if ( !rejectDissimilarity ) dissimilarity.tp++; else dissimilarity.fp++;
+            if ( !rejectGeometric ) geometric.tp++; else geometric.fp++;
+            if ( !rejectLength ) length.tp++; else length.fp++;
+            if ( !rejectArea ) area.tp++; else area.fp++;
+        } else {
+            if ( rejectDissimilarity ) dissimilarity.tn++; else dissimilarity.fn++;
+            if ( rejectGeometric ) geometric.tn++; else geometric.fn++;
+            if ( rejectLength ) length.tn++; else length.fn++;
+            if ( rejectArea ) area.tn++; else area.fn++;
+        }
     }
+    results.push_back(dissimilarity);
+    results.push_back(geometric);
+    results.push_back(length);
+    results.push_back(area);
+    return results;
 }

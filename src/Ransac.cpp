@@ -96,11 +96,11 @@ covis::core::Detection ransac::estimate()
     for(size_t i = 0; i < this->iterations; ++i) {
 
         // Create a sample from data
-        const core::Correspondence::Vec maybeInliers =
+        const core::Correspondence::Vec samples =
                 poseSampler.sampleCorrespondences(*this->corr, this->sampleSize);
         for(size_t j = 0; j < this->sampleSize; ++j) {
-            sources[j] = maybeInliers[j].query;
-            targets[j] = maybeInliers[j].match[0];
+            sources[j] = samples[j].query;
+            targets[j] = samples[j].match[0];
         }
 
         // Prerejection dissimilarity
@@ -172,6 +172,8 @@ covis::core::Detection ransac::estimate()
     // COVIS_MSG(result);
     return result;
 }
+
+
 
 std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_truth )
 {

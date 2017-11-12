@@ -173,8 +173,20 @@ namespace covis {
                  */
                 void printResults();
 
-                // TODO add description
+                /**
+                 * Print results of the benchmarks
+                 * call @ref run() before calling this
+                 */
                 void printPrerejectionResults();
+
+                /**
+                 * Clear results of the benchmarks
+                 */
+                inline void
+                clearResults()
+                {
+                    results.clear();
+                };
 
             private:
 
@@ -218,10 +230,10 @@ namespace covis {
                 /// init flag, used to run @ref initBenchmark() once when @ref benchmark() is first called
                 boost::once_flag flagInit = BOOST_ONCE_INIT;
 
-                /// object cloud TODO check if this is neeeded here
+                /// object cloud
                 std::vector<CloudT::Ptr> objectCloud;
 
-                /// scene cloud TODO check if this is neeeded here
+                /// scene cloud
                 std::vector<CloudT::Ptr> sceneCloud;
 
                 /// ground truth poses

@@ -1,10 +1,6 @@
 
  /**  Todo list:
-  * TODO Check that the numbers printed from the benchmark are correct
-  * TODO Clean up ransac class and make it look like covis code
-  * TODO Test constraints speed on UWA
-  * TODO Expand benchmark to test the quality of each rejection
-  * TODO Test constraints quality on UWA
+  * TODO Test constraints on UWA
   * TODO Test with 3+ sample size
   * TODO Start working on pose priors
   */
@@ -132,19 +128,24 @@ int main( int argc, const char** argv )
         benchmark.setVerbose( verbose );
 
         if( po.getFlag("benchmark") ) {
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( false );
-            benchmark.run( &ransac, "Base case" );
-            ransac.setPrerejectionD( true );
-            benchmark.run( &ransac, "Dissimilarity" );
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( true );
-            benchmark.run( &ransac, "Geometric" );
-            ransac.setPrerejectionD( true );
-            benchmark.run( &ransac, "Both" );
+            for ( int i = 3; i < 40; i++ ) {
+                printf( "BENCHMARK SAMPLE SIZE: %d\n", i );
+                ransac.setSampleSize( i );
+                ransac.setPrerejectionD( false );
+                ransac.setPrerejectionG( false );
+                benchmark.run( &ransac, "Base case" );
+                ransac.setPrerejectionD( true );
+                benchmark.run( &ransac, "Dissimilarity" );
+                ransac.setPrerejectionD( false );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "Geometric" );
+                ransac.setPrerejectionD( true );
+                benchmark.run( &ransac, "Both" );
 
-            benchmark.printResults();
-            benchmark.printPrerejectionResults();
+                benchmark.printResults();
+                benchmark.printPrerejectionResults();
+                benchmark.clearResults();
+            }
         }
      }
 

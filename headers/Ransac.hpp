@@ -176,12 +176,20 @@ namespace covis {
                     prerejectionSimilarity = _prerejectionSimilarity;
                 }
 
-                /// TODO FIX
+                /**
+                 * Enable removal of occluded points - be sure to only use this flag if you have target scenes with a well-defined viewpoint
+                 * By default, this class assumes the third (z) axis to be the view axis. If this is not the case for your data,
+                 * use @ref setViewAxis() to change this
+                 * @param occlusionReasoning occlusion
+                 */
                 inline void setOcclusionReasoning( bool _occlusionReasoning ) {
                     occlusionReasoning = _occlusionReasoning;
                 }
 
-                /// TODO FIX
+                /**
+                 * Set the view axis - default z
+                 * @param veiw axis [0, 1, 2]
+                 */
                 inline void setViewAxis( int _viewAxis ) {
                     viewAxis = _viewAxis;
                 }
@@ -194,12 +202,18 @@ namespace covis {
                     verbose = _verbose;
                 }
 
-                /// TODO FIX
+                /**
+                 * Set the dissimilarity prerejection flag
+                 * @param prerejection dissimilarity flag
+                 */
                 void setPrerejectionD( bool _prerejection_d ) {
                     prerejection_d = _prerejection_d;
                 }
 
-                /// TODO FIX
+                /**
+                 * Set the geometric prerejection flag
+                 * @param prerejection geometric flag
+                 */
                 void setPrerejectionG( bool _prerejection_g ) {
                     prerejection_g = _prerejection_g;
                 }
@@ -236,37 +250,37 @@ namespace covis {
                 /// Number of ransac iterations
                 size_t iterations;
 
-                /// TODO FIX
+                /// If prerejection is set to true, use this polygonal similarity threshold
                 float prerejectionSimilarity;
 
-                /// TODO FIX
+                /// Euclidean inlier threshold
                 float inlierThreshold;
 
-                /// TODO FIX
+                /// Visibility or required fraction of inliers of the source points [0,1]
                 float inlierFraction;
 
-                /// TODO FIX
+                /// If set to true (default), a pose is re-estimated if it has enough inliers
                 bool reestimatePose;
 
-                /// TODO FIX
+                /// Full evaluation flag
                 bool fullEvaluation;
 
-                /// TODO FIX
+                /// Enable removal of occluded points
                 bool occlusionReasoning;
 
-                /// TODO FIX
+                /// Occlusion removal flag
                 bool occlusionRemoval;
 
-                /// TODO FIX
+                /// Specify which of the three sensor axes points in the viewing direction - typically this is the z-axis
                 int viewAxis;
 
                 /// Verbose flag
                 bool verbose;
 
-                /// TODO FIX
+                /// Prereject dissimilarity flag
                 bool prerejection_d = false;
 
-                /// TODO FIX
+                /// Prereject geometric flag
                 bool prerejection_g = false;
         };
     }

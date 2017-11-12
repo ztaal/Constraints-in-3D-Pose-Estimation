@@ -210,6 +210,7 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
 
+                // if ( this->benchmark )
                 result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
 
                 if (this->verbose) {
@@ -288,8 +289,8 @@ void Benchmark::printResults()
 
         // Print information about each object
         for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
-            double objFailedPercent = ((sceneCloud.size() - objSuccessful[i])
-                                        / sceneCloud.size()) * 100;
+            double objFailed = sceneCloud.size() - objSuccessful[i];
+            double objFailedPercent = (objFailed / sceneCloud.size()) * 100;
             printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f\n",
                 objectLabels[i].c_str(), avgObjTime[i],
                 avgObjTime[i] / objSuccessful[i], objFailedPercent,

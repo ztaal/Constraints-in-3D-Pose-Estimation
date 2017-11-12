@@ -128,24 +128,20 @@ int main( int argc, const char** argv )
         benchmark.setVerbose( verbose );
 
         if( po.getFlag("benchmark") ) {
-            for ( int i = 3; i < 40; i++ ) {
-                printf( "BENCHMARK SAMPLE SIZE: %d\n", i );
-                ransac.setSampleSize( i );
-                ransac.setPrerejectionD( false );
-                ransac.setPrerejectionG( false );
-                benchmark.run( &ransac, "Base case" );
-                ransac.setPrerejectionD( true );
-                benchmark.run( &ransac, "Dissimilarity" );
-                ransac.setPrerejectionD( false );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "Geometric" );
-                ransac.setPrerejectionD( true );
-                benchmark.run( &ransac, "Both" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( false );
+            benchmark.run( &ransac, "Base case" );
+            ransac.setPrerejectionD( true );
+            benchmark.run( &ransac, "Dissimilarity" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( true );
+            benchmark.run( &ransac, "Geometric" );
+            ransac.setPrerejectionD( true );
+            benchmark.run( &ransac, "Both" );
 
-                benchmark.printResults();
-                benchmark.printPrerejectionResults();
-                benchmark.clearResults();
-            }
+            benchmark.printResults();
+            benchmark.printPrerejectionResults();
+            benchmark.clearResults();
         }
      }
 

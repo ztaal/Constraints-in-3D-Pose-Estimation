@@ -213,16 +213,12 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
     std::vector<binaryClassification> results;
     binaryClassification dissimilarity;
     binaryClassification geometric;
-    binaryClassification length;
-    binaryClassification area;
 
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
 
         bool rejectDissimilarity = false;
         bool rejectGeometric = false;
-        bool rejectLength = false;
-        bool rejectArea = false;
 
         // Create a sample from data
         const core::Correspondence::Vec maybeInliers =
@@ -242,53 +238,6 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
         if ( this->prerejection_g ) {
             if( !geom.geometricConstraint( sources, targets ) )
                 rejectGeometric = true;
-        }
-
-        // Prerejection length dissimilarity
-        {
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            std::sort( source_sides.begin(), source_sides.end() );
-            std::sort( target_sides.begin(), target_sides.end() );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                // If the difference between the distances is to great continue
-                float max_diff = source_sides[j] * 0.1;
-                if (target_sides[j] > source_sides[j] + max_diff || target_sides[j] < source_sides[j] - max_diff ) {
-                    rejectLength = true;
-                    break;
-                }
-            }
-        }
-
-        // Prerejection area dissimilarity
-        if ( this->sampleSize == 3 ) {
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
-            double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
-            double source_area = sqrt(source_p * (source_p - source_sides[0])
-                                   * (source_p * source_sides[1])
-                                   * (source_p - source_sides[2]));
-            double target_area = sqrt(target_p * (target_p - target_sides[0])
-                                   * (target_p * target_sides[1])
-                                   * (target_p - target_sides[2]));
-
-            double area_diff = source_area * 0.1;
-            if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-                rejectArea = true;
-            }
         }
 
         // Sample a pose model
@@ -314,18 +263,12 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
         if ( distance < 1 ) {
             if ( !rejectDissimilarity ) dissimilarity.tp++; else dissimilarity.fp++;
             if ( !rejectGeometric ) geometric.tp++; else geometric.fp++;
-            if ( !rejectLength ) length.tp++; else length.fp++;
-            if ( !rejectArea ) area.tp++; else area.fp++;
         } else {
             if ( rejectDissimilarity ) dissimilarity.tn++; else dissimilarity.fn++;
             if ( rejectGeometric ) geometric.tn++; else geometric.fn++;
-            if ( rejectLength ) length.tn++; else length.fn++;
-            if ( rejectArea ) area.tn++; else area.fn++;
         }
     }
     results.push_back(dissimilarity);
     results.push_back(geometric);
-    results.push_back(length);
-    results.push_back(area);
     return results;
 }

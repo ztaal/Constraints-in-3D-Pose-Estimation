@@ -31,6 +31,9 @@
 // Covis
 #include <covis/covis.h>
 
+// Geometric prerejector
+#include "../headers/correspondence_rejection_geometric.h"
+
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
@@ -201,16 +204,6 @@ namespace covis {
                     prerejection_g = _prerejection_g;
                 }
 
-                /// TODO FIX
-                void setPrerejectionL( bool _prerejection_l ) {
-                    prerejection_l = _prerejection_l;
-                }
-
-                /// TODO FIX
-                void setPrerejectionA( bool _prerejection_a ) {
-                    prerejection_a = _prerejection_a;
-                }
-
                 /**
                  * Run RANSAC
                  * @return best detection, if any was found - this can be verified directly in a boolean expression:
@@ -275,12 +268,6 @@ namespace covis {
 
                 /// TODO FIX
                 bool prerejection_g = false;
-
-                /// TODO FIX
-                bool prerejection_l = false;
-
-                /// TODO FIX
-                bool prerejection_a = false;
         };
     }
 }

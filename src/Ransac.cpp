@@ -81,6 +81,11 @@ covis::core::Detection ransac::estimate()
     poly.setInputTarget( this->target );
     poly.setSimilarityThreshold( this->prerejectionSimilarity );
 
+    // Instantiate geometric prerejector
+    pcl::registration::CorrespondenceRejectorGeometric<PointT,PointT> geom;
+    geom.setInputSource( this->source );
+    geom.setInputTarget( this->target );
+
     // Output detection(s)
     core::Detection result;
     _allDetections.clear();
@@ -98,91 +103,16 @@ covis::core::Detection ransac::estimate()
             targets[j] = maybeInliers[j].match[0];
         }
 
-        // Apply prerejection
         // Prerejection dissimilarity
         if ( this->prerejection_d ) {
-            if( !poly.thresholdPolygon(sources, targets) )
+            if( !poly.thresholdPolygon( sources, targets ) )
                 continue;
         }
 
         // Prerejection geometric
-        // if ( this->prerejection_g ) {
-        //     if( !geometricConstraint(sources, targets) )
-        //     continue;
-        // }
         if ( this->prerejection_g ) {
-            bool reject = false;
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            while (source_sides.size()) {
-                int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
-                int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
-                if ( idx != jdx ) {
-                    reject = true;
-                    break;
-                } else {
-                    source_sides.erase( source_sides.begin() + idx );
-                    target_sides.erase( target_sides.begin() + jdx );
-                }
-            }
-            if ( reject )
+            if( !geom.geometricConstraint( sources, targets ) )
                 continue;
-        }
-
-        // Prerejection length dissimilarity
-        if ( this->prerejection_l ) {
-            bool reject = false;
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            std::sort( source_sides.begin(), source_sides.end() );
-            std::sort( target_sides.begin(), target_sides.end() );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                // If the difference between the distances is to great continue
-                float max_diff = source_sides[j] * 0.05;
-                if (target_sides[j] > source_sides[j] + max_diff || target_sides[j] < source_sides[j] - max_diff ) {
-                    reject = true;
-                    break;
-                }
-            }
-            if ( reject )
-                continue;
-        }
-
-        // Prerejection area dissimilarity
-        if ( this->prerejection_a && this->sampleSize == 3 ) {
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            double source_p = (source_sides[0] + source_sides[1] + source_sides[2]) / 2;
-            double target_p = (target_sides[0] + target_sides[1] + target_sides[2]) / 2;
-            double source_area = sqrt(source_p * (source_p - source_sides[0])
-                                   * (source_p * source_sides[1])
-                                   * (source_p - source_sides[2]));
-            double target_area = sqrt(target_p * (target_p - target_sides[0])
-                                   * (target_p * target_sides[1])
-                                   * (target_p - target_sides[2]));
-
-            double area_diff = source_area * 0.05;
-            if (target_area > source_area + area_diff || target_area < source_area - area_diff ) {
-                continue;
-            }
         }
 
         // Sample a pose model
@@ -243,16 +173,6 @@ covis::core::Detection ransac::estimate()
     return result;
 }
 
-
-
-
-
-
-
-
-
-
-
 std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_truth )
 {
     // detect::PointSearch<PointT>::Ptr _search;
@@ -284,6 +204,11 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
     poly.setInputTarget( this->target );
     poly.setSimilarityThreshold( this->prerejectionSimilarity );
 
+    // Instantiate geometric prerejector
+    pcl::registration::CorrespondenceRejectorGeometric<PointT,PointT> geom;
+    geom.setInputSource( this->source );
+    geom.setInputTarget( this->target );
+
     // Prerejection statistics
     std::vector<binaryClassification> results;
     binaryClassification dissimilarity;
@@ -307,7 +232,6 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
             targets[j] = maybeInliers[j].match[0];
         }
 
-        // Apply prerejection
         // Prerejection dissimilarity
         {
             if( !poly.thresholdPolygon(sources, targets) )
@@ -315,26 +239,9 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
         }
 
         // Prerejection geometric
-        {
-            std::vector<double> source_sides( this->sampleSize );
-            std::vector<double> target_sides( this->sampleSize );
-            for (unsigned int j = 0; j < this->sampleSize; j++) {
-                source_sides.push_back( pcl::euclideanDistance( this->source->points[sources[j]],
-                                        this->source->points[sources[(j + 1) % this->sampleSize]]) );
-                target_sides.push_back( pcl::euclideanDistance(this->target->points[targets[j]],
-                                        this->target->points[targets[(j + 1) % this->sampleSize]]) );
-            }
-            while (source_sides.size()) {
-                int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
-                int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
-                if ( idx != jdx ) {
-                    rejectGeometric = true;
-                    break;
-                } else {
-                    source_sides.erase( source_sides.begin() + idx );
-                    target_sides.erase( target_sides.begin() + jdx );
-                }
-            }
+        if ( this->prerejection_g ) {
+            if( !geom.geometricConstraint( sources, targets ) )
+                rejectGeometric = true;
         }
 
         // Prerejection length dissimilarity

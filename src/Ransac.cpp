@@ -29,6 +29,21 @@
 
 using namespace covis::detect;
 
+double median( std::vector<int> scores )
+{
+  double median;
+  size_t size = scores.size();
+
+  std::sort(scores.begin(), scores.end());
+
+  if (size  % 2 == 0)
+      median = (scores[size / 2 - 1] + scores[size / 2]) / 2;
+  else
+      median = scores[size / 2];
+
+  return median;
+}
+
 covis::core::Detection ransac::estimate()
 {
     // detect::PointSearch<PointT>::Ptr _search;
@@ -86,18 +101,28 @@ covis::core::Detection ransac::estimate()
     geom.setInputSource( this->source );
     geom.setInputTarget( this->target );
 
+    // Remove redundant correspondence
+    std::vector<covis::core::Correspondence> correspondences = *this->corr;
+    std::vector<int> corr_reject( correspondences.size() );
+    int original_size = correspondences.size();
+
     // Output detection(s)
     core::Detection result;
     _allDetections.clear();
-    if( this->corr->size() < this->sampleSize )
+    if( correspondences.size() < this->sampleSize )
         return result;
 
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
 
+        // Calculate threshold
+        int threshold = median( corr_reject ) + (original_size / correspondences.size());
+        // std::cout << "i: " << i << "\t\tSize: " << corr_reject.size() << "\tThreshold: " << threshold << "\tMax: " << max << "\tMin: " << min << '\n';
+
         // Create a sample from data
-        const core::Correspondence::Vec samples =
-                poseSampler.sampleCorrespondences(*this->corr, this->sampleSize);
+        std::vector<size_t> idx = covis::core::randidx( correspondences.size(), this->sampleSize );
+        covis::core::Correspondence::Vec samples = covis::core::extract( correspondences, idx );
+
         for(size_t j = 0; j < this->sampleSize; ++j) {
             sources[j] = samples[j].query;
             targets[j] = samples[j].match[0];
@@ -105,14 +130,38 @@ covis::core::Detection ransac::estimate()
 
         // Prerejection dissimilarity
         if ( this->prerejection_d ) {
-            if( !poly.thresholdPolygon( sources, targets ) )
+            if( !poly.thresholdPolygon( sources, targets ) ) {
+                if ( this->correction ) {
+                    int erased = 0;
+                    for (size_t j = 0; j < this->sampleSize; j++) {
+                        corr_reject[idx[j]] += 1;
+                        if (corr_reject[idx[j]] > threshold) {
+                            corr_reject.erase(corr_reject.begin() + idx[j] - erased);
+                            correspondences.erase(correspondences.begin() + idx[j] - erased);
+                            erased++;
+                        }
+                    }
+                }
                 continue;
+            }
         }
 
         // Prerejection geometric
         if ( this->prerejection_g ) {
-            if( !geom.geometricConstraint( sources, targets ) )
+            if( !geom.geometricConstraint( sources, targets ) ) {
+                if ( this->correction ) {
+                    int erased = 0;
+                    for (size_t j = 0; j < this->sampleSize; j++) {
+                        corr_reject[idx[j]] += 1;
+                        if (corr_reject[idx[j]] > threshold) {
+                            corr_reject.erase(corr_reject.begin() + idx[j] - erased);
+                            correspondences.erase(correspondences.begin() + idx[j] - erased);
+                            erased++;
+                        }
+                    }
+                }
                 continue;
+            }
         }
 
         // Sample a pose model
@@ -146,6 +195,26 @@ covis::core::Detection ransac::estimate()
                 result.inlierfrac = fe->inlierFraction();
                 result.outlierfrac = fe->outlierFraction();
                 result.penalty = fe->penalty();
+            } else if ( this->correction ) { // If inliers are too low
+                int erased = 0;
+                for (size_t j = 0; j < this->sampleSize; j++) {
+                    corr_reject[idx[j]] += 1;
+                    if (corr_reject[idx[j]] > threshold) {
+                        corr_reject.erase(corr_reject.begin() + idx[j] - erased);
+                        correspondences.erase(correspondences.begin() + idx[j] - erased);
+                        erased++;
+                    }
+                }
+            }
+        } else if ( this->correction ) { // If inliers are too low
+            int erased = 0;
+            for (size_t j = 0; j < this->sampleSize; j++) {
+                corr_reject[idx[j]] += 1;
+                if (corr_reject[idx[j]] > threshold) {
+                    corr_reject.erase(corr_reject.begin() + idx[j] - erased);
+                    correspondences.erase(correspondences.begin() + idx[j] - erased);
+                    erased++;
+                }
             }
         }
     }
@@ -168,8 +237,9 @@ covis::core::Detection ransac::estimate()
         const std::vector<bool>& keep = nms.getMask();
         _allDetections = core::mask(_allDetections, keep);
     }
+    if ( this->correction )
+        std::cout << "Size: " << this->corr->size() << "\t" << correspondences.size() << '\n';
 
-    // COVIS_MSG(result);
     return result;
 }
 

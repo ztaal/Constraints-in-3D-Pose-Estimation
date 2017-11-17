@@ -211,7 +211,7 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 time[i][j] = t.intermediate();
 
                 // if ( this->benchmark )
-                result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+                // result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
 
                 if (this->verbose) {
                     COVIS_MSG( d[i][j].pose );

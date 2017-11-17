@@ -33,7 +33,6 @@
 
 // Geometric prerejector
 #include "../headers/correspondence_rejection_geometric.h"
-
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
@@ -219,6 +218,14 @@ namespace covis {
                 }
 
                 /**
+                 * Set the geometric prerejection flag TODO FIX
+                 * @param prerejection geometric flag
+                 */
+                void setCorrection( bool _correction ) {
+                    correction = _correction;
+                }
+
+                /**
                  * Run RANSAC
                  * @return best detection, if any was found - this can be verified directly in a boolean expression:
                  * @code
@@ -282,6 +289,9 @@ namespace covis {
 
                 /// Prereject geometric flag
                 bool prerejection_g = false;
+
+                /// TODO FIX
+                bool correction = false;
         };
     }
 }

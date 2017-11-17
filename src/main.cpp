@@ -16,6 +16,14 @@ using namespace covis;
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
+int factorial(int n)
+{
+    if(n > 1)
+        return n * factorial(n - 1);
+    else
+        return 1;
+}
+
 int main( int argc, const char** argv )
 {
     printf( " -- Initialized Program\n\n" );
@@ -43,6 +51,7 @@ int main( int argc, const char** argv )
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)");
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis");
+    // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable prerejection during RANSAC");
@@ -94,6 +103,26 @@ int main( int argc, const char** argv )
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
 
+
+    // Test (3 good points, 4 bad points)
+    // int points = 7;
+    // int sample_size = 3;
+    // double inliner_fraction = 3 / (double)7;
+    // double possible_combinations = pow(points, sample_size) - points;
+    // int good_points = int(points * inliner_fraction);
+    // double combinations_of_good_points = pow(good_points, sample_size) - good_points;
+    // double TN = inliner_fraction * possible_combinations - combinations_of_good_points;
+    // std::cout << "points: " << points << '\n';
+    // std::cout << "sample_size: " << sample_size << '\n';
+    // std::cout << "inliner_fraction: " << inliner_fraction << '\n';
+    // std::cout << "possible_combinations: " << possible_combinations << '\n';
+    // std::cout << "good_points: " << good_points << '\n';
+    // std::cout << "combinations_of_good_points: " << combinations_of_good_points << '\n';
+    // std::cout << "True negative: " << TN << '\n';
+    // for (size_t i = 0; i < 10000; i++) {
+    //     std::cout << "Threshold: " << int((TN / possible_combinations) * i) + 1 << '\n';
+    // }
+
     /*
      * Benchmark RANSAC
      */
@@ -137,10 +166,27 @@ int main( int argc, const char** argv )
             ransac.setPrerejectionG( true );
             benchmark.run( &ransac, "Geometric" );
             ransac.setPrerejectionD( true );
+            ransac.setPrerejectionG( true );
             benchmark.run( &ransac, "Both" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( false );
+            ransac.setCorrection( true );
+            benchmark.run( &ransac, "Correction" );
+            ransac.setPrerejectionD( true );
+            ransac.setPrerejectionG( false );
+            benchmark.run( &ransac, "CorrectionD" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( true );
+            ransac.setCorrection( true );
+            benchmark.run( &ransac, "CorrectionG" );
+            ransac.setPrerejectionD( true );
+            benchmark.run( &ransac, "All" );
+
+            // ransac.setCorrection( true );
+            // benchmark.run( &ransac, "Correction" );
 
             benchmark.printResults();
-            benchmark.printPrerejectionResults();
+            // benchmark.printPrerejectionResults();
             benchmark.clearResults();
         }
      }

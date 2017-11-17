@@ -173,7 +173,7 @@ namespace covis {
                  */
                 void printResults();
 
-                /**
+                /** TODO FIX
                  * Print results of the benchmarks
                  * call @ref run() before calling this
                  */

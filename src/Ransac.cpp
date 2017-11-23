@@ -27,6 +27,7 @@
 
 #include "../headers/Ransac.hpp"
 
+#include <fstream>
 using namespace covis::detect;
 
 double median( std::vector<int> scores )
@@ -105,6 +106,7 @@ covis::core::Detection ransac::estimate()
     std::vector<covis::core::Correspondence> correspondences = *this->corr;
     std::vector<int> corr_reject( correspondences.size() );
     int original_size = correspondences.size();
+    double inliers = original_size * 0.1;
 
     // Output detection(s)
     core::Detection result;
@@ -112,12 +114,25 @@ covis::core::Detection ransac::estimate()
     if( correspondences.size() < this->sampleSize )
         return result;
 
+    // ofstream myfile;
+    // myfile.open ("../test.txt");
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
 
         // Calculate threshold
-        int threshold = median( corr_reject ) + (original_size / correspondences.size());
-        // std::cout << "i: " << i << "\t\tSize: " << corr_reject.size() << "\tThreshold: " << threshold << "\tMax: " << max << "\tMin: " << min << '\n';
+        double median1 = median( corr_reject );
+        // double F = original_size / (double)(correspondences.size() - inliers);
+        double F = original_size / (double)correspondences.size();
+        // double F = original_size / (double)(correspondences.size()*((iterations - i) / (double)iterations));
+        int size = correspondences.size();
+
+        double threshold = median1 + F;
+        // double threshold = median( corr_reject ) + (original_size / (double)correspondences.size()) * (this->iterations / (i+1));
+        // double threshold = median( corr_reject ) + (original_size / (double)correspondences.size());
+        // printf("%d, %.3f, %.0f, %.3f, %d\n", i, threshold, median1, F, size);
+        // std::cout << i << ", " << threshold << ", " << median << ", " << F << ", " << size << '\n';
+        // if (i % 10 == 0)
+        //     myfile << i << ", "<< threshold << ", "<< median1 << ", "<< F << ", "<< size << "\n";
 
         // Create a sample from data
         std::vector<size_t> idx = covis::core::randidx( correspondences.size(), this->sampleSize );
@@ -195,6 +210,7 @@ covis::core::Detection ransac::estimate()
                 result.inlierfrac = fe->inlierFraction();
                 result.outlierfrac = fe->outlierFraction();
                 result.penalty = fe->penalty();
+                // inliers = fe->inlierFraction();
             } else if ( this->correction ) { // If inliers are too low
                 int erased = 0;
                 for (size_t j = 0; j < this->sampleSize; j++) {
@@ -237,9 +253,10 @@ covis::core::Detection ransac::estimate()
         const std::vector<bool>& keep = nms.getMask();
         _allDetections = core::mask(_allDetections, keep);
     }
-    if ( this->correction )
-        std::cout << "Size: " << this->corr->size() << "\t" << correspondences.size() << '\n';
+    // if ( this->correction )
+        // std::cout << "Size: " << this->corr->size() << "\t" << correspondences.size() << '\n';
 
+    // myfile.close();
     return result;
 }
 

@@ -1,5 +1,12 @@
 
  /**  Todo list:
+  * TODO Change benchmark to use individual distance and not centroid
+  * TODO Create histogram over bad and good corr (distance)
+        - Histograms 1mm and 5mm for both rejected and accepted corr
+        - Median std afvigelse og inlier rate ved både 5 og 1mm
+  * TODO Change distance to 5mm instead of 1mm
+  * TODO Add stddev to table and histogram
+  * TODO Create threshold for when to stop ransac based on the angle of the corr (when it is low we stop)
   * TODO Test constraints on UWA
   * TODO Test with 3+ sample size
   * TODO Start working on pose priors

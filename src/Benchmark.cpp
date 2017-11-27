@@ -210,8 +210,10 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
 
-                // if ( this->benchmark )
-                // result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+                if ( this->benchmarkPrerejection )
+                    result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+
+                instance->benchmark_correction( this->poses[i][j] );
 
                 if (this->verbose) {
                     COVIS_MSG( d[i][j].pose );
@@ -236,9 +238,9 @@ void Benchmark::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%67s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s\033[m\n", "Function Name   ",
-        "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac" );
+    printf( "\n\n\n\033[1m%80s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s%23s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Data
     std::vector<int> objSuccessful( objectCloud.size() );
@@ -246,6 +248,7 @@ void Benchmark::printResults()
     std::vector<double> avgObjRMSE( objectCloud.size() );
     std::vector<double> avgObjPenalty( objectCloud.size() );
     std::vector<double> avgObjInliers( objectCloud.size() );
+    std::vector<double> stddevObjInliers( objectCloud.size() );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
@@ -281,23 +284,37 @@ void Benchmark::printResults()
         double failed = totalIterations - successful;
         double failedPercent = (failed / totalIterations) * 100;
 
+        // Calculate standard deviation
+        double dist = 0;
+        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
+            double objDist = 0;
+            for ( unsigned int j = 0; j < sceneCloud.size(); j++ ) {
+                if ( result.d[j][i] ) {
+                    objDist += pow(result.d[j][i].inlierfrac - avgObjInliers[i], 2);
+                    dist += pow(result.d[j][i].inlierfrac - avgInliers, 2);
+                }
+            }
+            stddevObjInliers[i] = sqrt(objDist / objSuccessful[i]);
+        }
+        double stddevInliers = sqrt(dist / successful);
+
         // Print information
-        printf("%s\n",std::string(115, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f\033[m\n",
+        printf("%s\n",std::string(138, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\033[m\n",
             result.name.c_str(), result.totalTime, avgTime, failedPercent,
-            avgRMSE, avgPenalty, avgInliers );
+            avgRMSE, avgPenalty, avgInliers, stddevInliers );
 
         // Print information about each object
         for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
             double objFailed = sceneCloud.size() - objSuccessful[i];
             double objFailedPercent = (objFailed / sceneCloud.size()) * 100;
-            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f\n",
+            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\n",
                 objectLabels[i].c_str(), avgObjTime[i],
                 avgObjTime[i] / objSuccessful[i], objFailedPercent,
-                avgObjRMSE[i], avgObjPenalty[i], avgObjInliers[i] );
+                avgObjRMSE[i], avgObjPenalty[i], avgObjInliers[i], stddevObjInliers[i] );
         }
     }
-    printf("%s\n\n\n",std::string(115,'-').c_str());
+    printf("%s\n\n\n",std::string(138,'-').c_str());
 }
 
 void Benchmark::printPrerejectionResults()

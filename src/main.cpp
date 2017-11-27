@@ -1,11 +1,8 @@
 
  /**  Todo list:
-  * TODO Change benchmark to use individual distance and not centroid
   * TODO Create histogram over bad and good corr (distance)
         - Histograms 1mm and 5mm for both rejected and accepted corr
         - Median std afvigelse og inlier rate ved både 5 og 1mm
-  * TODO Change distance to 5mm instead of 1mm
-  * TODO Add stddev to table and histogram
   * TODO Create threshold for when to stop ransac based on the angle of the corr (when it is low we stop)
   * TODO Test constraints on UWA
   * TODO Test with 3+ sample size
@@ -22,14 +19,6 @@ using namespace covis;
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
-
-int factorial(int n)
-{
-    if(n > 1)
-        return n * factorial(n - 1);
-    else
-        return 1;
-}
 
 int main( int argc, const char** argv )
 {
@@ -110,26 +99,6 @@ int main( int argc, const char** argv )
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
 
-
-    // Test (3 good points, 4 bad points)
-    // int points = 7;
-    // int sample_size = 3;
-    // double inliner_fraction = 3 / (double)7;
-    // double possible_combinations = pow(points, sample_size) - points;
-    // int good_points = int(points * inliner_fraction);
-    // double combinations_of_good_points = pow(good_points, sample_size) - good_points;
-    // double TN = inliner_fraction * possible_combinations - combinations_of_good_points;
-    // std::cout << "points: " << points << '\n';
-    // std::cout << "sample_size: " << sample_size << '\n';
-    // std::cout << "inliner_fraction: " << inliner_fraction << '\n';
-    // std::cout << "possible_combinations: " << possible_combinations << '\n';
-    // std::cout << "good_points: " << good_points << '\n';
-    // std::cout << "combinations_of_good_points: " << combinations_of_good_points << '\n';
-    // std::cout << "True negative: " << TN << '\n';
-    // for (size_t i = 0; i < 10000; i++) {
-    //     std::cout << "Threshold: " << int((TN / possible_combinations) * i) + 1 << '\n';
-    // }
-
     /*
      * Benchmark RANSAC
      */
@@ -162,35 +131,36 @@ int main( int argc, const char** argv )
         benchmark.setPoseExt( po.getValue("pose-ext") );
         benchmark.setPoseSep( po.getValue("pose-sep") );
         benchmark.setVerbose( verbose );
+        // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( false );
-            benchmark.run( &ransac, "Base case" );
-            ransac.setPrerejectionD( true );
-            benchmark.run( &ransac, "Dissimilarity" );
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( true );
-            benchmark.run( &ransac, "Geometric" );
-            ransac.setPrerejectionD( true );
-            ransac.setPrerejectionG( true );
-            benchmark.run( &ransac, "Both" );
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( false );
-            ransac.setCorrection( true );
-            benchmark.run( &ransac, "Correction" );
-            ransac.setPrerejectionD( true );
-            ransac.setPrerejectionG( false );
-            benchmark.run( &ransac, "CorrectionD" );
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( true );
-            ransac.setCorrection( true );
-            benchmark.run( &ransac, "CorrectionG" );
-            ransac.setPrerejectionD( true );
-            benchmark.run( &ransac, "All" );
-
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( false );
+            // benchmark.run( &ransac, "Base case" );
+            // ransac.setPrerejectionD( true );
+            // benchmark.run( &ransac, "Dissimilarity" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( true );
+            // benchmark.run( &ransac, "Geometric" );
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionG( true );
+            // benchmark.run( &ransac, "Both" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( false );
             // ransac.setCorrection( true );
             // benchmark.run( &ransac, "Correction" );
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionG( false );
+            // benchmark.run( &ransac, "CorrectionD" );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( true );
+            // ransac.setCorrection( true );
+            // benchmark.run( &ransac, "CorrectionG" );
+            // ransac.setPrerejectionD( true );
+            // benchmark.run( &ransac, "All" );
+
+            ransac.setCorrection( true );
+            benchmark.run( &ransac, "Correction" );
 
             benchmark.printResults();
             // benchmark.printPrerejectionResults();

@@ -159,6 +159,14 @@ namespace covis {
                     verbose = _verbose;
                 }
 
+                /**
+                 * TODO FIX
+                 * @param verbose verbose flag
+                 */
+                inline void setBenchmarkPrerejection(bool _benchmarkPrerejection) {
+                    benchmarkPrerejection = _benchmarkPrerejection;
+                }
+
                 /** TODO FIX param
                  * Benchmarks a function on the specified data set
                  * Running multiple instance of benchmark will store each individual benchmark
@@ -277,6 +285,9 @@ namespace covis {
 
                 /// Verbose flag
                 bool verbose;
+
+                /// TODO FIX
+                bool benchmarkPrerejection;
 
                 /**
                  * Initialized benchmark by loadning the data set and computing correspondences

@@ -237,9 +237,15 @@ namespace covis {
                 core::Detection estimate();
 
                 /**
-                 * Benchmark RANSAC
+                 * Benchmark RANSAC TODO FIX
                  */
                 std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
+
+
+                /**
+                 * Benchmark correction TODO FIX
+                 */
+                void benchmark_correction( Eigen::Matrix4f ground_truth );
 
             private:
                 /// Source point cloud

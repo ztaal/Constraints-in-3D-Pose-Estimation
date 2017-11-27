@@ -119,7 +119,7 @@ namespace pcl
         /** \brief Geometric rejection of a single polygon, indexed by two point index vectors
           * \param source_indices indices of polygon points in \ref input_
           * \param target_indices corresponding indices of polygon points in \ref target_
-          * \return true if the longests, second longest, ... etc. edge index of the target corresponds to equivalent index in the source
+          * \return true if the longests, second longest, ..., etc. edge index of the target corresponds to equivalent index in the source
           */
         inline bool
         geometricConstraint (const std::vector<int>& source_indices, const std::vector<int>& target_indices)

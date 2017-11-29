@@ -1,8 +1,7 @@
 
  /**  Todo list:
-  * TODO Create histogram over bad and good corr (distance)
-        - Histograms 1mm and 5mm for both rejected and accepted corr
-        - Median std afvigelse og inlier rate ved både 5 og 1mm
+  * TODO Try to have a vector for positive votes and use it to change thresholdPolygon
+  * TODO Create a start up period where no corr are removed only votes are cast
   * TODO Create threshold for when to stop ransac based on the angle of the corr (when it is low we stop)
   * TODO Test constraints on UWA
   * TODO Test with 3+ sample size

@@ -133,17 +133,17 @@ int main( int argc, const char** argv )
         // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            // ransac.setPrerejectionD( false );
-            // ransac.setPrerejectionG( false );
-            // benchmark.run( &ransac, "Base case" );
-            // ransac.setPrerejectionD( true );
-            // benchmark.run( &ransac, "Dissimilarity" );
-            // ransac.setPrerejectionD( false );
-            // ransac.setPrerejectionG( true );
-            // benchmark.run( &ransac, "Geometric" );
-            // ransac.setPrerejectionD( true );
-            // ransac.setPrerejectionG( true );
-            // benchmark.run( &ransac, "Both" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( false );
+            benchmark.run( &ransac, "Base case" );
+            ransac.setPrerejectionD( true );
+            benchmark.run( &ransac, "Dissimilarity" );
+            ransac.setPrerejectionD( false );
+            ransac.setPrerejectionG( true );
+            benchmark.run( &ransac, "Geometric" );
+            ransac.setPrerejectionD( true );
+            ransac.setPrerejectionG( true );
+            benchmark.run( &ransac, "Both" );
             // ransac.setPrerejectionD( false );
             // ransac.setPrerejectionG( false );
             // ransac.setCorrection( true );

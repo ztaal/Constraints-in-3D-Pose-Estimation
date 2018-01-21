@@ -410,10 +410,7 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 
     // Remove redundant correspondence
     std::vector<covis::core::Correspondence> correspondences = *this->corr;
-    std::vector<covis::core::Correspondence> rejected;
-    std::vector<int> corr_votes( correspondences.size() );
-    int original_size = correspondences.size();
-    double inliers = original_size * 0.3;
+    std::vector<covis::core::Correspondence> accepted;
 
     // Output detection(s)
     core::Detection result;
@@ -421,11 +418,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
-
-        // Calculate threshold
-        double median1 = median( corr_votes );
-        double F = original_size / (double)(correspondences.size() - inliers);
-        double threshold = median1 + F;
 
         // Create a sample from data
         std::vector<size_t> idx = covis::core::randidx( correspondences.size(), this->sampleSize );
@@ -438,18 +430,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
         // Prerejection dissimilarity
         if ( this->prerejection_d ) {
             if( !poly.thresholdPolygon( sources, targets ) ) {
-                if ( this->correction ) {
-                    int erased = 0;
-                    for (size_t j = 0; j < this->sampleSize; j++) {
-                        corr_votes[idx[j]] += 1;
-                        if (corr_votes[idx[j]] > threshold) {
-                            rejected.push_back(correspondences[idx[j] - erased]);
-                            corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                            correspondences.erase(correspondences.begin() + idx[j] - erased);
-                            erased++;
-                        }
-                    }
-                }
                 continue;
             }
         }
@@ -457,18 +437,58 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
         // Prerejection geometric
         if ( this->prerejection_g ) {
             if( !geom.geometricConstraint( sources, targets ) ) {
-                if ( this->correction ) {
-                    int erased = 0;
-                    for (size_t j = 0; j < this->sampleSize; j++) {
-                        corr_votes[idx[j]] += 1;
-                        if (corr_votes[idx[j]] > threshold) {
-                            rejected.push_back(correspondences[idx[j] - erased]);
-                            corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                            correspondences.erase(correspondences.begin() + idx[j] - erased);
-                            erased++;
-                        }
-                    }
+                continue;
+            }
+        }
+
+        // Sample a pose model
+        Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+
+        // Find consensus set
+        fe->update( this->source, pose, this->corr ); // Using full models
+
+        // If number of inliers (consensus set) is high enough
+        if( fe->inlierFraction() >= this->inlierFraction ) {
+            // Add points to accepted vector
+            if ( this->correction ) {
+                for (size_t j = 0; j < this->sampleSize; j++) {
+                    accepted.push_back(correspondences[idx[j]]);
                 }
+            }
+
+        }
+    }
+
+    // std::cout << "Accepted size1: " << accepted.size() << '\n';
+    // // Remove dublicates
+    // std::sort( accepted.begin(), accepted.end() );
+    // accepted.erase( std::unique(accepted.begin(), accepted.end()), accepted.end() );
+    //
+    // std::cout << "\nAccepted size2: " << accepted.size() << '\n';
+
+    if (accepted.size() < 3)
+        return;
+
+    // Loop through all permutations of accepted correspondeces
+    for(size_t i = 0; i < accepted.size() * 2; ++i) {
+        // Create a sample from data
+        std::vector<size_t> idx2 = covis::core::randidx( accepted.size(), this->sampleSize );
+        covis::core::Correspondence::Vec samples2 = covis::core::extract( accepted, idx2 );
+        for(size_t j = 0; j < this->sampleSize; ++j) {
+            sources[j] = samples2[j].query;
+            targets[j] = samples2[j].match[0];
+        }
+
+        // Prerejection dissimilarity
+        if ( this->prerejection_d ) {
+            if( !poly.thresholdPolygon( sources, targets ) ) {
+                continue;
+            }
+        }
+
+        // Prerejection geometric
+        if ( this->prerejection_g ) {
+            if( !geom.geometricConstraint( sources, targets ) ) {
                 continue;
             }
         }
@@ -504,75 +524,250 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
                 result.inlierfrac = fe->inlierFraction();
                 result.outlierfrac = fe->outlierFraction();
                 result.penalty = fe->penalty();
-            } else if ( this->correction ) { // If inliers are too low
-                int erased = 0;
-                for (size_t j = 0; j < this->sampleSize; j++) {
-                    corr_votes[idx[j]] += 1;
-                    if (corr_votes[idx[j]] > threshold) {
-                        rejected.push_back(correspondences[idx[j] - erased]);
-                        corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                        correspondences.erase(correspondences.begin() + idx[j] - erased);
-                        erased++;
-                    }
-                }
-            }
-        } else if ( this->correction ) { // If inliers are too low
-            int erased = 0;
-            for (size_t j = 0; j < this->sampleSize; j++) {
-                corr_votes[idx[j]] += 1;
-                if (corr_votes[idx[j]] > threshold) {
-                    rejected.push_back(correspondences[idx[j] - erased]);
-                    corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                    correspondences.erase(correspondences.begin() + idx[j] - erased);
-                    erased++;
-                }
             }
         }
     }
 
-    // Get points from accepted and rejected correspondences
-    CloudT accepted_source, accepted_target;
-    for (size_t i = 0; i < correspondences.size(); i++) {
-        accepted_source.push_back(this->source->points[correspondences[i].query]);
-        accepted_target.push_back(this->target->points[correspondences[i].match[0]]);
-    }
-
-    CloudT rejected_source, rejected_target;
-    for (size_t i = 0; i < rejected.size(); i++) {
-        rejected_source.push_back(this->source->points[rejected[i].query]);
-        rejected_target.push_back(this->target->points[rejected[i].match[0]]);
-    }
-
-    // Transform using ground truth
-    covis::core::transform(accepted_source, ground_truth);
-    covis::core::transform(rejected_source, ground_truth);
-
-    // Find distances
-    std::vector<double> distance_accepted( correspondences.size() );
-    for (size_t i = 0; i < correspondences.size(); i++) {
-        double dist = pcl::euclideanDistance(accepted_source[i], accepted_target[i]);
-        // Floor to nearest half
-        dist = std::floor((dist * 2) + 0.5) / 2;
-        distance_accepted.push_back( dist );
-    }
-    std::vector<double> distance_rejected( rejected.size() );
-    for (size_t i = 0; i < rejected.size(); i++) {
-        double dist = pcl::euclideanDistance(rejected_source[i], rejected_target[i]);
-        // Floor to nearest half
-        dist = std::floor((dist * 2) + 0.5) / 2;
-        distance_rejected.push_back( dist );
-    }
-
-    // Write to file
-    ofstream accepted_file;
-    accepted_file.open ("../correction_accepted.txt");
-    for (auto &dist : distance_accepted)
-        accepted_file << dist << "\n";
-    accepted_file.close();
-
-    ofstream rejected_file;
-    rejected_file.open ("../correction_rejected.txt");
-    for (auto &dist : distance_rejected)
-        rejected_file << dist << "\n";
-    rejected_file.close();
 }
+
+
+//
+//
+// void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
+// {
+//     // detect::PointSearch<PointT>::Ptr _search;
+//     covis::core::Detection::Vec _allDetections;
+//
+//     // Sanity checks
+//     COVIS_ASSERT(this->source && this->target && this->corr);
+//     bool allEmpty = true;
+//     for(size_t i = 0; i < this->corr->size(); ++i) {
+//         if (!(*this->corr)[i].empty()) {
+//             allEmpty = false;
+//             break;
+//         }
+//     }
+//     COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
+//     COVIS_ASSERT(this->sampleSize >= 3);
+//     COVIS_ASSERT(this->iterations > 0);
+//     COVIS_ASSERT(this->inlierThreshold > 0);
+//     COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
+//
+//     // Instantiate pose sampler
+//     covis::detect::PoseSampler<PointT> poseSampler;
+//     poseSampler.setSource(this->source);
+//     poseSampler.setTarget(this->target);
+//     std::vector<int> sources( this->sampleSize );
+//     std::vector<int> targets( this->sampleSize );
+//
+//     detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(this->target));
+//     fe->setOcclusionReasoning( !this->occlusionReasoning );
+//     fe->setViewAxis( this->viewAxis );
+//     if( this->occlusionReasoning )
+//         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
+//     else
+//         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
+//
+//     // Instantiate fit evaluator
+//     fe->setInlierThreshold( this->inlierThreshold );
+//     fe->setTarget(this->target);
+//
+//     // Instantiate polygonal prerejector
+//     pcl::registration::CorrespondenceRejectorPoly<PointT,PointT> poly;
+//     poly.setInputSource( this->source );
+//     poly.setInputTarget( this->target );
+//     poly.setSimilarityThreshold( this->prerejectionSimilarity );
+//
+//     // Instantiate geometric prerejector
+//     pcl::registration::CorrespondenceRejectorGeometric<PointT,PointT> geom;
+//     geom.setInputSource( this->source );
+//     geom.setInputTarget( this->target );
+//
+//     // Remove redundant correspondence
+//     std::vector<covis::core::Correspondence> correspondences = *this->corr;
+//     std::vector<covis::core::Correspondence> rejected;
+//     std::vector<covis::core::Correspondence> accepted;
+//     std::vector<int> corr_votes( correspondences.size() );
+//     int original_size = correspondences.size();
+//     double inliers = original_size * 0.3;
+//
+//     // Output detection(s)
+//     core::Detection result;
+//     _allDetections.clear();
+//
+//     // Start main loop
+//     for(size_t i = 0; i < this->iterations; ++i) {
+//
+//         // Calculate threshold
+//         double median1 = median( corr_votes );
+//         double F = original_size / (double)(correspondences.size() - inliers);
+//         double threshold = median1 + F;
+//
+//         // Create a sample from data
+//         std::vector<size_t> idx = covis::core::randidx( correspondences.size(), this->sampleSize );
+//         covis::core::Correspondence::Vec samples = covis::core::extract( correspondences, idx );
+//         for(size_t j = 0; j < this->sampleSize; ++j) {
+//             sources[j] = samples[j].query;
+//             targets[j] = samples[j].match[0];
+//         }
+//
+//         // Prerejection dissimilarity
+//         if ( this->prerejection_d ) {
+//             if( !poly.thresholdPolygon( sources, targets ) ) {
+//                 // if ( this->correction ) {
+//                 //     int erased = 0;
+//                 //     for (size_t j = 0; j < this->sampleSize; j++) {
+//                 //         corr_votes[idx[j]] += 1;
+//                 //         // if (corr_votes[idx[j]] > threshold) {
+//                 //         //     rejected.push_back(correspondences[idx[j] - erased]);
+//                 //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//                 //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
+//                 //         //     erased++;
+//                 //         // }
+//                 //     }
+//                 // }
+//                 continue;
+//             }
+//         }
+//
+//         // Prerejection geometric
+//         if ( this->prerejection_g ) {
+//             if( !geom.geometricConstraint( sources, targets ) ) {
+//                 // if ( this->correction ) {
+//                 //     int erased = 0;
+//                 //     for (size_t j = 0; j < this->sampleSize; j++) {
+//                 //         corr_votes[idx[j]] += 1;
+//                 //         // if (corr_votes[idx[j]] > threshold) {
+//                 //         //     rejected.push_back(correspondences[idx[j] - erased]);
+//                 //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//                 //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
+//                 //         //     erased++;
+//                 //         // }
+//                 //     }
+//                 // }
+//                 continue;
+//             }
+//         }
+//
+//         // Sample a pose model
+//         Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+//
+//         // Find consensus set
+//         fe->update( this->source, pose, this->corr ); // Using full models
+//
+//         // If number of inliers (consensus set) is high enough
+//         if( fe->inlierFraction() >= this->inlierFraction ) {
+//             // Reestimate pose using consensus set
+//             if(fe->inliers() >= this->sampleSize) {
+//                 pose = poseSampler.transformation(fe->getInliers());
+//
+//                 // Evaluate updated model
+//                 fe->update(this->source, pose); // Using full models
+//             }
+//
+//             // Add to the list of all detections
+//             _allDetections.push_back(core::Detection(pose,
+//                                                      fe->rmse(),
+//                                                      fe->penalty(),
+//                                                      fe->inlierFraction(),
+//                                                      fe->outlierFraction())
+//             );
+//
+//             // Update result if updated model is the best so far
+//             if(fe->penalty() < result.penalty) {
+//                 result.pose = pose;
+//                 result.rmse = fe->rmse();
+//                 result.inlierfrac = fe->inlierFraction();
+//                 result.outlierfrac = fe->outlierFraction();
+//                 result.penalty = fe->penalty();
+//             }
+//             // else if ( this->correction ) { // If inliers are too low
+//             //     int erased = 0;
+//             //     for (size_t j = 0; j < this->sampleSize; j++) {
+//             //         corr_votes[idx[j]] += 1;
+//             //         // if (corr_votes[idx[j]] > threshold) {
+//             //         //     rejected.push_back(correspondences[idx[j] - erased]);
+//             //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//             //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
+//             //         //     erased++;
+//             //         // }
+//             //     }
+//             // }
+//
+//             // Add points to accepted vector
+//             if ( this->correction ) {
+//                 for (size_t j = 0; j < this->sampleSize; j++) {
+//                     accepted.push_back(correspondences[idx[j]]);
+//                 }
+//             }
+//
+//         }
+//         // else if ( this->correction ) { // If inliers are too low
+//         //     int erased = 0;
+//         //     for (size_t j = 0; j < this->sampleSize; j++) {
+//         //         corr_votes[idx[j]] += 1;
+//         //         // if (corr_votes[idx[j]] > threshold) {
+//         //         //     rejected.push_back(correspondences[idx[j] - erased]);
+//         //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//         //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
+//         //         //     erased++;
+//         //         // }
+//         //     }
+//         // }
+//     }
+//
+//     // Get points from accepted and rejected correspondences
+//     CloudT accepted_source, accepted_target;
+//     for (size_t i = 0; i < correspondences.size(); i++) {
+//         accepted_source.push_back(this->source->points[correspondences[i].query]);
+//         accepted_target.push_back(this->target->points[correspondences[i].match[0]]);
+//     }
+//
+//     CloudT rejected_source, rejected_target;
+//     for (size_t i = 0; i < rejected.size(); i++) {
+//         rejected_source.push_back(this->source->points[rejected[i].query]);
+//         rejected_target.push_back(this->target->points[rejected[i].match[0]]);
+//     }
+//
+//     // Transform using ground truth
+//     covis::core::transform(accepted_source, ground_truth);
+//     covis::core::transform(rejected_source, ground_truth);
+//
+//     // Find distances
+//     std::vector<double> distance_accepted( correspondences.size() );
+//     for (size_t i = 0; i < correspondences.size(); i++) {
+//         double dist = pcl::euclideanDistance(accepted_source[i], accepted_target[i]);
+//         // Floor to nearest half
+//         dist = std::floor((dist * 2) + 0.5) / 2;
+//         distance_accepted.push_back( dist );
+//     }
+//     std::sort (distance_accepted.begin(), distance_accepted.end());
+//
+//     std::vector<double> distance_rejected( rejected.size() );
+//     for (size_t i = 0; i < rejected.size(); i++) {
+//         double dist = pcl::euclideanDistance(rejected_source[i], rejected_target[i]);
+//         // Floor to nearest half
+//         dist = std::floor((dist * 2) + 0.5) / 2;
+//         distance_rejected.push_back( dist );
+//     }
+//     std::sort (distance_rejected.begin(), distance_rejected.end());
+//
+//     std::cout << "Accepted size: " << accepted.size() << '\n';
+//     // for (size_t i = 0; i < corr_votes.size(); i++) {
+//     //     if (corr_votes[i] > 0)
+//     //         std::cout << "\t" << corr_votes[i] << '\n';
+//     // }
+//
+//     // Write to file
+//     ofstream accepted_file;
+//     accepted_file.open ("../correction_accepted.txt");
+//     for (auto &dist : distance_accepted)
+//         accepted_file << dist << "\n";
+//     accepted_file.close();
+//
+//     ofstream rejected_file;
+//     rejected_file.open ("../correction_rejected.txt");
+//     for (auto &dist : distance_rejected)
+//         rejected_file << dist << "\n";
+//     rejected_file.close();
+// }

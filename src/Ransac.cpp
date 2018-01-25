@@ -1,4 +1,4 @@
-// Copyright (c) 2013, University of Southern Denmark
+ // Copyright (c) 2013, University of Southern Denmark
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -453,24 +453,19 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
             if ( this->correction ) {
                 for (size_t j = 0; j < this->sampleSize; j++) {
                     accepted.push_back(correspondences[idx[j]]);
+                    correspondences[idx[j]] = correspondences.back();
+                    correspondences.pop_back();
                 }
             }
 
         }
     }
 
-    // std::cout << "Accepted size1: " << accepted.size() << '\n';
-    // // Remove dublicates
-    // std::sort( accepted.begin(), accepted.end() );
-    // accepted.erase( std::unique(accepted.begin(), accepted.end()), accepted.end() );
-    //
-    // std::cout << "\nAccepted size2: " << accepted.size() << '\n';
-
     if (accepted.size() < 3)
         return;
 
     // Loop through all permutations of accepted correspondeces
-    for(size_t i = 0; i < accepted.size() * 2; ++i) {
+    for(size_t i = 0; i < accepted.size() * 3; ++i) {
         // Create a sample from data
         std::vector<size_t> idx2 = covis::core::randidx( accepted.size(), this->sampleSize );
         covis::core::Correspondence::Vec samples2 = covis::core::extract( accepted, idx2 );
@@ -527,12 +522,11 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
             }
         }
     }
-
 }
 
 
-//
-//
+
+
 // void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 // {
 //     // detect::PointSearch<PointT>::Ptr _search;
@@ -586,7 +580,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //     // Remove redundant correspondence
 //     std::vector<covis::core::Correspondence> correspondences = *this->corr;
 //     std::vector<covis::core::Correspondence> rejected;
-//     std::vector<covis::core::Correspondence> accepted;
 //     std::vector<int> corr_votes( correspondences.size() );
 //     int original_size = correspondences.size();
 //     double inliers = original_size * 0.3;
@@ -614,18 +607,18 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //         // Prerejection dissimilarity
 //         if ( this->prerejection_d ) {
 //             if( !poly.thresholdPolygon( sources, targets ) ) {
-//                 // if ( this->correction ) {
-//                 //     int erased = 0;
-//                 //     for (size_t j = 0; j < this->sampleSize; j++) {
-//                 //         corr_votes[idx[j]] += 1;
-//                 //         // if (corr_votes[idx[j]] > threshold) {
-//                 //         //     rejected.push_back(correspondences[idx[j] - erased]);
-//                 //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-//                 //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
-//                 //         //     erased++;
-//                 //         // }
-//                 //     }
-//                 // }
+//                 if ( this->correction ) {
+//                     int erased = 0;
+//                     for (size_t j = 0; j < this->sampleSize; j++) {
+//                         corr_votes[idx[j]] += 1;
+//                         if (corr_votes[idx[j]] > threshold) {
+//                             rejected.push_back(correspondences[idx[j] - erased]);
+//                             corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//                             correspondences.erase(correspondences.begin() + idx[j] - erased);
+//                             erased++;
+//                         }
+//                     }
+//                 }
 //                 continue;
 //             }
 //         }
@@ -633,18 +626,18 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //         // Prerejection geometric
 //         if ( this->prerejection_g ) {
 //             if( !geom.geometricConstraint( sources, targets ) ) {
-//                 // if ( this->correction ) {
-//                 //     int erased = 0;
-//                 //     for (size_t j = 0; j < this->sampleSize; j++) {
-//                 //         corr_votes[idx[j]] += 1;
-//                 //         // if (corr_votes[idx[j]] > threshold) {
-//                 //         //     rejected.push_back(correspondences[idx[j] - erased]);
-//                 //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-//                 //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
-//                 //         //     erased++;
-//                 //         // }
-//                 //     }
-//                 // }
+//                 if ( this->correction ) {
+//                     int erased = 0;
+//                     for (size_t j = 0; j < this->sampleSize; j++) {
+//                         corr_votes[idx[j]] += 1;
+//                         if (corr_votes[idx[j]] > threshold) {
+//                             rejected.push_back(correspondences[idx[j] - erased]);
+//                             corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//                             correspondences.erase(correspondences.begin() + idx[j] - erased);
+//                             erased++;
+//                         }
+//                     }
+//                 }
 //                 continue;
 //             }
 //         }
@@ -680,6 +673,13 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //                 result.inlierfrac = fe->inlierFraction();
 //                 result.outlierfrac = fe->outlierFraction();
 //                 result.penalty = fe->penalty();
+//
+//                 // Set to 0 if it was the best match found
+//                 if ( this->correction ) {
+//                     for (size_t j = 0; j < this->sampleSize; j++) {
+//                         corr_votes[idx[j]] = 0;
+//                     }
+//                 }
 //             }
 //             // else if ( this->correction ) { // If inliers are too low
 //             //     int erased = 0;
@@ -694,26 +694,26 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //             //     }
 //             // }
 //
-//             // Add points to accepted vector
+//             // Subtract if it was within the inlier fraction
 //             if ( this->correction ) {
 //                 for (size_t j = 0; j < this->sampleSize; j++) {
-//                     accepted.push_back(correspondences[idx[j]]);
+//                     corr_votes[idx[j]] -= 1;
 //                 }
 //             }
 //
 //         }
-//         // else if ( this->correction ) { // If inliers are too low
-//         //     int erased = 0;
-//         //     for (size_t j = 0; j < this->sampleSize; j++) {
-//         //         corr_votes[idx[j]] += 1;
-//         //         // if (corr_votes[idx[j]] > threshold) {
-//         //         //     rejected.push_back(correspondences[idx[j] - erased]);
-//         //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-//         //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
-//         //         //     erased++;
-//         //         // }
-//         //     }
-//         // }
+//         else if ( this->correction ) { // If inliers are too low
+//             int erased = 0;
+//             for (size_t j = 0; j < this->sampleSize; j++) {
+//                 corr_votes[idx[j]] += 1;
+//                 if (corr_votes[idx[j]] > threshold) {
+//                     rejected.push_back(correspondences[idx[j] - erased]);
+//                     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
+//                     correspondences.erase(correspondences.begin() + idx[j] - erased);
+//                     erased++;
+//                 }
+//             }
+//         }
 //     }
 //
 //     // Get points from accepted and rejected correspondences
@@ -751,12 +751,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 //         distance_rejected.push_back( dist );
 //     }
 //     std::sort (distance_rejected.begin(), distance_rejected.end());
-//
-//     std::cout << "Accepted size: " << accepted.size() << '\n';
-//     // for (size_t i = 0; i < corr_votes.size(); i++) {
-//     //     if (corr_votes[i] > 0)
-//     //         std::cout << "\t" << corr_votes[i] << '\n';
-//     // }
 //
 //     // Write to file
 //     ofstream accepted_file;

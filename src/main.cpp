@@ -45,7 +45,7 @@ int main( int argc, const char** argv )
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)");
-    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis");
+    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
@@ -133,37 +133,28 @@ int main( int argc, const char** argv )
         // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( false );
-            benchmark.run( &ransac, "Base case" );
-            ransac.setPrerejectionD( true );
-            benchmark.run( &ransac, "Dissimilarity" );
-            ransac.setPrerejectionD( false );
-            ransac.setPrerejectionG( true );
-            benchmark.run( &ransac, "Geometric" );
-            ransac.setPrerejectionD( true );
-            ransac.setPrerejectionG( true );
-            benchmark.run( &ransac, "Both" );
-            // ransac.setPrerejectionD( false );
-            // ransac.setPrerejectionG( false );
-            // ransac.setCorrection( true );
-            // benchmark.run( &ransac, "Correction" );
-            // ransac.setPrerejectionD( true );
-            // ransac.setPrerejectionG( false );
-            // benchmark.run( &ransac, "CorrectionD" );
-            // ransac.setPrerejectionD( false );
-            // ransac.setPrerejectionG( true );
-            // ransac.setCorrection( true );
-            // benchmark.run( &ransac, "CorrectionG" );
-            // ransac.setPrerejectionD( true );
-            // benchmark.run( &ransac, "All" );
+            for ( size_t i = 0; i < 10; i++ ) {
+                ransac.setPrerejectionD( false );
+                ransac.setPrerejectionG( false );
+                benchmark.run( &ransac, "Base case " + std::to_string(i) );
+                ransac.setPrerejectionD( true );
+                benchmark.run( &ransac, "Dissimilarity " + std::to_string(i) );
+                ransac.setPrerejectionD( false );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "Geometric " + std::to_string(i) );
+                ransac.setPrerejectionD( true );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "Both " + std::to_string(i) );
 
-            ransac.setCorrection( true );
-            benchmark.run( &ransac, "Correction" );
+                // ransac.setCorrection( true );
+                // benchmark.run( &ransac, "Correction" );
 
-            benchmark.printResults();
-            // benchmark.printPrerejectionResults();
-            benchmark.clearResults();
+                benchmark.printResults();
+                benchmark.saveResults("../test_data/");
+                // benchmark.printPrerejectionResults();
+                benchmark.clearResults();
+                benchmark.generateNewSeed();
+            }
         }
      }
 

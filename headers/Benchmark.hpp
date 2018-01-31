@@ -167,6 +167,13 @@ namespace covis {
                     benchmarkPrerejection = _benchmarkPrerejection;
                 }
 
+                /**
+                 * Generates a new seed for the benchmark
+                 */
+                inline void generateNewSeed() {
+                    this->seed = std::time(0);
+                }
+
                 /** TODO FIX param
                  * Benchmarks a function on the specified data set
                  * Running multiple instance of benchmark will store each individual benchmark
@@ -181,6 +188,13 @@ namespace covis {
                  */
                 void printResults();
 
+                /**
+                 * Saves results of the benchmarks to .txt files
+                 * call @ref run() before calling this
+                 * @param save path
+                 */
+                void saveResults( std::string _path );
+
                 /** TODO FIX
                  * Print results of the benchmarks
                  * call @ref run() before calling this
@@ -190,9 +204,7 @@ namespace covis {
                 /**
                  * Clear results of the benchmarks
                  */
-                inline void
-                clearResults()
-                {
+                inline void clearResults() {
                     results.clear();
                 };
 
@@ -202,8 +214,10 @@ namespace covis {
                 struct Result
                 {
                     std::string name;
-                    std::vector<std::vector<binaryClassification> > prerejectionStats;
+                    std::vector<std::vector<double> > avgDistance;
+                    std::vector<std::vector<double> > medianDistance;
                     std::vector<std::vector<covis::core::Detection> > d;
+                    std::vector<std::vector<binaryClassification> > prerejectionStats;
                     std::vector<std::vector<double> > time;
                     double totalTime;
                 };
@@ -246,6 +260,9 @@ namespace covis {
 
                 /// ground truth poses
                 std::vector<std::vector<Eigen::Matrix4f> > poses;
+
+                /// mask designating which of the objects are present in the scene
+                std::vector<std::vector<bool> > objectMask;
 
                 /// correspondences
                 std::vector< std::vector<covis::core::Correspondence::VecPtr> > correspondences;
@@ -311,6 +328,22 @@ namespace covis {
                 */
                 void computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
                                             std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+
+                /**
+                * Compute median of vector
+                * @param vector
+                */
+                inline double
+                median( std::vector<double> v )
+                {
+                    size_t size = v.size();
+                    std::sort(v.begin(), v.end());
+
+                    if (size % 2 == 0)
+                        return (v[size / 2 - 1] + v[size / 2]) / 2;
+
+                    return v[size / 2];
+                }
 
         };
     }

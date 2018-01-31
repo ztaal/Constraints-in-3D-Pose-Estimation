@@ -59,11 +59,12 @@ void Benchmark::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
     for(size_t i = 0; i < dataset.size(); ++i) {
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
         (*sceneMesh).push_back(scene.scene);
-        for(size_t j = 0; j < scene.poses.size(); ++j) {
-            (*poses)[i].push_back( scene.poses[j] );
+        this->objectMask.push_back(scene.objectMask);
+        for( auto &pose : scene.poses ) {
+            (*poses)[i].push_back( pose );
         }
     }
-    COVIS_ASSERT(!objectMesh->empty() && !sceneMesh->empty());
+    COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() );
     this->objectLabels = dataset.getObjectLabels();
 }
 
@@ -190,34 +191,62 @@ void Benchmark::run( class ransac *instance, std::string funcName )
     // Benchmark
     {
         printf( "Benchmarking %s: \n", funcName.c_str() );
-        std::vector<std::vector<covis::core::Detection> > d( sceneCloud.size() );
-        std::vector<std::vector<double> > time( sceneCloud.size() );
+        std::vector<std::vector<double> > time( this->sceneCloud.size() );
+        std::vector<std::vector<double> > avgDistance( this->sceneCloud.size() );
+        std::vector<std::vector<double> > medianDistance( this->sceneCloud.size() );
+        std::vector<std::vector<covis::core::Detection> > d( this->sceneCloud.size() );
 
-        covis::core::ProgressDisplay pd( sceneCloud.size(), true );
+        covis::core::ProgressDisplay pd( this->sceneCloud.size(), true );
 
         // Start timer
         covis::core::Timer t;
 
         // Run through scenes and estimate pose of each object
-        for ( size_t i = 0; i < sceneCloud.size(); i++, ++pd ) {
-            d[i].resize( objectCloud.size() );
-            time[i].resize( objectCloud.size() );
+        for ( size_t i = 0; i < this->sceneCloud.size(); i++, ++pd ) {
+            d[i].resize( this->objectCloud.size() );
+            time[i].resize( this->objectCloud.size() );
+            avgDistance[i].resize( this->objectCloud.size() );
+            medianDistance[i].resize( this->objectCloud.size() );
             t.intermediate();
-            for ( size_t j = 0; j < objectCloud.size(); j++ ) {
+
+            for ( size_t j = 0; j < this->objectCloud.size(); j++ ) {
+                if ( !objectMask[i][j] ) // skip objects thats are not in the scene
+                    continue;
+
                 instance->setSource( this->objectCloud[j] );
                 instance->setTarget( this->sceneCloud[i] );
                 instance->setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
 
-                if ( this->benchmarkPrerejection )
-                    result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+                // if ( this->benchmarkPrerejection )
+                //     result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+                //
+                // if ( this->correction )
+                //     instance->benchmark_correction( this->poses[i][j] );
 
-                instance->benchmark_correction( this->poses[i][j] );
+                // Calculate distance from GT
+                CloudT gtCloud = *this->objectCloud[j];
+                CloudT poseCloud = *this->objectCloud[j];
+
+                covis::core::transform( poseCloud, d[i][j].pose );
+                covis::core::transform( gtCloud, this->poses[i][j] );
+
+                std::vector<double> distance;
+                for ( auto corr : *this->correspondences[i][j] )
+                    distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
+
+                std::sort (distance.begin(), distance.end());
+                medianDistance[i][j] = this->median( distance );
+
+                for ( auto &n : distance )
+                    avgDistance[i][j] += n;
+                avgDistance[i][j] = avgDistance[i][j] / distance.size();
 
                 if (this->verbose) {
                     COVIS_MSG( d[i][j].pose );
-                    visu::showDetection<PointT>( this->objectCloud[j], this->sceneCloud[i], d[i][j].pose );
+                    visu::showDetection<PointT>( this->objectCloud[j],
+                        this->sceneCloud[i], d[i][j].pose );
                 }
 
             }
@@ -225,6 +254,8 @@ void Benchmark::run( class ransac *instance, std::string funcName )
         result.d = d;
         result.time = time;
         result.name = funcName;
+        result.avgDistance = avgDistance;
+        result.medianDistance = medianDistance;
         result.totalTime = t.seconds();
     }
     // Store results of the Benchmark
@@ -243,24 +274,29 @@ void Benchmark::printResults()
         "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Data
-    std::vector<int> objSuccessful( objectCloud.size() );
-    std::vector<double> avgObjTime( objectCloud.size() );
-    std::vector<double> avgObjRMSE( objectCloud.size() );
-    std::vector<double> avgObjPenalty( objectCloud.size() );
-    std::vector<double> avgObjInliers( objectCloud.size() );
-    std::vector<double> stddevObjInliers( objectCloud.size() );
+    std::vector<int> objAttempt( this->objectCloud.size() );
+    std::vector<int> objSuccessful( this->objectCloud.size() );
+    std::vector<double> avgObjTime( this->objectCloud.size() );
+    std::vector<double> avgObjRMSE( this->objectCloud.size() );
+    std::vector<double> avgObjPenalty( this->objectCloud.size() );
+    std::vector<double> avgObjInliers( this->objectCloud.size() );
+    std::vector<double> stddevObjInliers( this->objectCloud.size() );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
         double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
         int successful = 0;
-        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
+        int totalIterations = 0;
+        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
+            objAttempt[i] = 0;
             objSuccessful[i] = 0;
-            double objTime = 0, objRMSE = 0, objInliers = 0, objPenalty = 0;
-            for ( unsigned int j = 0; j < sceneCloud.size(); j++ ) {
-                if ( result.d[j][i] ) {
-                    objTime += result.time[j][i];
+            double objRMSE = 0, objInliers = 0, objPenalty = 0;
+            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
+                totalIterations += objectMask[j][i];
+                objAttempt[i] += objectMask[j][i];
+                if ( result.d[j][i] && objectMask[j][i] ) {
+                    avgObjTime[i] += result.time[j][i];
                     objRMSE += result.d[j][i].rmse;
                     objPenalty += result.d[j][i].penalty;
                     objInliers += result.d[j][i].inlierfrac;
@@ -271,12 +307,11 @@ void Benchmark::printResults()
             avgPenalty += objPenalty;
             avgInliers += objInliers;
             successful += objSuccessful[i];
-            avgObjTime[i] = objTime;
             avgObjRMSE[i] = objRMSE / objSuccessful[i];
             avgObjPenalty[i] = objPenalty / objSuccessful[i];
             avgObjInliers[i] = objInliers / objSuccessful[i];
         }
-        int totalIterations = sceneCloud.size() * objectCloud.size();
+
         avgRMSE = avgRMSE / successful;
         avgInliers = avgInliers / successful;
         avgPenalty = avgPenalty / successful;
@@ -286,10 +321,10 @@ void Benchmark::printResults()
 
         // Calculate standard deviation
         double dist = 0;
-        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
+        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             double objDist = 0;
-            for ( unsigned int j = 0; j < sceneCloud.size(); j++ ) {
-                if ( result.d[j][i] ) {
+            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
+                if ( result.d[j][i] && objectMask[j][i] ) {
                     objDist += pow(result.d[j][i].inlierfrac - avgObjInliers[i], 2);
                     dist += pow(result.d[j][i].inlierfrac - avgInliers, 2);
                 }
@@ -305,9 +340,9 @@ void Benchmark::printResults()
             avgRMSE, avgPenalty, avgInliers, stddevInliers );
 
         // Print information about each object
-        for ( unsigned int i = 0; i < objectCloud.size(); i++ ) {
-            double objFailed = sceneCloud.size() - objSuccessful[i];
-            double objFailedPercent = (objFailed / sceneCloud.size()) * 100;
+        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
+            double objFailed = objAttempt[i] - objSuccessful[i];
+            double objFailedPercent = (objFailed / objAttempt[i]) * 100;
             printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\n",
                 objectLabels[i].c_str(), avgObjTime[i],
                 avgObjTime[i] / objSuccessful[i], objFailedPercent,
@@ -319,7 +354,6 @@ void Benchmark::printResults()
 
 void Benchmark::printPrerejectionResults()
 {
-
     int numPrerejction = this->results[0].prerejectionStats[0].size();
     std::vector<int> tp( numPrerejction ), tn( numPrerejction ), fp( numPrerejction ), fn( numPrerejction );
 
@@ -346,5 +380,39 @@ void Benchmark::printPrerejectionResults()
         printf( " \033[1m%-20s%20d%20d\033[m\n",
             "Negative outcome", fn[i], tn[i] );
         printf( "%s\n\n\n",std::string(115, '-').c_str() );
+    }
+}
+
+void Benchmark::saveResults( std::string path )
+{
+    // Sanity checks
+    COVIS_ASSERT_MSG( this->results.size() > 0,
+        "Run Benchmark() atleast once before calling saveResults( std::string )." );
+
+    for( auto &result : this->results ) {
+        ofstream file;
+        file.open( path + result.name + ".txt" );
+        file << result.name << "\n";
+        file << "Object,Time,Failed,RMSE,Penalty,InlierFrac,Avg Dist,Median Dist\n";
+
+        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
+            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
+                if ( objectMask[j][i] ) {
+                    if ( result.d[j][i] ) {
+                        file << objectLabels[i] << ",";
+                        file << result.time[j][i] << ",";
+                        file << "0,";
+                        file << result.d[j][i].rmse << ",";
+                        file << result.d[j][i].penalty << ",";
+                        file << result.d[j][i].inlierfrac << ",";
+                        file << result.avgDistance[j][i] << ",";
+                        file << result.medianDistance[j][i] << "\n";
+                    } else {
+                        file << "-,-,1,-,-,-,-,-\n";
+                    }
+                }
+            }
+        }
+        file.close();
     }
 }

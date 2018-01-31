@@ -110,23 +110,8 @@ covis::core::Detection ransac::estimate()
     if( correspondences.size() < this->sampleSize )
         return result;
 
-    // ofstream myfile;
-    // myfile.open ("../test.txt");
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
-
-        // Calculate threshold
-        double median1 = median( corr_votes );
-        // double F = original_size / (double)correspondences.size();
-        double F = original_size / (double)(correspondences.size() - inliers);
-        // double F = original_size / (double)(correspondences.size()*((iterations - i) / (double)iterations));
-        // int size = correspondences.size();
-
-        double threshold = median1 + F;
-        // printf("%d, %.3f, %.0f, %.3f, %d\n", i, threshold, median1, F, size);
-        // std::cout << i << ", " << threshold << ", " << median << ", " << F << ", " << size << '\n';
-        // if (i % 10 == 0)
-        //     myfile << i << ", "<< threshold << ", "<< median1 << ", "<< F << ", "<< size << "\n";
 
         // Create a sample from data
         std::vector<size_t> idx = covis::core::randidx( correspondences.size(), this->sampleSize );
@@ -140,17 +125,6 @@ covis::core::Detection ransac::estimate()
         // Prerejection dissimilarity
         if ( this->prerejection_d ) {
             if( !poly.thresholdPolygon( sources, targets ) ) {
-                if ( this->correction ) {
-                    int erased = 0;
-                    for (size_t j = 0; j < this->sampleSize; j++) {
-                        corr_votes[idx[j]] += 1;
-                        if (corr_votes[idx[j]] > threshold) {
-                            corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                            correspondences.erase(correspondences.begin() + idx[j] - erased);
-                            erased++;
-                        }
-                    }
-                }
                 continue;
             }
         }
@@ -158,17 +132,6 @@ covis::core::Detection ransac::estimate()
         // Prerejection geometric
         if ( this->prerejection_g ) {
             if( !geom.geometricConstraint( sources, targets ) ) {
-                if ( this->correction ) {
-                    int erased = 0;
-                    for (size_t j = 0; j < this->sampleSize; j++) {
-                        corr_votes[idx[j]] += 1;
-                        if (corr_votes[idx[j]] > threshold) {
-                            corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                            correspondences.erase(correspondences.begin() + idx[j] - erased);
-                            erased++;
-                        }
-                    }
-                }
                 continue;
             }
         }
@@ -204,27 +167,6 @@ covis::core::Detection ransac::estimate()
                 result.inlierfrac = fe->inlierFraction();
                 result.outlierfrac = fe->outlierFraction();
                 result.penalty = fe->penalty();
-                // inliers = fe->inlierFraction();
-            } else if ( this->correction ) { // If inliers are too low
-                int erased = 0;
-                for (size_t j = 0; j < this->sampleSize; j++) {
-                    corr_votes[idx[j]] += 1;
-                    if (corr_votes[idx[j]] > threshold) {
-                        corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                        correspondences.erase(correspondences.begin() + idx[j] - erased);
-                        erased++;
-                    }
-                }
-            }
-        } else if ( this->correction ) { // If inliers are too low
-            int erased = 0;
-            for (size_t j = 0; j < this->sampleSize; j++) {
-                corr_votes[idx[j]] += 1;
-                if (corr_votes[idx[j]] > threshold) {
-                    corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-                    correspondences.erase(correspondences.begin() + idx[j] - erased);
-                    erased++;
-                }
             }
         }
     }
@@ -247,10 +189,6 @@ covis::core::Detection ransac::estimate()
         const std::vector<bool>& keep = nms.getMask();
         _allDetections = core::mask(_allDetections, keep);
     }
-    // if ( this->correction )
-        // std::cout << "Size: " << this->corr->size() << "\t" << correspondences.size() << '\n';
-
-    // myfile.close();
     return result;
 }
 

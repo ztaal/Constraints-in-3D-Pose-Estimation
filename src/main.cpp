@@ -133,18 +133,38 @@ int main( int argc, const char** argv )
         // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            for ( size_t i = 0; i < 10; i++ ) {
+            for ( size_t i = 0; i < 1; i++ ) {
                 ransac.setPrerejectionD( false );
                 ransac.setPrerejectionG( false );
                 benchmark.run( &ransac, "Base case " + std::to_string(i) );
-                ransac.setPrerejectionD( true );
-                benchmark.run( &ransac, "Dissimilarity " + std::to_string(i) );
-                ransac.setPrerejectionD( false );
+
                 ransac.setPrerejectionG( true );
                 benchmark.run( &ransac, "Geometric " + std::to_string(i) );
+
                 ransac.setPrerejectionD( true );
+                ransac.setPrerejectionG( false );
+                ransac.setPrerejectionSimilarity( 0.95 );
+                benchmark.run( &ransac, "0.95 Dissimilarity " + std::to_string(i) );
                 ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "Both " + std::to_string(i) );
+                benchmark.run( &ransac, "0.95 Both " + std::to_string(i) );
+
+                ransac.setPrerejectionG( false );
+                ransac.setPrerejectionSimilarity( 0.9 );
+                benchmark.run( &ransac, "0.9 Dissimilarity " + std::to_string(i) );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "0.9 Both " + std::to_string(i) );
+
+                ransac.setPrerejectionG( false );
+                ransac.setPrerejectionSimilarity( 0.8 );
+                benchmark.run( &ransac, "0.8 Dissimilarity " + std::to_string(i) );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "0.8 Both " + std::to_string(i) );
+
+                ransac.setPrerejectionG( false );
+                ransac.setPrerejectionSimilarity( 0.7 );
+                benchmark.run( &ransac, "0.7 Dissimilarity " + std::to_string(i) );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "0.7 Both " + std::to_string(i) );
 
                 // ransac.setCorrection( true );
                 // benchmark.run( &ransac, "Correction" );

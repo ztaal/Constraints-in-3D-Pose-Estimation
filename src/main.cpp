@@ -133,7 +133,7 @@ int main( int argc, const char** argv )
         // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            for ( size_t i = 0; i < 1; i++ ) {
+            for ( size_t i = 0; i < 10; i++ ) {
                 ransac.setPrerejectionD( false );
                 ransac.setPrerejectionG( false );
                 benchmark.run( &ransac, "Base case " + std::to_string(i) );

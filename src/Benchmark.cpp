@@ -408,7 +408,7 @@ void Benchmark::saveResults( std::string path )
                         file << result.avgDistance[j][i] << ",";
                         file << result.medianDistance[j][i] << "\n";
                     } else {
-                        file << "-,-,1,-,-,-,-,-\n";
+                        file << "-,1,-,-,-,-,-\n";
                     }
                 }
             }

@@ -127,11 +127,55 @@ namespace pcl
             unsigned int sampleSize = source_indices.size();
             std::vector<double> source_sides( sampleSize );
             std::vector<double> target_sides( sampleSize );
-            for (unsigned int j = 0; j < sampleSize; j++) {
-                source_sides.push_back( computeSquaredDistance( input_->points[source_indices[j]],
-                                        input_->points[source_indices[(j + 1) % sampleSize]]) );
-                target_sides.push_back( computeSquaredDistance(target_->points[target_indices[j]],
-                                        target_->points[target_indices[(j + 1) % sampleSize]]) );
+            for (unsigned int i = 0; i < sampleSize; i++) {
+                source_sides.push_back( computeSquaredDistance( input_->points[source_indices[i]],
+                                        input_->points[source_indices[(i + 1) % sampleSize]]) );
+                target_sides.push_back( computeSquaredDistance(target_->points[target_indices[i]],
+                                        target_->points[target_indices[(i + 1) % sampleSize]]) );
+            }
+            while ( source_sides.size() > 1 ) {
+                int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );
+                int jdx = std::distance( target_sides.begin(), std::max_element(target_sides.begin(), target_sides.end()) );
+                if ( idx != jdx ) {
+                    return false;
+                } else if ( source_sides.size() > 1 ) {
+                    source_sides.erase( source_sides.begin() + idx );
+                    target_sides.erase( target_sides.begin() + jdx );
+                }
+            }
+            return true;
+        }
+
+        /** \brief Geometric rejection of a single polygon, indexed by two point index vectors
+          * \param source_indices indices of polygon points in \ref input_
+          * \param target_indices corresponding indices of polygon points in \ref target_
+          * \return true if the longests, second longest, ..., etc. edge index of the target corresponds to equivalent index in the source
+          */
+        inline bool
+        geometricConstraint2 (const std::vector<int>& source_indices, const std::vector<int>& target_indices)
+        {
+            unsigned int sampleSize = source_indices.size();
+            std::vector<double> source_sides( sampleSize );
+            std::vector<double> target_sides( sampleSize );
+            for (unsigned int i = 0; i < sampleSize; i++) {
+                source_sides.push_back( computeSquaredDistance( input_->points[source_indices[i]],
+                                        input_->points[source_indices[(i + 1) % sampleSize]]) );
+                target_sides.push_back( computeSquaredDistance(target_->points[target_indices[i]],
+                                        target_->points[target_indices[(i + 1) % sampleSize]]) );
+            }
+            if ( sampleSize == 3 ) {
+                if ( source_sides[0] == source_sides[1] && source_sides[1] == source_sides[2] ) {
+                    return true;
+                } else if ( source_sides[0] == source_sides[1] ) {
+                    source_sides.erase( source_sides.begin() );
+                    target_sides.erase( target_sides.begin() );
+                } else if ( source_sides[1] == source_sides[2] ) {
+                    source_sides.erase( source_sides.begin() + 1 );
+                    target_sides.erase( target_sides.begin() + 1 );
+                } else if ( source_sides[0] == source_sides[2] ) {
+                    source_sides.erase( source_sides.begin() );
+                    target_sides.erase( target_sides.begin() );
+                }
             }
             while ( source_sides.size() > 1 ) {
                 int idx = std::distance( source_sides.begin(), std::max_element(source_sides.begin(), source_sides.end()) );

@@ -134,6 +134,10 @@ covis::core::Detection ransac::estimate()
             if( !geom.geometricConstraint( sources, targets ) ) {
                 continue;
             }
+        } else if ( this->prerejection_g2 ) {
+            if( !geom.geometricConstraint2( sources, targets ) ) {
+                continue;
+            }
         }
 
         // Sample a pose model

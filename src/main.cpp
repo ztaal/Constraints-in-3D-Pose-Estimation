@@ -1,10 +1,7 @@
 
  /**  Todo list:
-  * TODO Try to have a vector for positive votes and use it to change thresholdPolygon
   * TODO Create a start up period where no corr are removed only votes are cast
   * TODO Create threshold for when to stop ransac based on the angle of the corr (when it is low we stop)
-  * TODO Test constraints on UWA
-  * TODO Test with 3+ sample size
   * TODO Start working on pose priors
   */
 
@@ -133,38 +130,42 @@ int main( int argc, const char** argv )
         // benchmark.setBenchmarkPrerejection( true );
 
         if( po.getFlag("benchmark") ) {
-            for ( size_t i = 0; i < 10; i++ ) {
+            for ( size_t i = 0; i < 1; i++ ) {
                 ransac.setPrerejectionD( false );
                 ransac.setPrerejectionG( false );
                 benchmark.run( &ransac, "Base case " + std::to_string(i) );
 
                 ransac.setPrerejectionG( true );
                 benchmark.run( &ransac, "Geometric " + std::to_string(i) );
+                ransac.setPrerejectionG( false );
+                ransac.setPrerejectionG2( true );
+                benchmark.run( &ransac, "Geometric2 " + std::to_string(i) );
+                ransac.setPrerejectionG2( false );
 
                 ransac.setPrerejectionD( true );
-                ransac.setPrerejectionG( false );
-                ransac.setPrerejectionSimilarity( 0.95 );
-                benchmark.run( &ransac, "0.95 Dissimilarity " + std::to_string(i) );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "0.95 Both " + std::to_string(i) );
+                // ransac.setPrerejectionG( false );
+                // ransac.setPrerejectionSimilarity( 0.95 );
+                // benchmark.run( &ransac, "0.95 Dissimilarity " + std::to_string(i) );
+                // ransac.setPrerejectionG( true );
+                // benchmark.run( &ransac, "0.95 Both " + std::to_string(i) );
 
                 ransac.setPrerejectionG( false );
                 ransac.setPrerejectionSimilarity( 0.9 );
                 benchmark.run( &ransac, "0.9 Dissimilarity " + std::to_string(i) );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "0.9 Both " + std::to_string(i) );
+                // ransac.setPrerejectionG( true );
+                // benchmark.run( &ransac, "0.9 Both " + std::to_string(i) );
 
-                ransac.setPrerejectionG( false );
-                ransac.setPrerejectionSimilarity( 0.8 );
-                benchmark.run( &ransac, "0.8 Dissimilarity " + std::to_string(i) );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "0.8 Both " + std::to_string(i) );
-
-                ransac.setPrerejectionG( false );
-                ransac.setPrerejectionSimilarity( 0.7 );
-                benchmark.run( &ransac, "0.7 Dissimilarity " + std::to_string(i) );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "0.7 Both " + std::to_string(i) );
+                // ransac.setPrerejectionG( false );
+                // ransac.setPrerejectionSimilarity( 0.8 );
+                // benchmark.run( &ransac, "0.8 Dissimilarity " + std::to_string(i) );
+                // ransac.setPrerejectionG( true );
+                // benchmark.run( &ransac, "0.8 Both " + std::to_string(i) );
+                //
+                // ransac.setPrerejectionG( false );
+                // ransac.setPrerejectionSimilarity( 0.7 );
+                // benchmark.run( &ransac, "0.7 Dissimilarity " + std::to_string(i) );
+                // ransac.setPrerejectionG( true );
+                // benchmark.run( &ransac, "0.7 Both " + std::to_string(i) );
 
                 // ransac.setCorrection( true );
                 // benchmark.run( &ransac, "Correction" );

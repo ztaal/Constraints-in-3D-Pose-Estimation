@@ -33,6 +33,7 @@
 
 // Geometric prerejector
 #include "../headers/correspondence_rejection_geometric.h"
+#include "../headers/correspondence_rejection_poly.h"
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
@@ -218,6 +219,14 @@ namespace covis {
                 }
 
                 /**
+                 * Set the geometric prerejection flag
+                 * @param prerejection geometric flag
+                 */
+                void setPrerejectionG2( bool _prerejection_g2 ) {
+                    prerejection_g2 = _prerejection_g2;
+                }
+
+                /**
                  * Set the geometric prerejection flag TODO FIX
                  * @param prerejection geometric flag
                  */
@@ -295,6 +304,9 @@ namespace covis {
 
                 /// Prereject geometric flag
                 bool prerejection_g = false;
+
+                /// Prereject geometric2 flag
+                bool prerejection_g2 = false;
 
                 /// TODO FIX
                 bool correction = false;

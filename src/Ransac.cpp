@@ -299,7 +299,7 @@ std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_trut
 }
 
 
-
+/* Ransac with correction (2 steps: sort good from bad then normal ransac) */
 void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 {
     // detect::PointSearch<PointT>::Ptr _search;
@@ -468,7 +468,7 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 
 
 
-
+/* Ransac with correction (voting scheme and threshold) */
 // void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 // {
 //     // detect::PointSearch<PointT>::Ptr _search;

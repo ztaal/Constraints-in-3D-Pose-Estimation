@@ -1,7 +1,5 @@
 
  /**  Todo list:
-  * TODO Create a start up period where no corr are removed only votes are cast
-  * TODO Create threshold for when to stop ransac based on the angle of the corr (when it is low we stop)
   * TODO Start working on pose priors
   */
 
@@ -12,6 +10,7 @@ using namespace covis;
 // Ransac
 #include "../headers/Ransac.hpp"
 #include "../headers/Benchmark.hpp"
+#include "../headers/Correspondence.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -37,6 +36,7 @@ int main( int argc, const char** argv )
     po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)");
     po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
     po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
+    po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
@@ -58,7 +58,12 @@ int main( int argc, const char** argv )
 
     // Misc.
     po.addFlag('v', "verbose", "show additional information");
-    po.addFlag('v', "visualize", "show additional results");
+    po.addFlag('z', "visualize", "show additional results");
+
+    // Ransac
+    po.addFlag('r', "ransac", "ransac");
+    po.addOption("query", 'q', "models", "mesh or point cloud file for query model");
+    po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
 
     // Benchmark
     po.addFlag('b', "benchmark", "benchmark ransac");
@@ -100,9 +105,10 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
+        core::ScopedTimer t("RANSAC");
         class covis::detect::ransac ransac;
 
-        // ransac variables
+        // Ransac variables
         ransac.setIterations( iterations );
         ransac.setSampleSize( sampleSize );
         ransac.setInlierThreshold( inlierThreshold );
@@ -116,66 +122,94 @@ int main( int argc, const char** argv )
         ransac.setPrerejectionSimilarity( prerejectionSimilarty );
         ransac.setVerbose( verbose );
 
+        if( po.getFlag("ransac") ) {
+
+            class covis::detect::correspondence correspondence;
+
+            // Correspondence variables
+            correspondence.setResolution( po.getValue<double>("resolution") );
+            correspondence.setObjectScale( po.getValue<double>("object-scale") );
+            correspondence.setFar( po.getValue<double>("far") );
+            correspondence.setRadiusNormal( po.getValue<double>("radius-normal") );
+            correspondence.setResolutionQuery( po.getValue<double>("resolution-query") );
+            correspondence.setResolutionTarget( po.getValue<double>("resolution-target") );
+            correspondence.setRadiusFeature( po.getValue<double>("radius-feature") );
+            correspondence.setCutoff( po.getValue<double>("cutoff") );
+            correspondence.setFeature( po.getValue("feature") );
+            correspondence.setVerbose( verbose );
+
+            covis::core::Correspondence::VecPtr corr = correspondence.compute( po.getValue("query"), po.getValue("target") );
+
+            // ransac.setSource( po.getValue("query") );
+            // ransac.setTarget( po.getValue("target") );
+            // ransac.setCorrespondences( this->correspondences[i][j] );
+            // d = ransac.estimate();
+            //
+            // if(d) {
+            //     if(refine) {
+            //         core::ScopedTimer t( "ICP" );
+            //         pcl::IterativeClosestPoint<PointT,PointT> icp;
+            //         icp.setInputSource( queryCloud );
+            //         icp.setInputTarget( targetCloud );
+            //         icp.setMaximumIterations( icpIterations );
+            //         icp.setMaxCorrespondenceDistance( inlierThreshold );
+            //         pcl::PointCloud<PointT> tmp;
+            //         icp.align( tmp, d.pose );
+            //         if(icp.hasConverged()) {
+            //             d.pose = icp.getFinalTransformation();
+            //             d.rmse = icp.getFitnessScore();
+            //         } else {
+            //             COVIS_MSG_WARN("ICP failed!");
+            //         }
+            //     }
+            //
+            //     // Print result and visualize
+            //     COVIS_MSG(d);
+            //     if(visualize)
+            //         visu::showDetection(queryMesh, targetMesh, d.pose);
+            // } else {
+            //     COVIS_MSG_WARN("RANSAC failed!");
+            // }
+        }
+
         // Benchmark variables
-        covis::detect::Benchmark benchmark;
-        benchmark.setRootPath( po.getValue("root-path") );
-        benchmark.setObjectDir( po.getValue("object-dir") );
-        benchmark.setSceneDir( po.getValue("scene-dir") );
-        benchmark.setPoseDir( po.getValue("pose-dir") );
-        benchmark.setObjExt( po.getValue("object-ext") );
-        benchmark.setSceneExt( po.getValue("scene-ext") );
-        benchmark.setPoseExt( po.getValue("pose-ext") );
-        benchmark.setPoseSep( po.getValue("pose-sep") );
-        benchmark.setVerbose( verbose );
-        // benchmark.setBenchmarkPrerejection( true );
-
         if( po.getFlag("benchmark") ) {
-            for ( size_t i = 0; i < 1; i++ ) {
-                ransac.setPrerejectionD( false );
-                ransac.setPrerejectionG( false );
-                benchmark.run( &ransac, "Base case " + std::to_string(i) );
+            covis::detect::Benchmark benchmark;
+            benchmark.setRootPath( po.getValue("root-path") );
+            benchmark.setObjectDir( po.getValue("object-dir") );
+            benchmark.setSceneDir( po.getValue("scene-dir") );
+            benchmark.setPoseDir( po.getValue("pose-dir") );
+            benchmark.setObjExt( po.getValue("object-ext") );
+            benchmark.setSceneExt( po.getValue("scene-ext") );
+            benchmark.setPoseExt( po.getValue("pose-ext") );
+            benchmark.setPoseSep( po.getValue("pose-sep") );
 
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "Geometric " + std::to_string(i) );
-                ransac.setPrerejectionG( false );
-                ransac.setPrerejectionG2( true );
-                benchmark.run( &ransac, "Geometric2 " + std::to_string(i) );
-                ransac.setPrerejectionG2( false );
+            benchmark.setResolution( po.getValue<double>("resolution") );
+            benchmark.setObjectScale( po.getValue<double>("object-scale") );
+            benchmark.setFar( po.getValue<double>("far") );
+            benchmark.setRadiusNormal( po.getValue<double>("radius-normal") );
+            benchmark.setResolutionQuery( po.getValue<double>("resolution-query") );
+            benchmark.setResolutionTarget( po.getValue<double>("resolution-target") );
+            benchmark.setRadiusFeature( po.getValue<double>("radius-feature") );
+            benchmark.setCutoff( po.getValue<double>("cutoff") );
+            benchmark.setFeature( po.getValue<double>("feature") );
+            benchmark.setVerbose( verbose );
+            // benchmark.setBenchmarkPrerejection( true );
 
+            // for ( size_t i = 0; i < 1; i++ ) {
                 ransac.setPrerejectionD( true );
-                // ransac.setPrerejectionG( false );
-                // ransac.setPrerejectionSimilarity( 0.95 );
-                // benchmark.run( &ransac, "0.95 Dissimilarity " + std::to_string(i) );
-                // ransac.setPrerejectionG( true );
-                // benchmark.run( &ransac, "0.95 Both " + std::to_string(i) );
-
-                ransac.setPrerejectionG( false );
-                ransac.setPrerejectionSimilarity( 0.9 );
-                benchmark.run( &ransac, "0.9 Dissimilarity " + std::to_string(i) );
-                // ransac.setPrerejectionG( true );
-                // benchmark.run( &ransac, "0.9 Both " + std::to_string(i) );
-
-                // ransac.setPrerejectionG( false );
-                // ransac.setPrerejectionSimilarity( 0.8 );
-                // benchmark.run( &ransac, "0.8 Dissimilarity " + std::to_string(i) );
-                // ransac.setPrerejectionG( true );
-                // benchmark.run( &ransac, "0.8 Both " + std::to_string(i) );
-                //
-                // ransac.setPrerejectionG( false );
-                // ransac.setPrerejectionSimilarity( 0.7 );
-                // benchmark.run( &ransac, "0.7 Dissimilarity " + std::to_string(i) );
-                // ransac.setPrerejectionG( true );
-                // benchmark.run( &ransac, "0.7 Both " + std::to_string(i) );
+                ransac.setPrerejectionG( true );
+                benchmark.run( &ransac, "Base case" );
 
                 // ransac.setCorrection( true );
                 // benchmark.run( &ransac, "Correction" );
 
                 benchmark.printResults();
-                benchmark.saveResults("../test_data/");
+                // benchmark.saveResults("../test_data/");
                 // benchmark.printPrerejectionResults();
                 benchmark.clearResults();
                 benchmark.generateNewSeed();
-            }
+            // }
         }
      }
 

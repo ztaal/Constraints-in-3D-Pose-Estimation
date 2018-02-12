@@ -58,19 +58,18 @@ namespace covis {
          */
         class Benchmark {
             public:
-                // TODO add missing functions
-                /** TODO FIX LIST
+                /**
                  * Constructor: set default parameters:
-                 *   - resolution (@ref setIterations()): 1
-                 *   - objectScale (@ref setInlierThreshold()): 1
-                 *   - far (@ref setInlierFraction()): 1
-                 *   - radiusNormal (@ref setSampleSize()): 5
-                 *   - resolutionQuery (@ref setReestimatePose()): 5
-                 *   - resolutionTarget (@ref setFullEvaluation()): 5
-                 *   - radiusFeature (@ref setPrerejection()): 25
-                 *   - cutoff (@ref setPrerejection()): 50
-                 *   - feature (@ref setPrerejection()): si
-                 *   - verbose (@ref setPrerejection()): false
+                 *   - resolution (@ref setResolution()): 1
+                 *   - objectScale (@ref setObjectScale()): 1
+                 *   - far (@ref setFar()): -1
+                 *   - radiusNormal (@ref setRadiusNormal()): 5
+                 *   - resolutionQuery (@ref setResolutionQuery()): 5
+                 *   - resolutionTarget (@ref setResolutionTarget()): 5
+                 *   - radiusFeature (@ref setRadiusFeature()): 25
+                 *   - cutoff (@ref setCutoff()): 50
+                 *   - feature (@ref setFeature()): si
+                 *   - verbose (@ref setVerbose()): false
                  */
                 Benchmark() :
                     resolution(1),
@@ -152,6 +151,78 @@ namespace covis {
                 }
 
                 /**
+                 * Set resolution
+                 * @param resolution
+                 */
+                inline void setResolution(bool _resolution) {
+                    resolution = _resolution;
+                }
+
+                /**
+                 * Set object scale
+                 * @param objectScale
+                 */
+                inline void setObjectScale(bool _objectScale) {
+                    objectScale = _objectScale;
+                }
+
+                /**
+                 * Set far
+                 * @param far
+                 */
+                inline void setFar(bool _far) {
+                    far = _far;
+                }
+
+                /**
+                 * Set radiusNormal
+                 * @param radiusNormal
+                 */
+                inline void setRadiusNormal(bool _radiusNormal) {
+                    radiusNormal = _radiusNormal;
+                }
+
+                /**
+                 * Set resolutionQuery
+                 * @param resolutionQuery
+                 */
+                inline void setResolutionQuery(bool _resolutionQuery) {
+                    resolutionQuery = _resolutionQuery;
+                }
+
+                /**
+                 * Set resolutionTarget
+                 * @param resolutionTarget
+                 */
+                inline void setResolutionTarget(bool _resolutionTarget) {
+                    resolutionTarget = _resolutionTarget;
+                }
+
+                /**
+                 * Set radiusFeature
+                 * @param radiusFeature
+                 */
+                inline void setRadiusFeature(bool _radiusFeature) {
+                    radiusFeature = _radiusFeature;
+                }
+
+                /**
+                 * Set cutoff %
+                 * @param cutoff
+                 */
+                inline void setCutoff(bool _cutoff) {
+                    cutoff = _cutoff;
+                }
+
+                /**
+                 * Set feature type
+                 * @param feature
+                 */
+                inline void setFeature(bool _feature) {
+                    feature = _feature;
+                }
+
+                /**
                  * Set verbose flag for printing
                  * @param verbose verbose flag
                  */
@@ -160,8 +231,8 @@ namespace covis {
                 }
 
                 /**
-                 * TODO FIX
-                 * @param verbose verbose flag
+                 * Set benchmarkPrerejection flag
+                 * @param benchmarkPrerejection
                  */
                 inline void setBenchmarkPrerejection(bool _benchmarkPrerejection) {
                     benchmarkPrerejection = _benchmarkPrerejection;
@@ -171,14 +242,14 @@ namespace covis {
                  * Generates a new seed for the benchmark
                  */
                 inline void generateNewSeed() {
-                    this->seed = std::time(0);
+                    seed = std::time(0);
                 }
 
-                /** TODO FIX param
+                /**
                  * Benchmarks a function on the specified data set
                  * Running multiple instance of benchmark will store each individual benchmark
                  * To see the result of the benchmark call @ref @printResults()
-                 * @param target target point set
+                 * @param ransac instance, benchmark name
                  */
                 void run( class ransac *instance, std::string _funcName );
 
@@ -195,8 +266,8 @@ namespace covis {
                  */
                 void saveResults( std::string _path );
 
-                /** TODO FIX
-                 * Print results of the benchmarks
+                /**
+                 * Print results of the prerejection benchmarks
                  * call @ref run() before calling this
                  */
                 void printPrerejectionResults();
@@ -282,19 +353,19 @@ namespace covis {
                 /// Depth of which target points are considered
                 float far;
 
-                /// TODO FIX
+                /// Normal estimation radius in mr
                 float radiusNormal;
 
-                /// TODO FIX
+                /// Resolution of query features in mr
                 float resolutionQuery;
 
-                /// TODO FIX
+                /// Resolution of target features in mr
                 float resolutionTarget;
 
-                /// TODO FIX
+                /// Feature estimation radius
                 float radiusFeature;
 
-                /// TODO FIX
+                /// Cutoff % for the best correspondences for RANSAC based on feature distance
                 float cutoff;
 
                 /// Feature used for feature matching
@@ -303,7 +374,7 @@ namespace covis {
                 /// Verbose flag
                 bool verbose;
 
-                /// TODO FIX
+                /// Prerejection benchmark flag
                 bool benchmarkPrerejection;
 
                 /**
@@ -312,7 +383,7 @@ namespace covis {
                 void initialize();
 
                 /**
-                 * Load data set
+                 * Load data set with grount truth poses
                  * @param pointer to objectMesh
                  * @param pointer to sceneMesh
                  * @param pointer to poses

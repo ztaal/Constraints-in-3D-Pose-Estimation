@@ -204,7 +204,7 @@ namespace covis {
 
                 /**
                  * Set the dissimilarity prerejection flag
-                 * @param prerejection dissimilarity flag
+                 * @param prerejection_d
                  */
                 void setPrerejectionD( bool _prerejection_d ) {
                     prerejection_d = _prerejection_d;
@@ -212,23 +212,23 @@ namespace covis {
 
                 /**
                  * Set the geometric prerejection flag
-                 * @param prerejection geometric flag
+                 * @param prerejection_g
                  */
                 void setPrerejectionG( bool _prerejection_g ) {
                     prerejection_g = _prerejection_g;
                 }
 
                 /**
-                 * Set the geometric prerejection flag
-                 * @param prerejection geometric flag
+                 * Set the geometric prerejection 2 flag
+                 * @param prerejection_g2
                  */
                 void setPrerejectionG2( bool _prerejection_g2 ) {
                     prerejection_g2 = _prerejection_g2;
                 }
 
                 /**
-                 * Set the geometric prerejection flag TODO FIX
-                 * @param prerejection geometric flag
+                 * Set the correction flag
+                 * @param correction
                  */
                 void setCorrection( bool _correction ) {
                     correction = _correction;
@@ -245,14 +245,16 @@ namespace covis {
                  */
                 core::Detection estimate();
 
-                /**
-                 * Benchmark RANSAC TODO FIX
-                 */
+                 /**
+                  * Benchmark prerejection methods and returns a binaryClassification
+                  * containing information about the quality of the prerejection method
+                  * @return binaryClassification
+                  */
                 std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
 
 
                 /**
-                 * Benchmark correction TODO FIX
+                 * Benchmark the correction method
                  */
                 void benchmark_correction( Eigen::Matrix4f ground_truth );
 
@@ -305,10 +307,10 @@ namespace covis {
                 /// Prereject geometric flag
                 bool prerejection_g = false;
 
-                /// Prereject geometric2 flag
+                /// Prereject geometric 2 flag
                 bool prerejection_g2 = false;
 
-                /// TODO FIX
+                /// Correction method flag
                 bool correction = false;
         };
     }

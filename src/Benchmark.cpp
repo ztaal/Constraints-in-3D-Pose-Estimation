@@ -77,17 +77,14 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
         this->resolution = 0;
-    float diag = 0;
     for(size_t i = 0; i < objectMesh->size(); ++i) {
         if(!resolutionInput)
             this->resolution += detect::computeResolution((*objectMesh)[i]) * this->objectScale;
-        diag += detect::computeDiagonal((*objectMesh)[i]) * this->objectScale;
         if(objectScale != 1)
             (*objectMesh)[i] = filter::scale((*objectMesh)[i], this->objectScale);
     }
     if(!resolutionInput)
         this->resolution /= float( objectMesh->size() );
-    diag /= float(objectMesh->size());
 
     const float nrad =
             this->radiusNormal > 0.0 ?
@@ -175,7 +172,7 @@ void Benchmark::initialize()
     std::vector<util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
     loadData( &objectMesh, &sceneMesh, &this->poses );
     computeCorrespondence( &objectMesh, &sceneMesh );
-    this->seed = std::time(0);
+    generateNewSeed();
 }
 
 void Benchmark::run( class ransac *instance, std::string funcName )
@@ -248,7 +245,6 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                     visu::showDetection<PointT>( this->objectCloud[j],
                         this->sceneCloud[i], d[i][j].pose );
                 }
-
             }
         }
         result.d = d;

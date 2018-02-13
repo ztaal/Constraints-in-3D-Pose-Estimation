@@ -29,15 +29,14 @@
 
 using namespace covis::detect;
 
-covis::core::Correspondence::VecPtr correspondence::compute( std::string query, std::string target )
+void correspondence::compute( std::string query, std::string target )
 {
     // Load models
-    std::cout << "Fisk" << '\n';
     pcl::PolygonMesh::Ptr queryMesh(new pcl::PolygonMesh);
     pcl::PolygonMesh::Ptr targetMesh(new pcl::PolygonMesh);
     util::load( query, *queryMesh);
     util::load( target, *targetMesh);
-    std::cout << "Fisk" << '\n';
+
     // Surfaces and normals
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
@@ -50,7 +49,6 @@ covis::core::Correspondence::VecPtr correspondence::compute( std::string query, 
             this->radiusNormal * this->resolution :
             2 * this->resolution;
 
-    std::cout << "Fisk" << '\n';
     // Features and matching
     const float resQuery =
             this->resolutionQuery > 0.0 ?
@@ -65,40 +63,40 @@ covis::core::Correspondence::VecPtr correspondence::compute( std::string query, 
             this->radiusFeature * this->resolution :
             25 * this->resolution;
     COVIS_ASSERT( this->cutoff > 0 && this->cutoff <= 100 );
-    std::cout << "Fisk" << '\n';
 
     // Preprocess
     pcl::PointCloud<PointT>::Ptr querySurf, targetSurf;
-    std::cout << "Fisk" << '\n';
     querySurf = filter::preprocess<PointT>(queryMesh, 1, true, this->far, this->resolution, nrad, false, false, verbose);
-    std::cout << "Fisk" << '\n';
     targetSurf = filter::preprocess<PointT>(targetMesh, 1, true, this->far, this->resolution, nrad, false, false, verbose);
-    std::cout << "Fisk" << '\n';
     COVIS_ASSERT( !querySurf->empty() && !targetSurf->empty() );
-    std::cout << "Fisk" << '\n';
 
     // Generate feature points
-    CloudT::Ptr queryCloud, targetCloud;
-    queryCloud = filter::downsample<PointT>(querySurf, resQuery);
-    targetCloud = filter::downsample<PointT>(targetSurf, resTarget);
+    this->queryCloud = filter::downsample<PointT>(querySurf, resQuery);
+    this->targetCloud = filter::downsample<PointT>(targetSurf, resTarget);
     COVIS_ASSERT( !queryCloud->empty() && !targetCloud->empty() );
-    std::cout << "Fisk" << '\n';
+
+    // Filter x-value TODO Remove cropping only used to make tests easier
+    pcl::PassThrough<PointT> pass;
+    pass.setInputCloud(targetCloud);
+    pass.setFilterFieldName("x");
+    pass.setFilterLimits (-150, 200);
+    pass.filter (*targetCloud);
+    // Filter y-value TODO Remove cropping only used to make tests easier
+    pass.setFilterFieldName("y");
+    pass.setFilterLimits (-200, 50);
+    pass.filter (*targetCloud);
 
     // Compute features
     feature::MatrixT objectFeat, sceneFeat;
-    objectFeat = feature::computeFeature<PointT>(this->feature, queryCloud, querySurf, frad);
-    sceneFeat = feature::computeFeature<PointT>(this->feature, targetCloud, targetSurf, frad);
-    std::cout << "Fisk" << '\n';
+    objectFeat = feature::computeFeature<PointT>(this->feature, this->queryCloud, querySurf, frad);
+    sceneFeat = feature::computeFeature<PointT>(this->feature, this->targetCloud, targetSurf, frad);
 
      // Match features
-    covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(objectFeat, sceneFeat);
-    std::cout << "Fisk" << '\n';
+    this->corr = detect::computeRatioMatches(objectFeat, sceneFeat);
 
     // Sort correspondences and cutoff at <cutoff> %
     if(this->cutoff < 100) {
-        covis::core::sort(*correspondences);
-        correspondences->resize(correspondences->size() * this->cutoff / 100);
+        covis::core::sort(*this->corr);
+        this->corr->resize(this->corr->size() * this->cutoff / 100);
     }
-    std::cout << "Fisk" << '\n';
-    return correspondences;
 }

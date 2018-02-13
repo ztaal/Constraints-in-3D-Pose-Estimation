@@ -82,7 +82,7 @@ namespace covis {
                  * Set resolution
                  * @param resolution
                  */
-                inline void setResolution(bool _resolution) {
+                inline void setResolution(float _resolution) {
                     resolution = _resolution;
                 }
 
@@ -90,7 +90,7 @@ namespace covis {
                  * Set object scale
                  * @param objectScale
                  */
-                inline void setObjectScale(bool _objectScale) {
+                inline void setObjectScale(float _objectScale) {
                     objectScale = _objectScale;
                 }
 
@@ -98,7 +98,7 @@ namespace covis {
                  * Set far
                  * @param far
                  */
-                inline void setFar(bool _far) {
+                inline void setFar(float _far) {
                     far = _far;
                 }
 
@@ -106,7 +106,7 @@ namespace covis {
                  * Set radiusNormal
                  * @param radiusNormal
                  */
-                inline void setRadiusNormal(bool _radiusNormal) {
+                inline void setRadiusNormal(float _radiusNormal) {
                     radiusNormal = _radiusNormal;
                 }
 
@@ -114,7 +114,7 @@ namespace covis {
                  * Set resolutionQuery
                  * @param resolutionQuery
                  */
-                inline void setResolutionQuery(bool _resolutionQuery) {
+                inline void setResolutionQuery(float _resolutionQuery) {
                     resolutionQuery = _resolutionQuery;
                 }
 
@@ -122,7 +122,7 @@ namespace covis {
                  * Set resolutionTarget
                  * @param resolutionTarget
                  */
-                inline void setResolutionTarget(bool _resolutionTarget) {
+                inline void setResolutionTarget(float _resolutionTarget) {
                     resolutionTarget = _resolutionTarget;
                 }
 
@@ -130,7 +130,7 @@ namespace covis {
                  * Set radiusFeature
                  * @param radiusFeature
                  */
-                inline void setRadiusFeature(bool _radiusFeature) {
+                inline void setRadiusFeature(float _radiusFeature) {
                     radiusFeature = _radiusFeature;
                 }
 
@@ -138,7 +138,7 @@ namespace covis {
                  * Set cutoff %
                  * @param cutoff
                  */
-                inline void setCutoff(bool _cutoff) {
+                inline void setCutoff(size_t _cutoff) {
                     cutoff = _cutoff;
                 }
 
@@ -158,13 +158,46 @@ namespace covis {
                     verbose = _verbose;
                 }
 
+                /**
+                * Returns the query point cloud
+                 * @return queryCloud
+                 */
+                inline CloudT::Ptr getQuery( ) {
+                    return queryCloud;
+                }
+
+                /**
+                * Returns the target point cloud
+                 * @return targetCloud
+                 */
+                inline CloudT::Ptr getTarget( ) {
+                    return targetCloud;
+                }
+
+                /**
+                * Returns the correspondences
+                 * @return corr
+                 */
+                inline covis::core::Correspondence::VecPtr getCorrespondence( ) {
+                    return corr;
+                }
+
                 /** TODO FIX
                  * Set verbose flag for printing
                  * @param verbose flag
                  */
-                covis::core::Correspondence::VecPtr compute( std::string query, std::string target );
+                void compute( std::string query, std::string target );
 
             private:
+
+                /// object cloud
+                CloudT::Ptr queryCloud;
+
+                /// scene cloud
+                CloudT::Ptr targetCloud;
+
+                /// correspondences
+                covis::core::Correspondence::VecPtr corr;
 
                 /// Resolution of scene and object clouds
                 float resolution;
@@ -188,7 +221,7 @@ namespace covis {
                 float radiusFeature;
 
                 /// Cutoff % for the best correspondences for RANSAC based on feature distance
-                float cutoff;
+                size_t cutoff;
 
                 /// Feature used for feature matching
                 std::string feature;

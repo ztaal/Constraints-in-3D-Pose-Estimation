@@ -154,7 +154,7 @@ namespace covis {
                  * Set resolution
                  * @param resolution
                  */
-                inline void setResolution(bool _resolution) {
+                inline void setResolution(float _resolution) {
                     resolution = _resolution;
                 }
 
@@ -162,7 +162,7 @@ namespace covis {
                  * Set object scale
                  * @param objectScale
                  */
-                inline void setObjectScale(bool _objectScale) {
+                inline void setObjectScale(float _objectScale) {
                     objectScale = _objectScale;
                 }
 
@@ -170,7 +170,7 @@ namespace covis {
                  * Set far
                  * @param far
                  */
-                inline void setFar(bool _far) {
+                inline void setFar(float _far) {
                     far = _far;
                 }
 
@@ -178,7 +178,7 @@ namespace covis {
                  * Set radiusNormal
                  * @param radiusNormal
                  */
-                inline void setRadiusNormal(bool _radiusNormal) {
+                inline void setRadiusNormal(float _radiusNormal) {
                     radiusNormal = _radiusNormal;
                 }
 
@@ -186,7 +186,7 @@ namespace covis {
                  * Set resolutionQuery
                  * @param resolutionQuery
                  */
-                inline void setResolutionQuery(bool _resolutionQuery) {
+                inline void setResolutionQuery(float _resolutionQuery) {
                     resolutionQuery = _resolutionQuery;
                 }
 
@@ -194,7 +194,7 @@ namespace covis {
                  * Set resolutionTarget
                  * @param resolutionTarget
                  */
-                inline void setResolutionTarget(bool _resolutionTarget) {
+                inline void setResolutionTarget(float _resolutionTarget) {
                     resolutionTarget = _resolutionTarget;
                 }
 
@@ -202,7 +202,7 @@ namespace covis {
                  * Set radiusFeature
                  * @param radiusFeature
                  */
-                inline void setRadiusFeature(bool _radiusFeature) {
+                inline void setRadiusFeature(float _radiusFeature) {
                     radiusFeature = _radiusFeature;
                 }
 
@@ -210,7 +210,7 @@ namespace covis {
                  * Set cutoff %
                  * @param cutoff
                  */
-                inline void setCutoff(bool _cutoff) {
+                inline void setCutoff(size_t _cutoff) {
                     cutoff = _cutoff;
                 }
 
@@ -218,7 +218,7 @@ namespace covis {
                  * Set feature type
                  * @param feature
                  */
-                inline void setFeature(bool _feature) {
+                inline void setFeature(std::string _feature) {
                     feature = _feature;
                 }
 
@@ -366,7 +366,7 @@ namespace covis {
                 float radiusFeature;
 
                 /// Cutoff % for the best correspondences for RANSAC based on feature distance
-                float cutoff;
+                size_t cutoff;
 
                 /// Feature used for feature matching
                 std::string feature;

@@ -28,12 +28,15 @@ int main( int argc, const char** argv )
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
     po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)");
+    // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // TODO Change back
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
     po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames);
-    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)");
-    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)");
+    po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
+    po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
+    // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
+    // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // TODO Change back
     po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
     po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
     po.addOption("object-scale", 1, "scale of object (1 is default)");
@@ -41,20 +44,21 @@ int main( int argc, const char** argv )
 
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)");
+    // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
+    po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
-    po.addFlag('d', "prerejectionD", "enable prerejection during RANSAC");
-    po.addFlag('g', "prerejectionG", "enable prerejection during RANSAC");
+    po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
+    po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");
     po.addOption("prerejection-similarity", 's', 0.9, "prerejection similarity threshold in [0,1]");
     po.addFlag('c', "no-occlusion-reasoning", "disable occlusion reasoning during pose hypothesis evaluation");
     po.addOption("view-axis", 'x', 2, "if occlusion reasoning is on (default), assume axis x, y, or z (0, 1 or 2) to point in the direction of the view");
 
     // Refinement
     po.addFlag("refine", "apply pose refinement of the RANSAC result using ICP");
-    po.addOption("icp-iterations", 25, "number of ICP iterations");
+    po.addOption("icp-iterations", 100, "number of ICP iterations");
 
     // Misc.
     po.addFlag('v', "verbose", "show additional information");
@@ -87,10 +91,8 @@ int main( int argc, const char** argv )
     const int sampleSize = po.getValue<int>("sample-size");
     float res = po.getValue<float>("resolution");
     const size_t iterations = po.getValue<size_t>("iterations");
-    const float inlierThreshold =
-            (po.getValue<float>("inlier-threshold") > 0.0 ?
-                    po.getValue<float>("inlier-threshold") * res :
-                    5 * res);
+    const float inlierThreshold = (po.getValue<float>("inlier-threshold") > 0.0 ?
+                    po.getValue<float>("inlier-threshold") * res : 5 * res);
     const float inlierFraction = po.getValue<float>("inlier-fraction");
     const bool noReestimate = po.getFlag("no-reestimate");
     const bool fullEvaluation = po.getFlag("full-evaluation");
@@ -105,7 +107,6 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
-        core::ScopedTimer t("RANSAC");
         class covis::detect::ransac ransac;
 
         // Ransac variables
@@ -127,49 +128,66 @@ int main( int argc, const char** argv )
             class covis::detect::correspondence correspondence;
 
             // Correspondence variables
-            correspondence.setResolution( po.getValue<double>("resolution") );
-            correspondence.setObjectScale( po.getValue<double>("object-scale") );
-            correspondence.setFar( po.getValue<double>("far") );
-            correspondence.setRadiusNormal( po.getValue<double>("radius-normal") );
-            correspondence.setResolutionQuery( po.getValue<double>("resolution-query") );
-            correspondence.setResolutionTarget( po.getValue<double>("resolution-target") );
-            correspondence.setRadiusFeature( po.getValue<double>("radius-feature") );
-            correspondence.setCutoff( po.getValue<double>("cutoff") );
+            correspondence.setResolution( po.getValue<float>("resolution") );
+            correspondence.setObjectScale( po.getValue<float>("object-scale") );
+            correspondence.setFar( po.getValue<float>("far") );
+            correspondence.setRadiusNormal( po.getValue<float>("radius-normal") );
+            correspondence.setResolutionQuery( po.getValue<float>("resolution-query") );
+            correspondence.setResolutionTarget( po.getValue<float>("resolution-target") );
+            correspondence.setRadiusFeature( po.getValue<float>("radius-feature") );
+            correspondence.setCutoff( po.getValue<size_t>("cutoff") );
             correspondence.setFeature( po.getValue("feature") );
             correspondence.setVerbose( verbose );
 
-            covis::core::Correspondence::VecPtr corr = correspondence.compute( po.getValue("query"), po.getValue("target") );
+            correspondence.compute( po.getValue("query"), po.getValue("target") );
+            CloudT::Ptr queryCloud = correspondence.getQuery();
+            CloudT::Ptr targetCloud = correspondence.getTarget();
+            covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
 
-            // ransac.setSource( po.getValue("query") );
-            // ransac.setTarget( po.getValue("target") );
-            // ransac.setCorrespondences( this->correspondences[i][j] );
-            // d = ransac.estimate();
-            //
-            // if(d) {
-            //     if(refine) {
-            //         core::ScopedTimer t( "ICP" );
-            //         pcl::IterativeClosestPoint<PointT,PointT> icp;
-            //         icp.setInputSource( queryCloud );
-            //         icp.setInputTarget( targetCloud );
-            //         icp.setMaximumIterations( icpIterations );
-            //         icp.setMaxCorrespondenceDistance( inlierThreshold );
-            //         pcl::PointCloud<PointT> tmp;
-            //         icp.align( tmp, d.pose );
-            //         if(icp.hasConverged()) {
-            //             d.pose = icp.getFinalTransformation();
-            //             d.rmse = icp.getFitnessScore();
-            //         } else {
-            //             COVIS_MSG_WARN("ICP failed!");
-            //         }
-            //     }
-            //
-            //     // Print result and visualize
-            //     COVIS_MSG(d);
-            //     if(visualize)
-            //         visu::showDetection(queryMesh, targetMesh, d.pose);
-            // } else {
-            //     COVIS_MSG_WARN("RANSAC failed!");
-            // }
+            // Eigen::Matrix4f gt;
+            // gt <<   0.95813400,  -0.28295901,   -0.04372250,    34.94834213,
+            //        -0.22011200,  -0.63028598,   -0.74450701,  -114.54591885,
+            //         0.18310800,   0.72296202,   -0.66618103,   890.36032314,
+            //         0,           0,         0,          1;
+            // visu::showDetection<PointT>( queryCloud, targetCloud, gt );
+
+            ransac.setSource( queryCloud );
+            ransac.setTarget( targetCloud );
+            ransac.setCorrespondences( corr );
+            d = ransac.estimate();
+
+            if(d) {
+                // if(refine) {
+                    pcl::IterativeClosestPoint<PointT,PointT> icp;
+                    icp.setInputSource( queryCloud );
+                    icp.setInputTarget( targetCloud );
+                    icp.setMaximumIterations( po.getValue<size_t>("icp-iterations") );
+                    icp.setMaxCorrespondenceDistance( inlierThreshold );
+                    pcl::PointCloud<PointT> tmp;
+                    icp.align( tmp, d.pose );
+                    if(icp.hasConverged()) {
+                        d.pose = icp.getFinalTransformation();
+                        d.rmse = icp.getFitnessScore();
+                    } else {
+                        COVIS_MSG_WARN("ICP failed!");
+                    }
+                // }
+
+                // Visualize
+                COVIS_MSG(d);
+                if( po.getFlag("visualize") ) {
+                    // Load models
+                    // pcl::PolygonMesh::Ptr queryMesh(new pcl::PolygonMesh);
+                    // pcl::PolygonMesh::Ptr targetMesh(new pcl::PolygonMesh);
+                    // util::load( po.getValue("query"), *queryMesh);
+                    // util::load( po.getValue("target"), *targetMesh);
+                    // visu::showDetection(queryMesh, targetMesh, d.pose);
+                    // visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
+                    visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
+                }
+            } else {
+                COVIS_MSG_WARN("RANSAC failed!");
+            }
         }
 
         // Benchmark variables
@@ -184,15 +202,15 @@ int main( int argc, const char** argv )
             benchmark.setPoseExt( po.getValue("pose-ext") );
             benchmark.setPoseSep( po.getValue("pose-sep") );
 
-            benchmark.setResolution( po.getValue<double>("resolution") );
-            benchmark.setObjectScale( po.getValue<double>("object-scale") );
-            benchmark.setFar( po.getValue<double>("far") );
-            benchmark.setRadiusNormal( po.getValue<double>("radius-normal") );
-            benchmark.setResolutionQuery( po.getValue<double>("resolution-query") );
-            benchmark.setResolutionTarget( po.getValue<double>("resolution-target") );
-            benchmark.setRadiusFeature( po.getValue<double>("radius-feature") );
-            benchmark.setCutoff( po.getValue<double>("cutoff") );
-            benchmark.setFeature( po.getValue<double>("feature") );
+            benchmark.setResolution( po.getValue<float>("resolution") );
+            benchmark.setObjectScale( po.getValue<float>("object-scale") );
+            benchmark.setFar( po.getValue<float>("far") );
+            benchmark.setRadiusNormal( po.getValue<float>("radius-normal") );
+            benchmark.setResolutionQuery( po.getValue<float>("resolution-query") );
+            benchmark.setResolutionTarget( po.getValue<float>("resolution-target") );
+            benchmark.setRadiusFeature( po.getValue<float>("radius-feature") );
+            benchmark.setCutoff( po.getValue<size_t>("cutoff") );
+            benchmark.setFeature( po.getValue("feature") );
             benchmark.setVerbose( verbose );
             // benchmark.setBenchmarkPrerejection( true );
 

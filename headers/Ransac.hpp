@@ -245,16 +245,23 @@ namespace covis {
                  */
                 core::Detection estimate();
 
+                /**
+                 * TODO FIX
+                 * @return best detection, if any was found - this can be verified directly in a boolean expression:
+                 */
+                core::Detection posePriors();
+
                  /**
                   * Benchmark prerejection methods and returns a binaryClassification
                   * containing information about the quality of the prerejection method
+                  * @param ground truth pose
                   * @return binaryClassification
                   */
                 std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
 
-
                 /**
                  * Benchmark the correction method
+                 * @param ground truth pose
                  */
                 void benchmark_correction( Eigen::Matrix4f ground_truth );
 

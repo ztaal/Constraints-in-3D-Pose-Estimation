@@ -193,7 +193,96 @@ covis::core::Detection ransac::estimate()
         const std::vector<bool>& keep = nms.getMask();
         _allDetections = core::mask(_allDetections, keep);
     }
+
+
     return result;
+}
+
+
+covis::core::Detection ransac::posePriors()
+{
+   // detect::PointSearch<PointT>::Ptr _search;
+   covis::core::Detection::Vec _allDetections;
+
+   // Sanity checks
+   COVIS_ASSERT(this->source && this->target && this->corr);
+   bool allEmpty = true;
+   for(size_t i = 0; i < this->corr->size(); ++i) {
+       if (!(*this->corr)[i].empty()) {
+           allEmpty = false;
+           break;
+       }
+   }
+   COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
+   COVIS_ASSERT(this->sampleSize >= 3);
+   COVIS_ASSERT(this->iterations > 0);
+   COVIS_ASSERT(this->inlierThreshold > 0);
+   COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
+
+   core::Detection result;
+
+   // Instantiate pose sampler
+   covis::detect::PoseSampler<PointT> poseSampler;
+   poseSampler.setSource( this->source );
+   poseSampler.setTarget( this->target );
+   std::vector<int> sources( this->sampleSize );
+   std::vector<int> targets( this->sampleSize );
+
+   sources[0] = 1248;
+   targets[0] = 1063;
+   sources[1] = 1248;
+   targets[1] = 1063;
+   sources[2] = 1248;
+   targets[2] = 1063;
+
+   // sources[1] = 1824;
+   // targets[1] = 1224;
+   // sources[2] = 945;
+   // targets[2] = 1806;
+
+   // Sample a pose model
+   Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+   // Query: 1248	Target: 1063
+   // Query: 1824	Target: 1224
+   // Query: 945	Target: 1806
+
+   Eigen::Matrix4f gt;
+   // gt <<   0.95813400,  -0.28295901,   -0.04372250,  this->source->points[sources[0]].x - this->target->points[targets[0]].x,
+   //        -0.22011200,  -0.63028598,   -0.74450701,  this->source->points[sources[0]].y - this->target->points[targets[0]].y,
+   //         0.18310800,   0.72296202,   -0.66618103,  this->source->points[sources[0]].z - this->target->points[targets[0]].z,
+   //         0,           0,         0,          1;
+   // gt <<   1,  0,   0,  this->source->points[sources[0]].x - this->target->points[targets[0]].x,
+   //         0,  1,   0,  this->source->points[sources[0]].y - this->target->points[targets[0]].y,
+   //         0,  0,   1,  this->source->points[sources[0]].z - this->target->points[targets[0]].z,
+   //         0,  0,   0,  1;
+   // visu::showDetection<PointT>( this->source, this->target, gt );
+
+   // Remove largest plane
+   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+   pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+   pcl::SACSegmentation<PointT> seg;
+   seg.setOptimizeCoefficients(true);
+   seg.setModelType(pcl::SACMODEL_PLANE);
+   seg.setMethodType(pcl::SAC_RANSAC);
+   seg.setMaxIterations(1000);
+   seg.setDistanceThreshold(10);
+
+   // Create the filtering object
+   pcl::ExtractIndices<PointT> extract;
+   seg.setInputCloud(this->target);
+   seg.segment(*inliers, *coefficients);
+
+   // Extract the inliers
+   extract.setInputCloud(this->target);
+   extract.setIndices(inliers);
+   extract.setNegative(true);
+   extract.filter(*this->target);
+
+   visu::showDetection<PointT>( this->source, this->target, pose );
+
+   result.pose = pose;
+
+   return result;
 }
 
 

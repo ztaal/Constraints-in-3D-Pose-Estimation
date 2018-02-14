@@ -32,7 +32,7 @@ int main( int argc, const char** argv )
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
-    po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames);
+    po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
     // po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
     // po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
     po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
@@ -43,7 +43,7 @@ int main( int argc, const char** argv )
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
-    // Estimation ppfhistfull
+    // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
     po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
@@ -153,10 +153,17 @@ int main( int argc, const char** argv )
             //         0,           0,         0,          1;
             // visu::showDetection<PointT>( queryCloud, targetCloud, gt );
 
+
+            // Query: 1248	Target: 1063
+            // Query: 1824	Target: 1224
+            // Query: 945	Target: 1806
+
+
             ransac.setSource( queryCloud );
             ransac.setTarget( targetCloud );
             ransac.setCorrespondences( corr );
-            d = ransac.estimate();
+            d = ransac.posePriors();
+            // d = ransac.estimate();
 
             if(d) {
                 // if(refine) {

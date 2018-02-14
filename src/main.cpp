@@ -27,25 +27,27 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)");
+    po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // TODO Change back
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
     po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames);
-    po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
-    po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
-    // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
-    // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // TODO Change back
-    po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
+    // po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
+    // po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
+    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
+    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // TODO Change back
+    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)");
+    // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
     po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
-    // Estimation
+    // Estimation ppfhistfull
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
-    po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
+    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
+    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
@@ -58,7 +60,7 @@ int main( int argc, const char** argv )
 
     // Refinement
     po.addFlag("refine", "apply pose refinement of the RANSAC result using ICP");
-    po.addOption("icp-iterations", 100, "number of ICP iterations");
+    po.addOption("icp-iterations", 1000, "number of ICP iterations");
 
     // Misc.
     po.addFlag('v', "verbose", "show additional information");

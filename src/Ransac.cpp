@@ -199,93 +199,185 @@ covis::core::Detection ransac::estimate()
 }
 
 
+Eigen::Matrix3f ortogonal_basis(pcl::ModelCoefficients::Ptr coefficients)
+{
+    // Create ortogonal basis
+    double a = coefficients->values[0];
+    double b = coefficients->values[1];
+    double c = coefficients->values[2];
+    Eigen::Vector3f z(a, b, c);
+    Eigen::Vector3f y(0, -c, b);
+    Eigen::Vector3f x = z.cross(y);
+    Eigen::Matrix3f frame;
+    frame.col(0) = x;
+    frame.col(1) = y;
+    frame.col(2) = z;
+
+    return frame;
+}
+
 covis::core::Detection ransac::posePriors()
 {
-   // detect::PointSearch<PointT>::Ptr _search;
-   covis::core::Detection::Vec _allDetections;
+    // detect::PointSearch<PointT>::Ptr _search;
+    covis::core::Detection::Vec _allDetections;
 
-   // Sanity checks
-   COVIS_ASSERT(this->source && this->target && this->corr);
-   bool allEmpty = true;
-   for(size_t i = 0; i < this->corr->size(); ++i) {
-       if (!(*this->corr)[i].empty()) {
-           allEmpty = false;
-           break;
-       }
-   }
-   COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-   COVIS_ASSERT(this->sampleSize >= 3);
-   COVIS_ASSERT(this->iterations > 0);
-   COVIS_ASSERT(this->inlierThreshold > 0);
-   COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
+    // Sanity checks
+    COVIS_ASSERT(this->source && this->target && this->corr);
+    bool allEmpty = true;
+    for(size_t i = 0; i < this->corr->size(); ++i) {
+        if (!(*this->corr)[i].empty()) {
+            allEmpty = false;
+            break;
+        }
+    }
+    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
+    COVIS_ASSERT(this->sampleSize >= 3);
+    COVIS_ASSERT(this->iterations > 0);
+    COVIS_ASSERT(this->inlierThreshold > 0);
+    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
 
-   core::Detection result;
+    core::Detection result;
 
-   // Instantiate pose sampler
-   covis::detect::PoseSampler<PointT> poseSampler;
-   poseSampler.setSource( this->source );
-   poseSampler.setTarget( this->target );
-   std::vector<int> sources( this->sampleSize );
-   std::vector<int> targets( this->sampleSize );
+    // Instantiate pose sampler
+    covis::detect::PoseSampler<PointT> poseSampler;
+    poseSampler.setSource( this->source );
+    poseSampler.setTarget( this->target );
+    std::vector<int> sources( this->sampleSize );
+    std::vector<int> targets( this->sampleSize );
 
-   sources[0] = 1248;
-   targets[0] = 1063;
-   sources[1] = 1248;
-   targets[1] = 1063;
-   sources[2] = 1248;
-   targets[2] = 1063;
+    sources[0] = 1248;
+    targets[0] = 1063;
+    sources[1] = 1248;
+    targets[1] = 1063;
+    sources[2] = 1248;
+    targets[2] = 1063;
 
-   // sources[1] = 1824;
-   // targets[1] = 1224;
-   // sources[2] = 945;
-   // targets[2] = 1806;
+    // sources[1] = 1824;
+    // targets[1] = 1224;
+    // sources[2] = 945;
+    // targets[2] = 1806;
 
-   // Sample a pose model
-   Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
-   // Query: 1248	Target: 1063
-   // Query: 1824	Target: 1224
-   // Query: 945	Target: 1806
+    // Sample a pose model
+    Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+    // Query: 1248	Target: 1063
+    // Query: 1824	Target: 1224
+    // Query: 945	Target: 1806
 
-   Eigen::Matrix4f gt;
-   // gt <<   0.95813400,  -0.28295901,   -0.04372250,  this->source->points[sources[0]].x - this->target->points[targets[0]].x,
-   //        -0.22011200,  -0.63028598,   -0.74450701,  this->source->points[sources[0]].y - this->target->points[targets[0]].y,
-   //         0.18310800,   0.72296202,   -0.66618103,  this->source->points[sources[0]].z - this->target->points[targets[0]].z,
-   //         0,           0,         0,          1;
-   // gt <<   1,  0,   0,  this->source->points[sources[0]].x - this->target->points[targets[0]].x,
-   //         0,  1,   0,  this->source->points[sources[0]].y - this->target->points[targets[0]].y,
-   //         0,  0,   1,  this->source->points[sources[0]].z - this->target->points[targets[0]].z,
-   //         0,  0,   0,  1;
-   // visu::showDetection<PointT>( this->source, this->target, gt );
+    Eigen::Matrix4f gt;
+    // gt <<   0.95813400,  -0.28295901,   -0.04372250,  this->target->points[targets[0]].x - this->source->points[sources[0]].x,
+    //        -0.22011200,  -0.63028598,   -0.74450701,  this->target->points[targets[0]].y - this->source->points[sources[0]].y,
+    //         0.18310800,   0.72296202,   -0.66618103,  this->target->points[targets[0]].z - this->source->points[sources[0]].z,
+    //         0,           0,         0,          1;
+    // gt <<   1,  0,   0,  this->target->points[targets[0]].x - this->source->points[sources[0]].x,
+    //         0,  1,   0,  this->target->points[targets[0]].y - this->source->points[sources[0]].y,
+    //         0,  0,   1,  this->target->points[targets[0]].z - this->source->points[sources[0]].z,
+    //         0,  0,   0,  1;
+    // visu::showDetection<PointT>( this->source, this->target, gt );
 
-   // Remove largest plane
-   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-   pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-   pcl::SACSegmentation<PointT> seg;
-   seg.setOptimizeCoefficients(true);
-   seg.setModelType(pcl::SACMODEL_PLANE);
-   seg.setMethodType(pcl::SAC_RANSAC);
-   seg.setMaxIterations(1000);
-   seg.setDistanceThreshold(10);
+    // Find largest plane
+    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
+    pcl::SACSegmentation<PointT> seg;
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_PLANE);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setMaxIterations(1000);
+    seg.setDistanceThreshold(10);
+    seg.setInputCloud(this->target);
+    seg.segment(*inliers, *coefficients);
 
-   // Create the filtering object
-   pcl::ExtractIndices<PointT> extract;
-   seg.setInputCloud(this->target);
-   seg.segment(*inliers, *coefficients);
+    // Print plane coefficients
+    std::cout << "\n" << coefficients->values[0] << "x + " << coefficients->values[1]
+        << "y + " << coefficients->values[2] << "z + " << coefficients->values[3] << " = 0\n";
 
-   // Extract the inliers
-   extract.setInputCloud(this->target);
-   extract.setIndices(inliers);
-   extract.setNegative(true);
-   extract.filter(*this->target);
+    // Compute surface normals for the two matched correspondence
+    pcl::NormalEstimation<PointT, pcl::Normal> ne;
+    pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());
+    ne.setRadiusSearch(15);
+    ne.setSearchMethod (tree);
+    pcl::PointCloud<pcl::Normal>::Ptr source_normals (new pcl::PointCloud<pcl::Normal>);
+    pcl::PointCloud<pcl::Normal>::Ptr target_normals (new pcl::PointCloud<pcl::Normal>);
+    ne.setInputCloud (this->source);
+    ne.compute (*source_normals);
+    ne.setInputCloud (this->target);
+    ne.compute (*target_normals);
 
-   visu::showDetection<PointT>( this->source, this->target, pose );
+    // Print surface normals
+    std::cout << "x: " << this->source->points[sources[0]].normal_x << "\ty: " <<
+        this->source->points[sources[0]].normal_y << "\tz: " << this->source->points[sources[0]].normal_z << '\n';
+    std::cout << "x: " << this->target->points[targets[0]].normal_x << "\ty: " <<
+        this->target->points[targets[0]].normal_y << "\tz: " << this->target->points[targets[0]].normal_z << '\n';
 
-   // Links
+    // Create ortogonal basis
+    Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
+
+    // Rotate query to fit target plane
+    Eigen::Affine3f rotation = Eigen::Affine3f::Identity();
+    rotation.rotate(target_frame);
+
+    // Subtract the correspondence to rotate around it
+    Eigen::Vector3f corrPoint(this->source->points[sources[0]].x,
+                                this->source->points[sources[0]].y,
+                                this->source->points[sources[0]].z);
+    rotation.translation() = corrPoint - (target_frame * corrPoint);
+
+    // Apply transformation
+    Eigen::Affine3f translation = Eigen::Affine3f::Identity();
+    Eigen::Matrix4f transformation = (translation * rotation).matrix();
+    pose *= transformation;
+    // visu::showDetection<PointT>( this->source, this->target, pose );
+
+    // Project normals onto plane
+    Eigen::Vector3f source_normal(this->source->points[sources[0]].normal_x, this->source->points[sources[0]].normal_y, this->source->points[sources[0]].normal_z);
+    Eigen::Vector3f target_normal(this->target->points[targets[0]].normal_x, this->target->points[targets[0]].normal_y, this->target->points[targets[0]].normal_z);
+    Eigen::Vector3f plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+    Eigen::Vector3f source_projected = source_normal - source_normal.dot(plane_normal) * plane_normal;
+    Eigen::Vector3f target_projected = target_normal - target_normal.dot(plane_normal) * plane_normal;
+
+    // Find rotation between projected normals
+    // https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
+    // https://gist.github.com/peteristhegreat/3b76d5169d7b9fc1e333
+    Eigen::Vector3f v = source_projected.cross(target_projected);
+    Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+    Eigen::Matrix3f ssc(3, 3);
+    ssc << 0, -v(3), v(2), v(3), 0, -v(1), -v(2), v(1), 0;
+    Eigen::Matrix3f R = I + ssc + (ssc * ssc) * (1 - source_projected.dot(target_projected)) / (v.norm() * v.norm());
+    Eigen::Affine3f projected_rotation;
+    projected_rotation = R;
+
+    // Apply rotation
+    Eigen::Matrix4f projected_transformation = (translation * projected_rotation).matrix();
+    pose *= projected_transformation;
+    visu::showDetection<PointT>( this->source, this->target, pose );
+
+    // // Creates the visualization object
+    // pcl::PointXYZ test = pcl::PointXYZ(this->target->points[targets[0]].x + coefficients->values[0],
+    //     this->target->points[targets[0]].y + coefficients->values[1],
+    //     this->target->points[targets[0]].z + coefficients->values[2]);
+    //
+    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    // viewer->setBackgroundColor (0, 0, 0);
+    // viewer->addCoordinateSystem (1.0, "global");
+    //
+    // // viewer->addPointCloud<PointT> (this->target, "sample cloud");
+    // viewer->addPointCloudNormals<PointT, pcl::Normal> (this->target, target_normals, 1, 5, "target normals");
+    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+    //
+    // // viewer->addPointCloud<PointT> (this->target, "sample cloud");
+    // viewer->addArrow(test, this->target->points[targets[0]], 0.5, 0, 0, false, "Arrow1");
+    // // viewer->addArrow(this->target->points[targets[0]], test, 0.5, 0, 0, false, "Arrow1");
+    // while (!viewer->wasStopped ()) {
+    //     viewer->spinOnce (100);
+    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    // }
 
 
-   result.pose = pose;
+    // visu::showDetection<PointT>( this->source, this->target, pose );
 
-   return result;
+
+    result.pose = pose;
+
+    return result;
 }
 
 

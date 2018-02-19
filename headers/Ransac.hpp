@@ -30,6 +30,7 @@
 
 // Covis
 #include <covis/covis.h>
+#include <pcl/sample_consensus/sac_model_plane.h>
 
 // Geometric prerejector
 #include "../headers/correspondence_rejection_geometric.h"

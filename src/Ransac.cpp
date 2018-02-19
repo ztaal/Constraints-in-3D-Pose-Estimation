@@ -280,6 +280,9 @@ covis::core::Detection ransac::posePriors()
 
    visu::showDetection<PointT>( this->source, this->target, pose );
 
+   // Links
+
+
    result.pose = pose;
 
    return result;

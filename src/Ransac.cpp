@@ -258,7 +258,7 @@ covis::core::Detection ransac::posePriors()
     // targets[2] = 1806;
 
     // Sample a pose model
-    Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
+    // Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
     // Query: 1248	Target: 1063
     // Query: 1824	Target: 1224
     // Query: 945	Target: 1806
@@ -323,8 +323,11 @@ covis::core::Detection ransac::posePriors()
 
     // Apply transformation
     Eigen::Affine3f translation = Eigen::Affine3f::Identity();
+    translation.translation() << this->target->points[targets[0]].x - this->source->points[sources[0]].x,
+                            this->target->points[targets[0]].y - this->source->points[sources[0]].y,
+                            this->target->points[targets[0]].z - this->source->points[sources[0]].z;
     Eigen::Matrix4f transformation = (translation * rotation).matrix();
-    pose *= transformation;
+    Eigen::Matrix4f pose = transformation;
     // visu::showDetection<PointT>( this->source, this->target, pose );
 
     // Project normals onto plane
@@ -346,8 +349,8 @@ covis::core::Detection ransac::posePriors()
     projected_rotation = R;
 
     // Apply rotation
-    Eigen::Matrix4f projected_transformation = (translation * projected_rotation).matrix();
-    pose *= projected_transformation;
+    // Eigen::Matrix4f projected_transformation = (translation * projected_rotation).matrix();
+    // pose *= projected_transformation;
     visu::showDetection<PointT>( this->source, this->target, pose );
 
     // // Creates the visualization object

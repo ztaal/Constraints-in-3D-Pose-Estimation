@@ -1,6 +1,9 @@
 
  /**  Todo list:
   * TODO Start working on pose priors
+  * TODO Vis translation overlay på scene med 10000 iterationer (eller noget i den stil)
+  * TODO Pose priors med 2 punkter
+  * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   */
 
 // Covis
@@ -60,7 +63,7 @@ int main( int argc, const char** argv )
 
     // Refinement
     po.addFlag("refine", "apply pose refinement of the RANSAC result using ICP");
-    po.addOption("icp-iterations", 1000, "number of ICP iterations");
+    po.addOption("icp-iterations", 100, "number of ICP iterations");
 
     // Misc.
     po.addFlag('v', "verbose", "show additional information");

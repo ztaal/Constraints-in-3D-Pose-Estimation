@@ -46,21 +46,6 @@ covis::core::Detection ransac::estimate()
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
 
-    // Sanity checks
-    COVIS_ASSERT(this->source && this->target && this->corr);
-    bool allEmpty = true;
-    for(size_t i = 0; i < this->corr->size(); ++i) {
-        if (!(*this->corr)[i].empty()) {
-            allEmpty = false;
-            break;
-        }
-    }
-    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-    COVIS_ASSERT(this->sampleSize >= 3);
-    COVIS_ASSERT(this->iterations > 0);
-    COVIS_ASSERT(this->inlierThreshold > 0);
-    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
-
     // Instantiate pose sampler
     covis::detect::PoseSampler<PointT> poseSampler;
     poseSampler.setSource(this->source);
@@ -196,213 +181,10 @@ covis::core::Detection ransac::estimate()
 }
 
 
-Eigen::Matrix3f ortogonal_basis(pcl::ModelCoefficients::Ptr coefficients)
-{
-    // Create ortogonal basis
-    double a = coefficients->values[0];
-    double b = coefficients->values[1];
-    double c = coefficients->values[2];
-    Eigen::Vector3f z(a, b, c);
-    Eigen::Vector3f y(0, -c, b);
-    Eigen::Vector3f x = z.cross(y);
-    Eigen::Matrix3f frame;
-    frame.col(0) = x;
-    frame.col(1) = y;
-    frame.col(2) = z;
-
-    return frame;
-}
-
-covis::core::Detection ransac::posePriors()
-{
-    // Sanity checks
-    COVIS_ASSERT(this->source && this->target && this->corr);
-    bool allEmpty = true;
-    for(size_t i = 0; i < this->corr->size(); ++i) {
-        if (!(*this->corr)[i].empty()) {
-            allEmpty = false;
-            break;
-        }
-    }
-    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-    COVIS_ASSERT(this->sampleSize >= 3);
-    COVIS_ASSERT(this->iterations > 0);
-    COVIS_ASSERT(this->inlierThreshold > 0);
-    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
-
-    // Instantiate fit evaluator
-    detect::FitEvaluation<PointT>::Ptr fe(new detect::FitEvaluation<PointT>(this->target));
-    fe->setOcclusionReasoning( !this->occlusionReasoning );
-    fe->setViewAxis( this->viewAxis );
-    if( this->occlusionReasoning )
-        fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
-    else
-        fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
-
-    fe->setInlierThreshold( this->inlierThreshold );
-    fe->setTarget(this->target);
-
-    // Instantiate variables
-    core::Detection result;
-    Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
-    std::vector<Eigen::Matrix4f> pose_vector;
-    covis::core::Correspondence::Vec correspondences = *this->corr;
-    covis::core::sort(correspondences);
-
-    // Find largest plane
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-    pcl::SACSegmentation<PointT> seg;
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_PLANE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(100); // 1000 
-    seg.setDistanceThreshold(10);
-    seg.setInputCloud(this->target);
-    seg.segment(*inliers, *coefficients);
-
-    // Create ortogonal basis
-    Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
-
-    // Compute surface normals for the two matched correspondence
-    pcl::NormalEstimation<PointT, pcl::Normal> ne;
-    pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());
-    ne.setRadiusSearch(5);
-    ne.setSearchMethod (tree);
-    pcl::PointCloud<pcl::Normal>::Ptr source_normals (new pcl::PointCloud<pcl::Normal>);
-    pcl::PointCloud<pcl::Normal>::Ptr target_normals (new pcl::PointCloud<pcl::Normal>);
-    ne.setInputCloud (this->source);
-    ne.compute (*source_normals);
-    ne.setInputCloud (this->target);
-    ne.compute (*target_normals);
-
-    // Loop over correspondences
-    // for( size_t i = 0; i < 1; i++ ) {
-    for( size_t i = 0; i < correspondences.size() / 3; i++ ) {
-
-        // int source_corr = 1248;
-        // int target_corr = 1063;
-        int source_corr = correspondences[i].query;
-        int target_corr = correspondences[i].match[0];
-        pose = Eigen::Matrix4f::Identity();
-
-        // Rotate source to fit target plane
-        Eigen::Affine3f rotation = Eigen::Affine3f::Identity();
-        rotation.rotate(target_frame);
-
-        // Subtract the correspondence to rotate around it
-        Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
-                                    this->source->points[source_corr].y,
-                                    this->source->points[source_corr].z,
-                                    1);
-        rotation.translation() = corrPoint.head<3>() - (target_frame * corrPoint.head<3>());
-
-        // Apply transformation
-        Eigen::Affine3f translation = Eigen::Affine3f::Identity();
-        translation.translation() << this->target->points[target_corr].x - this->source->points[source_corr].x,
-                                        this->target->points[target_corr].y - this->source->points[source_corr].y,
-                                        this->target->points[target_corr].z - this->source->points[source_corr].z;
-        Eigen::Matrix4f transformation = (translation * rotation).matrix();
-        pose *= transformation;
-
-        // Project normals onto plane
-        Eigen::Vector4f source_normal(this->source->points[source_corr].normal_x, this->source->points[source_corr].normal_y, this->source->points[source_corr].normal_z, 0);
-        Eigen::Vector3f target_normal(this->target->points[target_corr].normal_x, this->target->points[target_corr].normal_y, this->target->points[target_corr].normal_z);
-        Eigen::Vector3f plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
-        source_normal = transformation.inverse().transpose() * source_normal; // Transform normal
-        Eigen::Vector3f source_projected = (source_normal.head<3>() - source_normal.head<3>().dot(plane_normal) * plane_normal).normalized();
-        Eigen::Vector3f target_projected = (target_normal - target_normal.dot(plane_normal) * plane_normal).normalized();
-
-        // Find rotation between projected normals (Rodrigues' rotation formula)
-        // https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
-        // https://gist.github.com/peteristhegreat/3b76d5169d7b9fc1e333
-        Eigen::Vector3f v = source_projected.cross(target_projected);
-        Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
-        Eigen::Matrix3f ssc(3, 3);
-        ssc << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-        Eigen::Matrix3f R = I + ssc + (ssc * ssc) * (1 - source_projected.dot(target_projected)) / (v.norm() * v.norm());
-        Eigen::Affine3f projected_rotation(R);
-
-        // Subtract the correspondence to rotate around it
-        corrPoint = transformation * corrPoint;
-        projected_rotation.translation() = corrPoint.head<3>() - (projected_rotation * corrPoint.head<3>());
-
-        // Apply rotation
-        Eigen::Affine3f translation2 = Eigen::Affine3f::Identity();
-        Eigen::Matrix4f projected_transformation = (translation2 * projected_rotation).matrix();
-        pose = projected_transformation * pose;
-        // visu::showDetection<PointT>( this->source, this->target, pose );
-
-        // Find consensus set
-        fe->update( this->source, pose, this->corr ); // Using full models
-
-        // If number of inliers (consensus set) is high enough
-        if( fe->inlierFraction() >= this->inlierFraction ) {
-            // Update result if updated model is the best so far
-            if(fe->penalty() < result.penalty) {
-                result.pose = pose;
-                result.rmse = fe->rmse();
-                result.inlierfrac = fe->inlierFraction();
-                result.outlierfrac = fe->outlierFraction();
-                result.penalty = fe->penalty();
-            }
-        }
-
-        pose_vector.push_back(pose);
-    }
-
-    pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-    for (size_t i = 0; i < pose_vector.size(); i++) {
-        PointT point;
-        point.x = pose_vector[i](0,3);
-        point.y = pose_vector[i](1,3);
-        point.z = pose_vector[i](2,3);
-        results->push_back(point);
-    }
-    // visu::showDetection<PointT>( results, this->target, pose );
-
-    // Creates the visualization object
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    viewer->setBackgroundColor (0, 0, 0);
-    viewer->addCoordinateSystem (1.0, "global");
-
-    viewer->addPointCloud<PointT> (results, "sample cloud");
-    viewer->addPointCloud<PointT> (this->target, "sample cloud2");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
-    pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
-    pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
-    viewer->updatePointCloud(results, red, "sample cloud");
-    viewer->updatePointCloud(this->target, blue, "sample cloud2");
-
-    while (!viewer->wasStopped ()) {
-        viewer->spinOnce (100);
-        boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-    }
-
-    // result.pose = pose;
-    return result;
-}
-
-
-
 std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_truth )
 {
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
-
-    // Sanity checks
-    COVIS_ASSERT(this->source && this->target && this->corr);
-    bool allEmpty = true;
-    for(size_t i = 0; i < this->corr->size(); ++i) {
-        if (!(*this->corr)[i].empty()) {
-            allEmpty = false;
-            break;
-        }
-    }
-    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-    COVIS_ASSERT(this->sampleSize >= 3);
-    COVIS_ASSERT(this->iterations > 0);
 
     // Instantiate pose sampler
     covis::detect::PoseSampler<PointT> poseSampler;
@@ -492,21 +274,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 {
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
-
-    // Sanity checks
-    COVIS_ASSERT(this->source && this->target && this->corr);
-    bool allEmpty = true;
-    for(size_t i = 0; i < this->corr->size(); ++i) {
-        if (!(*this->corr)[i].empty()) {
-            allEmpty = false;
-            break;
-        }
-    }
-    COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-    COVIS_ASSERT(this->sampleSize >= 3);
-    COVIS_ASSERT(this->iterations > 0);
-    COVIS_ASSERT(this->inlierThreshold > 0);
-    COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
 
     // Instantiate pose sampler
     covis::detect::PoseSampler<PointT> poseSampler;
@@ -661,21 +428,6 @@ void ransac::benchmark_correction( Eigen::Matrix4f ground_truth )
 // {
 //     // detect::PointSearch<PointT>::Ptr _search;
 //     covis::core::Detection::Vec _allDetections;
-//
-//     // Sanity checks
-//     COVIS_ASSERT(this->source && this->target && this->corr);
-//     bool allEmpty = true;
-//     for(size_t i = 0; i < this->corr->size(); ++i) {
-//         if (!(*this->corr)[i].empty()) {
-//             allEmpty = false;
-//             break;
-//         }
-//     }
-//     COVIS_ASSERT_MSG(!allEmpty, "All empty correspondences input to RANSAC!");
-//     COVIS_ASSERT(this->sampleSize >= 3);
-//     COVIS_ASSERT(this->iterations > 0);
-//     COVIS_ASSERT(this->inlierThreshold > 0);
-//     COVIS_ASSERT(this->inlierFraction >= 0 && this->inlierFraction <= 1);
 //
 //     // Instantiate pose sampler
 //     covis::detect::PoseSampler<PointT> poseSampler;

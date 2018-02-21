@@ -9,10 +9,11 @@
 #include <covis/covis.h>
 using namespace covis;
 
-// Ransac
+// Includes
 #include "../headers/Ransac.hpp"
 #include "../headers/Benchmark.hpp"
 #include "../headers/Correspondence.hpp"
+#include "../headers/PosePrior.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -68,8 +69,8 @@ int main( int argc, const char** argv )
     po.addFlag('v', "verbose", "show additional information");
     po.addFlag('z', "visualize", "show additional results");
 
-    // Ransac
-    po.addFlag('r', "ransac", "ransac");
+    // Pose prior
+    po.addFlag('r', "pose_prior", "pose_prior");
     po.addOption("query", 'q', "models", "mesh or point cloud file for query model");
     po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
 
@@ -119,7 +120,6 @@ int main( int argc, const char** argv )
         ransac.setSampleSize( sampleSize );
         ransac.setInlierThreshold( inlierThreshold );
         ransac.setInlierFraction( inlierFraction );
-        ransac.setReestimatePose( !noReestimate );
         ransac.setFullEvaluation( fullEvaluation );
         ransac.setViewAxis( viewAxis );
         ransac.setPrerejectionD( prerejectionD );
@@ -128,7 +128,7 @@ int main( int argc, const char** argv )
         ransac.setPrerejectionSimilarity( prerejectionSimilarty );
         ransac.setVerbose( verbose );
 
-        if( po.getFlag("ransac") ) {
+        if( po.getFlag("pose_prior") ) {
 
             class covis::detect::correspondence correspondence;
 
@@ -149,6 +149,12 @@ int main( int argc, const char** argv )
             CloudT::Ptr targetCloud = correspondence.getTarget();
             covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
 
+            class covis::detect::posePrior posePrior;
+            posePrior.setInlierThreshold( inlierThreshold );
+            posePrior.setInlierFraction( inlierFraction );
+            posePrior.setViewAxis( viewAxis );
+            posePrior.setVerbose( verbose );
+
             // Eigen::Matrix4f gt;
             // gt <<   0.95813400,  -0.28295901,   -0.04372250,    34.94834213,
             //        -0.22011200,  -0.63028598,   -0.74450701,  -114.54591885,
@@ -156,36 +162,38 @@ int main( int argc, const char** argv )
             //         0,           0,         0,          1;
             // visu::showDetection<PointT>( queryCloud, targetCloud, gt );
 
+            // Pose Prior
+            posePrior.setSource( queryCloud );
+            posePrior.setTarget( targetCloud );
+            posePrior.setCorrespondences( corr );
+            posePrior.setInlierFraction( 0.02 );
 
-            // Query: 1248	Target: 1063
-            // Query: 1824	Target: 1224
-            // Query: 945	Target: 1806
+            {
+                core::ScopedTimer t("Pose priors");
+                d = posePrior.estimate();
+            }
+            if(d) {
+                // Visualize
+                if (verbose)
+                    COVIS_MSG(d);
+                if( po.getFlag("visualize") ) {
+                    visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
+                }
+            } else {
+                COVIS_MSG_WARN("RANSAC failed!");
+            }
 
-
+            // Ransac
             ransac.setSource( queryCloud );
             ransac.setTarget( targetCloud );
             ransac.setCorrespondences( corr );
-            d = ransac.posePriors();
-            // d = ransac.estimate();
+            ransac.setInlierFraction( 0 );
+            {
+                core::ScopedTimer t("Ransac");
+                d = ransac.estimate();
+            }
 
             if(d) {
-                if(refine) {
-                    std::cout << "Fisk" << '\n';
-                    pcl::IterativeClosestPoint<PointT,PointT> icp;
-                    icp.setInputSource( queryCloud );
-                    icp.setInputTarget( targetCloud );
-                    icp.setMaximumIterations( po.getValue<size_t>("icp-iterations") );
-                    icp.setMaxCorrespondenceDistance( inlierThreshold );
-                    pcl::PointCloud<PointT> tmp;
-                    icp.align( tmp, d.pose );
-                    if(icp.hasConverged()) {
-                        d.pose = icp.getFinalTransformation();
-                        d.rmse = icp.getFitnessScore();
-                    } else {
-                        COVIS_MSG_WARN("ICP failed!");
-                    }
-                }
-
                 // Visualize
                 if (verbose)
                     COVIS_MSG(d);

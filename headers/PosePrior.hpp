@@ -25,69 +25,49 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COVIS_RANSAC_BENCHMARK_H
-#define COVIS_RANSAC_BENCHMARK_H
+#ifndef COVIS_POSE_PRIOR_H
+#define COVIS_POSE_PRIOR_H
 
 // Covis
 #include <covis/covis.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
 
-// Geometric prerejector
-#include "../headers/correspondence_rejection_geometric.h"
-#include "../headers/correspondence_rejection_poly.h"
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
 
 // Point and feature types
 typedef pcl::PointCloud<PointT> CloudT;
 
-// Rejection statistics TODO maybe move to benchmark class
-struct binaryClassification
-{
-    int tp = 0; // True-positive (correct accept)
-    int tn = 0; // True-negative (correct reject)
-    int fp = 0; // False-positive (reject positive)
-    int fn = 0; // False-negative (accept negative)
-};
-
 namespace covis {
     namespace detect {
         /**
          * @ingroup detect
-         * @class Ransac
+         * @class PosePrior
          * @brief Base class for estimating poses
          *
-         * This class is used to estimate poses using ransac
+         * This class is used to estimate poses on table tops using pose priors
          *
          * @author Martin Staal Steenberg
          */
-        class ransac {
+        class posePrior {
             public:
                 /**
                  * Constructor: set default parameters:
-                 *   - sampleSize (@ref setSampleSize()): 3
-                 *   - iterations (@ref setIterations()): 10000
-                 *   - prerejectionSimilarity (@ref setPrerejectionSimilarity()): 0.9
                  *   - inlierThreshold (@ref setInlierThreshold()): 5
                  *   - inlierFraction (@ref setInlierFraction()): 0.05
-                 *   - fullEvaluation (@ref setFullEvaluation()): false
                  *   - occlusionReasoning (@ref setOcclusionReasoning()): false
                  *   - viewAxis (@ref setViewAxis()): 0
                  *   - verbose (@ref setPrerejection()): false
                  */
-                ransac() :
-                    sampleSize(3),
-                    iterations(10000),
-                    prerejectionSimilarity(0.9),
+                posePrior() :
                     inlierThreshold(5),
                     inlierFraction(0.05),
-                    fullEvaluation(false),
                     occlusionReasoning(false),
                     viewAxis(0),
                     verbose(false) {}
 
                 /// empty destructor
-                ~ransac() {};
+                ~posePrior() {};
 
                 /**
                  * Set source cloud
@@ -125,24 +105,6 @@ namespace covis {
                 }
 
                 /**
-                 * Set sample size
-                 * @param sample size
-                 */
-                inline void setSampleSize( size_t _sampleSize ) {
-                    COVIS_ASSERT(_sampleSize >= 3);
-                    sampleSize = _sampleSize;
-                }
-
-                /**
-                 * Set number of RANSAC iterations
-                 * @param iterations
-                 */
-                inline void setIterations( size_t _iterations ) {
-                    COVIS_ASSERT(_iterations > 0);
-                    iterations = _iterations;
-                }
-
-                /**
                  * Set Euclidean inlier threshold
                  * @param inlier threshold
                  */
@@ -161,25 +123,8 @@ namespace covis {
                 }
 
                 /**
-                 * Enable full evaluation, i.e. evaluation of inliers by point correspondence search between the source
-                 * and the target model.
-                 * @param full evaluation flag
-                 */
-                inline void setFullEvaluation( bool _fullEvaluation ) {
-                    fullEvaluation = _fullEvaluation;
-                }
-
-                /**
-                 * Set the prerejection similarity threshold
-                 * @param prerejection similarity threshold in [0,1]
-                 */
-                inline void setPrerejectionSimilarity( float _prerejectionSimilarity ) {
-                    prerejectionSimilarity = _prerejectionSimilarity;
-                }
-
-                /**
                  * Set occlusion reasoning flag
-                 * @param occlusionReasoning occlusion
+                 * @param occlusionReasoning flag
                  */
                 inline void setOcclusionReasoning( bool _occlusionReasoning ) {
                     occlusionReasoning = _occlusionReasoning;
@@ -201,40 +146,25 @@ namespace covis {
                     verbose = _verbose;
                 }
 
-                /**
-                 * Set the dissimilarity prerejection flag
-                 * @param prerejection_d
-                 */
-                void setPrerejectionD( bool _prerejection_d ) {
-                    prerejection_d = _prerejection_d;
+                inline Eigen::Matrix3f ortogonal_basis(pcl::ModelCoefficients::Ptr coefficients)
+                {
+                    // Create ortogonal basis
+                    double a = coefficients->values[0];
+                    double b = coefficients->values[1];
+                    double c = coefficients->values[2];
+                    Eigen::Vector3f z(a, b, c);
+                    Eigen::Vector3f y(0, -c, b);
+                    Eigen::Vector3f x = z.cross(y);
+                    Eigen::Matrix3f frame;
+                    frame.col(0) = x;
+                    frame.col(1) = y;
+                    frame.col(2) = z;
+
+                    return frame;
                 }
 
                 /**
-                 * Set the geometric prerejection flag
-                 * @param prerejection_g
-                 */
-                void setPrerejectionG( bool _prerejection_g ) {
-                    prerejection_g = _prerejection_g;
-                }
-
-                /**
-                 * Set the geometric prerejection 2 flag
-                 * @param prerejection_g2
-                 */
-                void setPrerejectionG2( bool _prerejection_g2 ) {
-                    prerejection_g2 = _prerejection_g2;
-                }
-
-                /**
-                 * Set the correction flag
-                 * @param correction
-                 */
-                void setCorrection( bool _correction ) {
-                    correction = _correction;
-                }
-
-                /**
-                 * Run RANSAC
+                 * Run pose prior estimation
                  * @return best detection, if any was found - this can be verified directly in a boolean expression:
                  * @code
                  * covis::core::Detection d = estimate();
@@ -243,26 +173,6 @@ namespace covis {
                  * @endcode
                  */
                 core::Detection estimate();
-
-                /**
-                 * TODO FIX
-                 * @return best detection, if any was found - this can be verified directly in a boolean expression:
-                 */
-                core::Detection posePriors();
-
-                 /**
-                  * Benchmark prerejection methods and returns a binaryClassification
-                  * containing information about the quality of the prerejection method
-                  * @param ground truth pose
-                  * @return binaryClassification
-                  */
-                std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
-
-                /**
-                 * Benchmark the correction method
-                 * @param ground truth pose
-                 */
-                void benchmark_correction( Eigen::Matrix4f ground_truth );
 
             private:
                 /// Source point cloud
@@ -274,47 +184,20 @@ namespace covis {
                 /// Correspondences
                 core::Correspondence::VecPtr corr;
 
-                /// Sample size
-                size_t sampleSize;
-
-                /// Number of ransac iterations
-                size_t iterations;
-
-                /// If prerejection is set to true, use this polygonal similarity threshold
-                float prerejectionSimilarity;
-
                 /// Euclidean inlier threshold
                 float inlierThreshold;
 
                 /// Visibility or required fraction of inliers of the source points [0,1]
                 float inlierFraction;
 
-                /// Full evaluation flag
-                bool fullEvaluation;
-
                 /// Enable removal of occluded points
                 bool occlusionReasoning;
-
-                /// Occlusion removal flag
-                bool occlusionRemoval;
 
                 /// Specify which of the three sensor axes points in the viewing direction - typically this is the z-axis
                 int viewAxis;
 
                 /// Verbose flag
                 bool verbose;
-
-                /// Prereject dissimilarity flag
-                bool prerejection_d = false;
-
-                /// Prereject geometric flag
-                bool prerejection_g = false;
-
-                /// Prereject geometric 2 flag
-                bool prerejection_g2 = false;
-
-                /// Correction method flag
-                bool correction = false;
         };
     }
 }

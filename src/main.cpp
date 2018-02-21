@@ -1,8 +1,7 @@
 
  /**  Todo list:
   * TODO Start working on pose priors
-  * TODO Vis translation overlay på scene med 10000 iterationer (eller noget i den stil)
-  * TODO Pose priors med 2 punkter
+  * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   */
 
@@ -51,8 +50,8 @@ int main( int argc, const char** argv )
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
     po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
-    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
-    // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
+    // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
+    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
@@ -106,6 +105,7 @@ int main( int argc, const char** argv )
     const float prerejectionSimilarty = po.getValue<float>("prerejection-similarity");
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
+    const bool refine = po.getFlag("refine");
 
     /*
      * Benchmark RANSAC
@@ -169,7 +169,8 @@ int main( int argc, const char** argv )
             // d = ransac.estimate();
 
             if(d) {
-                // if(refine) {
+                if(refine) {
+                    std::cout << "Fisk" << '\n';
                     pcl::IterativeClosestPoint<PointT,PointT> icp;
                     icp.setInputSource( queryCloud );
                     icp.setInputTarget( targetCloud );
@@ -183,18 +184,12 @@ int main( int argc, const char** argv )
                     } else {
                         COVIS_MSG_WARN("ICP failed!");
                     }
-                // }
+                }
 
                 // Visualize
-                COVIS_MSG(d);
+                if (verbose)
+                    COVIS_MSG(d);
                 if( po.getFlag("visualize") ) {
-                    // Load models
-                    // pcl::PolygonMesh::Ptr queryMesh(new pcl::PolygonMesh);
-                    // pcl::PolygonMesh::Ptr targetMesh(new pcl::PolygonMesh);
-                    // util::load( po.getValue("query"), *queryMesh);
-                    // util::load( po.getValue("target"), *targetMesh);
-                    // visu::showDetection(queryMesh, targetMesh, d.pose);
-                    // visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
                     visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
                 }
             } else {

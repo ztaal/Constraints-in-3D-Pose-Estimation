@@ -1,6 +1,9 @@
 
  /**  Todo list:
   * TODO Start working on pose priors
+  * TODO Create a prerejection check that if the corr is below the plane ignore it
+  * TODO Create a prerejection check that if the height difference between the corr and
+         the plane in both the scene and object is too different discard it
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   */

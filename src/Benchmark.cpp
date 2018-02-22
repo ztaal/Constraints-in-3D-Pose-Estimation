@@ -45,8 +45,6 @@ void Benchmark::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
             this->poseSep
     );
 
-    // dataset.setRegexObject(po.getValue("object-regex"));
-    // dataset.setRegexScene(po.getValue("scene-regex"));
     dataset.parse();
 
     if(this->verbose)
@@ -216,11 +214,12 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
 
-                // if ( this->benchmarkPrerejection )
-                //     result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
-                //
-                // if ( this->correction )
-                //     instance->benchmark_correction( this->poses[i][j] );
+                if ( this->benchmarkPrerejection )
+                    result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
+
+                if ( this->correction )
+                    instance->estimate_correction( this->poses[i][j] );
+                    // instance->estimate_correction2( this->poses[i][j] );
 
                 // Calculate distance from GT
                 CloudT gtCloud = *this->objectCloud[j];

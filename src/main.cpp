@@ -1,7 +1,5 @@
 
  /**  Todo list:
-  * TODO Start working on pose priors
-  * TODO Create a prerejection check that if the corr is below the plane ignore it
   * TODO Create a prerejection check that if the height difference between the corr and
          the plane in both the scene and object is too different discard it
   * TODO Pose priors with two points
@@ -38,7 +36,8 @@ int main( int argc, const char** argv )
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
-    po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
+    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
+    // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
     // po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
     // po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
     po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
@@ -53,10 +52,8 @@ int main( int argc, const char** argv )
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
     po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
-    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
-    po.addFlag('e', "no-reestimate", "disable re-estimation of pose hypotheses using consensus set during RANSAC");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");
@@ -64,16 +61,15 @@ int main( int argc, const char** argv )
     po.addFlag('c', "no-occlusion-reasoning", "disable occlusion reasoning during pose hypothesis evaluation");
     po.addOption("view-axis", 'x', 2, "if occlusion reasoning is on (default), assume axis x, y, or z (0, 1 or 2) to point in the direction of the view");
 
-    // Refinement
-    po.addFlag("refine", "apply pose refinement of the RANSAC result using ICP");
-    po.addOption("icp-iterations", 100, "number of ICP iterations");
-
     // Misc.
     po.addFlag('v', "verbose", "show additional information");
     po.addFlag('z', "visualize", "show additional results");
 
+    // Ransac
+    po.addFlag('r', "ransac", "ransac");
+
     // Pose prior
-    po.addFlag('r', "pose_prior", "pose_prior");
+    po.addFlag('p', "pose_prior", "pose_prior");
     po.addOption("query", 'q', "models", "mesh or point cloud file for query model");
     po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
 
@@ -116,43 +112,29 @@ int main( int argc, const char** argv )
      */
     core::Detection d;
     {
+        class covis::detect::correspondence correspondence;
+        class covis::detect::posePrior posePrior;
         class covis::detect::ransac ransac;
+        class covis::detect::Benchmark benchmark;
 
-        // Ransac variables
-        ransac.setIterations( iterations );
-        ransac.setSampleSize( sampleSize );
-        ransac.setInlierThreshold( inlierThreshold );
-        ransac.setInlierFraction( inlierFraction );
-        ransac.setFullEvaluation( fullEvaluation );
-        ransac.setViewAxis( viewAxis );
-        ransac.setPrerejectionD( prerejectionD );
-        ransac.setPrerejectionG( prerejectionG );
-        ransac.setOcclusionReasoning( noOcclusionReasoning );
-        ransac.setPrerejectionSimilarity( prerejectionSimilarty );
-        ransac.setVerbose( verbose );
+        // Correspondence variables
+        correspondence.setResolution( po.getValue<float>("resolution") );
+        correspondence.setObjectScale( po.getValue<float>("object-scale") );
+        correspondence.setFar( po.getValue<float>("far") );
+        correspondence.setRadiusNormal( po.getValue<float>("radius-normal") );
+        correspondence.setResolutionQuery( po.getValue<float>("resolution-query") );
+        correspondence.setResolutionTarget( po.getValue<float>("resolution-target") );
+        correspondence.setRadiusFeature( po.getValue<float>("radius-feature") );
+        correspondence.setCutoff( po.getValue<size_t>("cutoff") );
+        correspondence.setFeature( po.getValue("feature") );
+        correspondence.setVerbose( verbose );
+
+        correspondence.compute( po.getValue("query"), po.getValue("target") );
+        CloudT::Ptr queryCloud = correspondence.getQuery();
+        CloudT::Ptr targetCloud = correspondence.getTarget();
+        covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
 
         if( po.getFlag("pose_prior") ) {
-
-            class covis::detect::correspondence correspondence;
-
-            // Correspondence variables
-            correspondence.setResolution( po.getValue<float>("resolution") );
-            correspondence.setObjectScale( po.getValue<float>("object-scale") );
-            correspondence.setFar( po.getValue<float>("far") );
-            correspondence.setRadiusNormal( po.getValue<float>("radius-normal") );
-            correspondence.setResolutionQuery( po.getValue<float>("resolution-query") );
-            correspondence.setResolutionTarget( po.getValue<float>("resolution-target") );
-            correspondence.setRadiusFeature( po.getValue<float>("radius-feature") );
-            correspondence.setCutoff( po.getValue<size_t>("cutoff") );
-            correspondence.setFeature( po.getValue("feature") );
-            correspondence.setVerbose( verbose );
-
-            correspondence.compute( po.getValue("query"), po.getValue("target") );
-            CloudT::Ptr queryCloud = correspondence.getQuery();
-            CloudT::Ptr targetCloud = correspondence.getTarget();
-            covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
-
-            class covis::detect::posePrior posePrior;
             posePrior.setInlierThreshold( inlierThreshold );
             posePrior.setInlierFraction( inlierFraction );
             posePrior.setViewAxis( viewAxis );
@@ -169,7 +151,7 @@ int main( int argc, const char** argv )
             posePrior.setSource( queryCloud );
             posePrior.setTarget( targetCloud );
             posePrior.setCorrespondences( corr );
-            posePrior.setInlierFraction( 0.02 );
+            posePrior.setInlierFraction( 0.01 );
 
             {
                 core::ScopedTimer t("Pose priors");
@@ -183,8 +165,24 @@ int main( int argc, const char** argv )
                     visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
                 }
             } else {
-                COVIS_MSG_WARN("RANSAC failed!");
+                COVIS_MSG_WARN("Pose priors failed!");
             }
+        }
+
+        if( po.getFlag("ransac") ) {
+
+            // Ransac variables
+            ransac.setIterations( iterations );
+            ransac.setSampleSize( sampleSize );
+            ransac.setInlierThreshold( inlierThreshold );
+            ransac.setInlierFraction( inlierFraction );
+            ransac.setFullEvaluation( fullEvaluation );
+            ransac.setViewAxis( viewAxis );
+            ransac.setPrerejectionD( prerejectionD );
+            ransac.setPrerejectionG( prerejectionG );
+            ransac.setOcclusionReasoning( noOcclusionReasoning );
+            ransac.setPrerejectionSimilarity( prerejectionSimilarty );
+            ransac.setVerbose( verbose );
 
             // Ransac
             ransac.setSource( queryCloud );
@@ -208,9 +206,8 @@ int main( int argc, const char** argv )
             }
         }
 
-        // Benchmark variables
-        if( po.getFlag("benchmark") ) {
-            covis::detect::Benchmark benchmark;
+        if( po.getFlag("benchmark") && po.getFlag("ransac") ) {
+            // Benchmark variables
             benchmark.setRootPath( po.getValue("root-path") );
             benchmark.setObjectDir( po.getValue("object-dir") );
             benchmark.setSceneDir( po.getValue("scene-dir") );

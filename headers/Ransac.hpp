@@ -260,9 +260,17 @@ namespace covis {
 
                 /**
                  * Benchmark the correction method
+                 * Ransac with correction (2 steps: sort good from bad then normal ransac)
                  * @param ground truth pose
                  */
-                void benchmark_correction( Eigen::Matrix4f ground_truth );
+                void estimate_correction( Eigen::Matrix4f ground_truth );
+
+                /**
+                 * Benchmark the correction method
+                 * Ransac with correction (voting scheme and threshold)
+                 * @param ground truth pose
+                 */
+                void estimate_correction2( Eigen::Matrix4f ground_truth );
 
             private:
                 /// Source point cloud
@@ -315,6 +323,21 @@ namespace covis {
 
                 /// Correction method flag
                 bool correction = false;
+                
+                /**
+                * Compute median of vector
+                * @param vector
+                */
+                inline double median( std::vector<int> scores )
+                {
+                    size_t size = scores.size();
+                    std::sort(scores.begin(), scores.end());
+
+                    if (size % 2 == 0)
+                        return (scores[size / 2 - 1] + scores[size / 2]) / 2;
+
+                    return scores[size / 2];
+                }
         };
     }
 }

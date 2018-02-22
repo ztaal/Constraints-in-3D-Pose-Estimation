@@ -79,9 +79,12 @@ covis::core::Detection posePrior::estimate()
 
     // Loop over correspondences
     // for( size_t i = 0; i < 1; i++ ) {
+    // for( size_t i = 0; i < 10; i++ ) {
+    // for( size_t i = 0; i < correspondences.size(); i++ ) {
     // for( size_t i = 0; i < correspondences.size() / 3; i++ ) {
-    // for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
-    for( size_t i = 0; i < 10; i++ ) {
+    // for( size_t i = 0; i < correspondences.size() / 10; i++ ) {
+    // for( size_t i = 0; i < correspondences.size() / 20; i++ ) {
+    for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
 
         // int source_corr = 1248;
         // int target_corr = 1063;
@@ -89,7 +92,32 @@ covis::core::Detection posePrior::estimate()
         int target_corr = correspondences[i].match[0];
         pose = Eigen::Matrix4f::Identity();
 
+        // Prerejection: ignore point if it is below the plane
+        Eigen::Vector4f plane_normal(coefficients->values[0],
+                                        coefficients->values[1],
+                                        coefficients->values[2],
+                                        coefficients->values[3]);
+        Eigen::Vector4f targetPoint(this->target->points[target_corr].x,
+                                    this->target->points[target_corr].y,
+                                    this->target->points[target_corr].z, 1);
+        double distance = plane_normal.dot( targetPoint );
+        if (distance < 0)
+        	continue;
+
+        // Prerejection2: compare height of corr in target to source
+        double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
+        double src_dist = this->source->points[source_corr].z;
+        std::cout << "Target distance: " << tgt_dist << "\tSource Distance: "<< src_dist << '\n';
+        const float dist_diff = (src_dist < tgt_dist ? src_dist / tgt_dist : tgt_dist / src_dist);
+        if ( dist_diff < 0.8 )
+            continue;
+
+
         // Rotate source to fit target plane
+        Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
+                                    this->source->points[source_corr].y,
+                                    this->source->points[source_corr].z,
+                                    1);
         Eigen::Affine3f transformation = Eigen::Affine3f::Identity();
         transformation.rotate(target_frame);
 
@@ -99,10 +127,6 @@ covis::core::Detection posePrior::estimate()
                                         this->target->points[target_corr].z - this->source->points[source_corr].z;
 
         // Subtract the correspondence to rotate around the correspondence
-        Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
-                                    this->source->points[source_corr].y,
-                                    this->source->points[source_corr].z,
-                                    1);
         Eigen::Affine3f correction = Eigen::Affine3f::Identity();
         correction.translation() = corrPoint.head<3>() - (target_frame * corrPoint.head<3>());
         transformation = correction * transformation;
@@ -117,10 +141,9 @@ covis::core::Detection posePrior::estimate()
         Eigen::Vector3f target_normal(this->target->points[target_corr].normal_x,
                                         this->target->points[target_corr].normal_y,
                                         this->target->points[target_corr].normal_z);
-        Eigen::Vector3f plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
         source_normal = transformation.matrix().inverse().transpose() * source_normal; // Transform normal
-        Eigen::Vector3f source_projected = (source_normal.head<3>() - source_normal.head<3>().dot(plane_normal) * plane_normal).normalized();
-        Eigen::Vector3f target_projected = (target_normal - target_normal.dot(plane_normal) * plane_normal).normalized();
+        Eigen::Vector3f source_projected = (source_normal.head<3>() - source_normal.head<3>().dot(plane_normal.head<3>()) * plane_normal.head<3>()).normalized();
+        Eigen::Vector3f target_projected = (target_normal - target_normal.dot(plane_normal.head<3>()) * plane_normal.head<3>()).normalized();
 
         // Find rotation between projected normals (Rodrigues' rotation formula)
         // https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
@@ -143,6 +166,7 @@ covis::core::Detection posePrior::estimate()
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
+        pose_vector.push_back(pose);
         // If number of inliers (consensus set) is high enough
         if( fe->inlierFraction() >= this->inlierFraction ) {
             // Update result if updated model is the best so far
@@ -155,38 +179,35 @@ covis::core::Detection posePrior::estimate()
             }
         }
 
-        // pose_vector.push_back(pose);
     }
 
-    // pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-    // for (size_t i = 0; i < pose_vector.size(); i++) {
-    //     PointT point;
-    //     point.x = pose_vector[i](0,3);
-    //     point.y = pose_vector[i](1,3);
-    //     point.z = pose_vector[i](2,3);
-    //     results->push_back(point);
-    // }
-    // // visu::showDetection<PointT>( results, this->target, pose );
-    //
-    // // Creates the visualization object
-    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    // viewer->setBackgroundColor (0, 0, 0);
-    // viewer->addCoordinateSystem (1.0, "global");
-    //
-    // viewer->addPointCloud<PointT> (results, "sample cloud");
-    // viewer->addPointCloud<PointT> (this->target, "sample cloud2");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
-    // viewer->updatePointCloud(results, red, "sample cloud");
-    // viewer->updatePointCloud(this->target, blue, "sample cloud2");
-    //
-    // while (!viewer->wasStopped ()) {
-    //     viewer->spinOnce (100);
-    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-    // }
+    // Visualize translations
+    pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
+    for (size_t i = 0; i < pose_vector.size(); i++) {
+        PointT point;
+        point.x = pose_vector[i](0,3);
+        point.y = pose_vector[i](1,3);
+        point.z = pose_vector[i](2,3);
+        results->push_back(point);
+    }
 
-    // result.pose = pose;
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->setBackgroundColor (0, 0, 0);
+    viewer->addCoordinateSystem (1.0, "global");
+
+    viewer->addPointCloud<PointT> (results, "sample cloud");
+    viewer->addPointCloud<PointT> (this->target, "sample cloud2");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
+    pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
+    viewer->updatePointCloud(results, red, "sample cloud");
+    viewer->updatePointCloud(this->target, blue, "sample cloud2");
+
+    while (!viewer->wasStopped ()) {
+        viewer->spinOnce (100);
+        boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    }
+
     return result;
 }

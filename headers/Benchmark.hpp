@@ -239,6 +239,14 @@ namespace covis {
                 }
 
                 /**
+                 * Set the correction flag
+                 * @param correction
+                 */
+                inline void setCorrection( bool _correction ) {
+                    correction = _correction;
+                }
+
+                /**
                  * Generates a new seed for the benchmark
                  */
                 inline void generateNewSeed() {
@@ -376,6 +384,9 @@ namespace covis {
 
                 /// Prerejection benchmark flag
                 bool benchmarkPrerejection;
+
+                /// Correction method flag
+                bool correction = false;
 
                 /**
                  * Initialized benchmark by loadning the data set and computing correspondences

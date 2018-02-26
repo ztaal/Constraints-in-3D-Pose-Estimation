@@ -1,9 +1,12 @@
 
  /**  Todo list:
+  * TODO Rewrite DatasetLoader to work without poses
+  * TODO Run tests with pose priors with one point
   * TODO Create a prerejection check that if the height difference between the corr and
          the plane in both the scene and object is too different discard it
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
+  * TODO Prerejection idea: look at the angle between the normals if they are off discard
   */
 
 // Covis
@@ -98,15 +101,12 @@ int main( int argc, const char** argv )
     const float inlierThreshold = (po.getValue<float>("inlier-threshold") > 0.0 ?
                     po.getValue<float>("inlier-threshold") * res : 5 * res);
     const float inlierFraction = po.getValue<float>("inlier-fraction");
-    const bool noReestimate = po.getFlag("no-reestimate");
     const bool fullEvaluation = po.getFlag("full-evaluation");
     const bool prerejectionD = po.getFlag("prerejectionD");
     const bool prerejectionG = po.getFlag("prerejectionG");
     const float prerejectionSimilarty = po.getValue<float>("prerejection-similarity");
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
-    const bool refine = po.getFlag("refine");
-
     /*
      * Benchmark RANSAC
      */
@@ -206,7 +206,7 @@ int main( int argc, const char** argv )
             }
         }
 
-        if( po.getFlag("benchmark") && po.getFlag("ransac") ) {
+        if( po.getFlag("benchmark") ) {
             // Benchmark variables
             benchmark.setRootPath( po.getValue("root-path") );
             benchmark.setObjectDir( po.getValue("object-dir") );

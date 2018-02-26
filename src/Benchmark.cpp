@@ -139,12 +139,12 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
     std::vector<feature::MatrixT> objectFeat, sceneFeat;
     objectFeat.resize(objectSurf.size());
     for(size_t i = 0; i < objectSurf.size(); ++i) {
-        objectFeat[i] = feature::computeFeature<PointT>(feature, this->objectCloud[i], objectSurf[i], frad);
+        objectFeat[i] = feature::computeFeature<PointT>(this->feature, this->objectCloud[i], objectSurf[i], frad);
     }
 
     sceneFeat.resize(sceneSurf.size());
     for(size_t i = 0; i < sceneSurf.size(); ++i) {
-        sceneFeat[i] = feature::computeFeature<PointT>(feature, this->sceneCloud[i], sceneSurf[i], frad);
+        sceneFeat[i] = feature::computeFeature<PointT>(this->feature, this->sceneCloud[i], sceneSurf[i], frad);
     }
 
      // Match features

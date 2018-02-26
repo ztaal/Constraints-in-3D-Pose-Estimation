@@ -159,7 +159,7 @@ namespace covis {
                 }
 
                 /**
-                * Returns the query point cloud
+                 * Returns the query point cloud
                  * @return queryCloud
                  */
                 inline CloudT::Ptr getQuery( ) {
@@ -175,16 +175,17 @@ namespace covis {
                 }
 
                 /**
-                * Returns the correspondences
+                 * Returns the correspondences
                  * @return corr
                  */
                 inline covis::core::Correspondence::VecPtr getCorrespondence( ) {
                     return corr;
                 }
 
-                /** TODO FIX
-                 * Set verbose flag for printing
-                 * @param verbose flag
+                /**
+                 * Compute correspondences between the query and target cloud
+                 * @param query cloud path
+                 * @param target cloud path
                  */
                 void compute( std::string query, std::string target );
 

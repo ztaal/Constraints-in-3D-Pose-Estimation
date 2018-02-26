@@ -62,6 +62,13 @@ covis::core::Detection posePrior::estimate()
     seg.setInputCloud(this->target);
     seg.segment(*inliers, *coefficients);
 
+    // Check plane normal is facing the right direction
+    if (coefficients->values[2] > 0) {
+        coefficients->values[0] = -1 * coefficients->values[0];
+        coefficients->values[1] = -1 * coefficients->values[1];
+        coefficients->values[2] = -1 * coefficients->values[2];
+    }
+
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
@@ -82,9 +89,9 @@ covis::core::Detection posePrior::estimate()
     // for( size_t i = 0; i < 10; i++ ) {
     // for( size_t i = 0; i < correspondences.size(); i++ ) {
     // for( size_t i = 0; i < correspondences.size() / 3; i++ ) {
-    // for( size_t i = 0; i < correspondences.size() / 10; i++ ) {
+    for( size_t i = 0; i < correspondences.size() / 10; i++ ) {
     // for( size_t i = 0; i < correspondences.size() / 20; i++ ) {
-    for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
+    // for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
 
         // int source_corr = 1248;
         // int target_corr = 1063;
@@ -101,16 +108,15 @@ covis::core::Detection posePrior::estimate()
                                     this->target->points[target_corr].y,
                                     this->target->points[target_corr].z, 1);
         double distance = plane_normal.dot( targetPoint );
-        if (distance < 0)
+        if (distance > 0)
         	continue;
 
         // Prerejection2: compare height of corr in target to source
-        double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
-        double src_dist = this->source->points[source_corr].z;
-        std::cout << "Target distance: " << tgt_dist << "\tSource Distance: "<< src_dist << '\n';
-        const float dist_diff = (src_dist < tgt_dist ? src_dist / tgt_dist : tgt_dist / src_dist);
-        if ( dist_diff < 0.8 )
-            continue;
+            // double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
+            // double src_dist = fabs(this->source->points[source_corr].z) * 2;
+            // const float dist_diff = (src_dist < tgt_dist ? src_dist / tgt_dist : tgt_dist / src_dist);
+            // if ( dist_diff < 0.7 )
+            //     continue;
 
 
         // Rotate source to fit target plane
@@ -166,9 +172,9 @@ covis::core::Detection posePrior::estimate()
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
-        pose_vector.push_back(pose);
         // If number of inliers (consensus set) is high enough
         if( fe->inlierFraction() >= this->inlierFraction ) {
+            pose_vector.push_back(pose);
             // Update result if updated model is the best so far
             if(fe->penalty() < result.penalty) {
                 result.pose = pose;

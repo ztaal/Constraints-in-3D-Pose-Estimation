@@ -386,7 +386,7 @@ namespace covis {
                 bool benchmarkPrerejection;
 
                 /// Correction method flag
-                bool correction = false;
+                bool correction;
 
                 /**
                  * Initialized benchmark by loadning the data set and computing correspondences

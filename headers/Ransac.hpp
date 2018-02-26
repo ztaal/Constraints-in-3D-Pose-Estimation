@@ -244,12 +244,6 @@ namespace covis {
                  */
                 core::Detection estimate();
 
-                /**
-                 * TODO FIX
-                 * @return best detection, if any was found - this can be verified directly in a boolean expression:
-                 */
-                core::Detection posePriors();
-
                  /**
                   * Benchmark prerejection methods and returns a binaryClassification
                   * containing information about the quality of the prerejection method
@@ -303,9 +297,6 @@ namespace covis {
                 /// Enable removal of occluded points
                 bool occlusionReasoning;
 
-                /// Occlusion removal flag
-                bool occlusionRemoval;
-
                 /// Specify which of the three sensor axes points in the viewing direction - typically this is the z-axis
                 int viewAxis;
 
@@ -323,7 +314,7 @@ namespace covis {
 
                 /// Correction method flag
                 bool correction = false;
-                
+
                 /**
                 * Compute median of vector
                 * @param vector

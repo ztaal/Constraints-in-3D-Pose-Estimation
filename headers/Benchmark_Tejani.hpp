@@ -25,8 +25,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef COVIS_BENCHMARK_H
-#define COVIS_BENCHMARK_H
+#ifndef COVIS_BENCHMARK_TEJANI_H
+#define COVIS_BENCHMARK_TEJANI_H
 
 // Covis
 #include <covis/covis.h>
@@ -34,8 +34,11 @@
 // Timer
 #include "../headers/Timer.hpp"
 
-// Ransac
-#include "../headers/Ransac.hpp"
+// Pose Prior
+#include "../headers/PosePrior.hpp"
+
+// YML loader
+#include "../headers/yml_loader.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -47,15 +50,14 @@ namespace covis {
     namespace detect {
         /**
          * @ingroup detect
-         * @class Benchmark
-         * @brief Base class for benchmarking ransac
+         * @class Benchmark Tejani
+         * @brief Base class for benchmarking the tejani dataset
          *
-         * This class is used to benchmark ransac on an entire data set and print information such as:
-         * Total time, avg time, failed percentage, avg RMSE, avg penalty and avg inlier fraction
+         * This class is used to benchmark the tejani dataset
          *
          * @author Martin Staal Steenberg
          */
-        class Benchmark {
+        class Benchmark_Tejani {
             public:
                 /**
                  * Constructor: set default parameters:
@@ -70,7 +72,7 @@ namespace covis {
                  *   - feature (@ref setFeature()): si
                  *   - verbose (@ref setVerbose()): false
                  */
-                Benchmark() :
+                Benchmark_Tejani() :
                     resolution(1),
                     objectScale(1),
                     far(-1),
@@ -83,7 +85,7 @@ namespace covis {
                     verbose(false) {}
 
                 /// Empty destructor
-                virtual ~Benchmark() {}
+                virtual ~Benchmark_Tejani() {}
 
                 /**
                  * Set root path of data set
@@ -110,11 +112,11 @@ namespace covis {
                 }
 
                 /**
-                 * Set directory contaning the ground truth poses
-                 * @param pose directory
+                 * Set file path to the ground truth poses
+                 * @param pose path
                  */
-                inline void setPoseDir( std::string _poseDir ) {
-                    poseDir = _poseDir;
+                inline void setPosePath( std::string _posePath ) {
+                    posePath = _posePath;
                 }
 
                 /**
@@ -131,22 +133,6 @@ namespace covis {
                  */
                 inline void setSceneExt( std::string _sceneExt ) {
                     sceneExt = _sceneExt;
-                }
-
-                 /**
-                 * Set extenstion of the pose files
-                 * @param file extenstion
-                 */
-                inline void setPoseExt( std::string _poseExt ) {
-                    poseExt = _poseExt;
-                }
-
-                /**
-                 * Set pose seperator
-                 * @param pose seperator
-                 */
-                inline void setPoseSep( std::string _poseSep ) {
-                    poseSep = _poseSep;
                 }
 
                 /**
@@ -230,22 +216,6 @@ namespace covis {
                 }
 
                 /**
-                 * Set benchmarkPrerejection flag
-                 * @param benchmarkPrerejection
-                 */
-                inline void setBenchmarkPrerejection(bool _benchmarkPrerejection) {
-                    benchmarkPrerejection = _benchmarkPrerejection;
-                }
-
-                /**
-                 * Set the correction flag
-                 * @param correction
-                 */
-                inline void setCorrection( bool _correction ) {
-                    correction = _correction;
-                }
-
-                /**
                  * Generates a new seed for the benchmark
                  */
                 inline void generateNewSeed() {
@@ -258,7 +228,7 @@ namespace covis {
                  * To see the result of the benchmark call @ref @printResults()
                  * @param ransac instance, benchmark name
                  */
-                void run( class ransac *instance, std::string _funcName );
+                void run( class posePrior *instance, std::string _funcName );
 
                 /**
                  * Print results of the benchmarks
@@ -272,12 +242,6 @@ namespace covis {
                  * @param save path
                  */
                 void saveResults( std::string _path );
-
-                /**
-                 * Print results of the prerejection benchmarks
-                 * call @ref run() before calling this
-                 */
-                void printPrerejectionResults();
 
                 /**
                  * Clear results of the benchmarks
@@ -295,7 +259,6 @@ namespace covis {
                     std::vector<std::vector<double> > avgDistance;
                     std::vector<std::vector<double> > medianDistance;
                     std::vector<std::vector<covis::core::Detection> > d;
-                    std::vector<std::vector<binaryClassification> > prerejectionStats;
                     std::vector<std::vector<double> > time;
                     double totalTime;
                 };
@@ -312,20 +275,14 @@ namespace covis {
                 /// scene directory
                 std::string sceneDir;
 
-                /// pose directory
-                std::string poseDir;
+                /// pose path
+                std::string posePath;
 
                 /// object extensions
                 std::string objExt;
 
                 /// scene extensions
                 std::string sceneExt;
-
-                /// pose extensions
-                std::string poseExt;
-
-                /// pose seperator
-                std::string poseSep;
 
                 /// init flag, used to run @ref initBenchmark() once when @ref benchmark() is first called
                 boost::once_flag flagInit = BOOST_ONCE_INIT;
@@ -338,9 +295,6 @@ namespace covis {
 
                 /// ground truth poses
                 std::vector<std::vector<Eigen::Matrix4f> > poses;
-
-                /// mask designating which of the objects are present in the scene
-                std::vector<std::vector<bool> > objectMask;
 
                 /// correspondences
                 std::vector< std::vector<covis::core::Correspondence::VecPtr> > correspondences;
@@ -381,12 +335,6 @@ namespace covis {
                 /// Verbose flag
                 bool verbose;
 
-                /// Prerejection benchmark flag
-                bool benchmarkPrerejection;
-
-                /// Correction method flag
-                bool correction;
-
                 /**
                  * Initialized benchmark by loadning the data set and computing correspondences
                  */
@@ -425,7 +373,6 @@ namespace covis {
 
                     return v[size / 2];
                 }
-
         };
     }
 }

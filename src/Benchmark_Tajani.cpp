@@ -25,49 +25,44 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "../headers/Benchmark.hpp"
+#include "../headers/Benchmark_Tejani.hpp"
 
 using namespace covis::detect;
 
-void Benchmark::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                            std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
-                            std::vector<std::vector<Eigen::Matrix4f> > *poses)
+void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                                std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
+                                std::vector<std::vector<Eigen::Matrix4f> > *poses)
 {
     // Load dataset
     util::DatasetLoader dataset(
             this->rootPath,
             this->objDir,
             this->sceneDir,
-            this->poseDir,
+            "",
             this->objExt,
             this->sceneExt,
-            this->poseExt,
-            this->poseSep
+            "",
+            ""
     );
-
     dataset.parse();
 
     if(this->verbose)
         COVIS_MSG(dataset);
-
-    (*poses).resize(dataset.size());
 
     // Load object cloud, scene clouds and GT poses
     *objectMesh = dataset.getObjects();
     for(size_t i = 0; i < dataset.size(); ++i) {
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
         (*sceneMesh).push_back(scene.scene);
-        this->objectMask.push_back(scene.objectMask);
-        for( auto &pose : scene.poses ) {
-            (*poses)[i].push_back( pose );
-        }
     }
+    util::yml_loader yml( posePath );
+    yml.load( poses );
     COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
     this->objectLabels = dataset.getObjectLabels();
 }
 
-void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                                    std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
+void Benchmark_Tejani::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
+                                                std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
 {
     std::vector<CloudT::Ptr> objectSurf, sceneSurf;
 
@@ -163,17 +158,17 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
     }
 }
 
-void Benchmark::initialize()
+void Benchmark_Tejani::initialize()
 {
     if(this->verbose)
         printf("Loading data\n");
-    std::vector<util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
+    std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
     loadData( &objectMesh, &sceneMesh, &this->poses );
     computeCorrespondence( &objectMesh, &sceneMesh );
     generateNewSeed();
 }
 
-void Benchmark::run( class ransac *instance, std::string funcName )
+void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
 {
     // Call init if it has not been called before
     boost::call_once([this]{initialize();}, this->flagInit);
@@ -205,21 +200,11 @@ void Benchmark::run( class ransac *instance, std::string funcName )
             t.intermediate();
 
             for ( size_t j = 0; j < this->objectCloud.size(); j++ ) {
-                if ( !objectMask[i][j] ) // skip objects thats are not in the scene
-                    continue;
-
                 instance->setSource( this->objectCloud[j] );
                 instance->setTarget( this->sceneCloud[i] );
                 instance->setCorrespondences( this->correspondences[i][j] );
                 d[i][j] = instance->estimate();
                 time[i][j] = t.intermediate();
-
-                if ( this->benchmarkPrerejection )
-                    result.prerejectionStats.push_back( instance->benchmark( this->poses[i][j] ) );
-
-                if ( this->correction )
-                    instance->estimate_correction( this->poses[i][j] );
-                    // instance->estimate_correction2( this->poses[i][j] );
 
                 // Calculate distance from GT
                 CloudT gtCloud = *this->objectCloud[j];
@@ -257,7 +242,7 @@ void Benchmark::run( class ransac *instance, std::string funcName )
     this->results.push_back( result );
 }
 
-void Benchmark::printResults()
+void Benchmark_Tejani::printResults()
 {
     // Sanity checks
     COVIS_ASSERT_MSG( this->results.size() > 0,
@@ -288,9 +273,9 @@ void Benchmark::printResults()
             objSuccessful[i] = 0;
             double objRMSE = 0, objInliers = 0, objPenalty = 0;
             for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                totalIterations += objectMask[j][i];
-                objAttempt[i] += objectMask[j][i];
-                if ( result.d[j][i] && objectMask[j][i] ) {
+                totalIterations++;
+                objAttempt[i]++;
+                if ( result.d[j][i] ) {
                     avgObjTime[i] += result.time[j][i];
                     objRMSE += result.d[j][i].rmse;
                     objPenalty += result.d[j][i].penalty;
@@ -319,7 +304,7 @@ void Benchmark::printResults()
         for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             double objDist = 0;
             for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                if ( result.d[j][i] && objectMask[j][i] ) {
+                if ( result.d[j][i] ) {
                     objDist += pow(result.d[j][i].inlierfrac - avgObjInliers[i], 2);
                     dist += pow(result.d[j][i].inlierfrac - avgInliers, 2);
                 }
@@ -347,38 +332,7 @@ void Benchmark::printResults()
     printf("%s\n\n\n",std::string(138,'-').c_str());
 }
 
-void Benchmark::printPrerejectionResults()
-{
-    int numPrerejction = this->results[0].prerejectionStats[0].size();
-    std::vector<int> tp( numPrerejction ), tn( numPrerejction ), fp( numPrerejction ), fn( numPrerejction );
-
-    for( auto &result : this->results ) {
-        for ( auto &prerejectionStat : result.prerejectionStats ) {
-            for ( int k = 0; k < numPrerejction; k++ ) {
-                tp[k] += prerejectionStat[k].tp;
-                tn[k] += prerejectionStat[k].tn;
-                fp[k] += prerejectionStat[k].fp;
-                fn[k] += prerejectionStat[k].fn;
-            }
-        }
-    }
-
-    // Prerejection information
-    printf( "\n\033[1m%67s\033[m\n", "PREREJECTION RESULTS" );
-    for ( int i = 0; i < numPrerejction; i++ ) {
-        printf( " \033[1m%-13s%d\033[m\n", "Prerejection ", i );
-        printf("%s\n",std::string(115, '-').c_str());
-        printf( " \033[1m%-20s%20s%20s\033[m\n",
-            "", "Accecpt", "Reject" );
-        printf( " \033[1m%-20s%20d%20d\033[m\n",
-            "Positive outcome", tp[i], fp[i] );
-        printf( " \033[1m%-20s%20d%20d\033[m\n",
-            "Negative outcome", fn[i], tn[i] );
-        printf( "%s\n\n\n",std::string(115, '-').c_str() );
-    }
-}
-
-void Benchmark::saveResults( std::string path )
+void Benchmark_Tejani::saveResults( std::string path )
 {
     // Sanity checks
     COVIS_ASSERT_MSG( this->results.size() > 0,
@@ -392,19 +346,17 @@ void Benchmark::saveResults( std::string path )
 
         for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                if ( objectMask[j][i] ) {
-                    if ( result.d[j][i] ) {
-                        file << objectLabels[i] << ",";
-                        file << result.time[j][i] << ",";
-                        file << "0,";
-                        file << result.d[j][i].rmse << ",";
-                        file << result.d[j][i].penalty << ",";
-                        file << result.d[j][i].inlierfrac << ",";
-                        file << result.avgDistance[j][i] << ",";
-                        file << result.medianDistance[j][i] << "\n";
-                    } else {
-                        file << "-,1,-,-,-,-,-\n";
-                    }
+                if ( result.d[j][i] ) {
+                    file << objectLabels[i] << ",";
+                    file << result.time[j][i] << ",";
+                    file << "0,";
+                    file << result.d[j][i].rmse << ",";
+                    file << result.d[j][i].penalty << ",";
+                    file << result.d[j][i].inlierfrac << ",";
+                    file << result.avgDistance[j][i] << ",";
+                    file << result.medianDistance[j][i] << "\n";
+                } else {
+                    file << "-,1,-,-,-,-,-\n";
                 }
             }
         }

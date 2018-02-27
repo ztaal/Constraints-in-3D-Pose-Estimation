@@ -1,5 +1,6 @@
 
  /**  Todo list:
+  * TODO Change tejani benchmark so it calculates the corr when they are needed
   * TODO Rewrite DatasetLoader to work without poses
   * TODO Run tests with pose priors with one point
   * TODO Create a prerejection check that if the height difference between the corr and
@@ -7,6 +8,7 @@
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Prerejection idea: look at the angle between the normals if they are off discard
+  * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
   */
 
 // Covis
@@ -18,6 +20,8 @@ using namespace covis;
 #include "../headers/Benchmark.hpp"
 #include "../headers/Correspondence.hpp"
 #include "../headers/PosePrior.hpp"
+#include "../headers/yml_loader.hpp"
+#include "../headers/Benchmark_Tejani.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -75,6 +79,8 @@ int main( int argc, const char** argv )
     po.addFlag('p', "pose_prior", "pose_prior");
     po.addOption("query", 'q', "models", "mesh or point cloud file for query model");
     po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
+    po.addOption("yml-file", 'y', "ground_truth", "path to yml file contaning ground truth poses");
+    po.addFlag('t', "benchmark-tejani", "benchmark tejani");
 
     // Benchmark
     po.addFlag('b', "benchmark", "benchmark ransac");
@@ -107,6 +113,11 @@ int main( int argc, const char** argv )
     const float prerejectionSimilarty = po.getValue<float>("prerejection-similarity");
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
+    //
+    // class covis::util::yml_loader yml( po.getValue("yml-file") );
+    // yml.load();
+    // return 0;
+
     /*
      * Benchmark RANSAC
      */
@@ -116,6 +127,7 @@ int main( int argc, const char** argv )
         class covis::detect::posePrior posePrior;
         class covis::detect::ransac ransac;
         class covis::detect::Benchmark benchmark;
+        class covis::detect::Benchmark_Tejani bt;
 
         // Correspondence variables
         correspondence.setResolution( po.getValue<float>("resolution") );
@@ -129,44 +141,38 @@ int main( int argc, const char** argv )
         correspondence.setFeature( po.getValue("feature") );
         correspondence.setVerbose( verbose );
 
-        correspondence.compute( po.getValue("query"), po.getValue("target") );
-        CloudT::Ptr queryCloud = correspondence.getQuery();
-        CloudT::Ptr targetCloud = correspondence.getTarget();
-        covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
+        // correspondence.compute( po.getValue("query"), po.getValue("target") );
+        // CloudT::Ptr queryCloud = correspondence.getQuery();
+        // CloudT::Ptr targetCloud = correspondence.getTarget();
+        // covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
 
         if( po.getFlag("pose_prior") ) {
             posePrior.setInlierThreshold( inlierThreshold );
-            posePrior.setInlierFraction( inlierFraction );
+            posePrior.setInlierFraction( 0.01 );
+            // posePrior.setInlierFraction( inlierFraction );
             posePrior.setViewAxis( viewAxis );
             posePrior.setVerbose( verbose );
 
-            // Eigen::Matrix4f gt;
-            // gt <<   0.95813400,  -0.28295901,   -0.04372250,    34.94834213,
-            //        -0.22011200,  -0.63028598,   -0.74450701,  -114.54591885,
-            //         0.18310800,   0.72296202,   -0.66618103,   890.36032314,
-            //         0,           0,         0,          1;
-            // visu::showDetection<PointT>( queryCloud, targetCloud, gt );
-
             // Pose Prior
-            posePrior.setSource( queryCloud );
-            posePrior.setTarget( targetCloud );
-            posePrior.setCorrespondences( corr );
-            posePrior.setInlierFraction( 0.01 );
+            // posePrior.setSource( queryCloud );
+            // posePrior.setTarget( targetCloud );
+            // posePrior.setCorrespondences( corr );
+            // posePrior.setInlierFraction( 0.01 );
 
-            {
-                core::ScopedTimer t("Pose priors");
-                d = posePrior.estimate();
-            }
-            if(d) {
-                // Visualize
-                if (verbose)
-                    COVIS_MSG(d);
-                if( po.getFlag("visualize") ) {
-                    visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
-                }
-            } else {
-                COVIS_MSG_WARN("Pose priors failed!");
-            }
+            // {
+            //     core::ScopedTimer t("Pose priors");
+            //     d = posePrior.estimate();
+            // }
+            // if(d) {
+            //     // Visualize
+            //     if (verbose)
+            //         COVIS_MSG(d);
+            //     if( po.getFlag("visualize") ) {
+            //         visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
+            //     }
+            // } else {
+            //     COVIS_MSG_WARN("Pose priors failed!");
+            // }
         }
 
         if( po.getFlag("ransac") ) {
@@ -185,25 +191,26 @@ int main( int argc, const char** argv )
             ransac.setVerbose( verbose );
 
             // Ransac
-            ransac.setSource( queryCloud );
-            ransac.setTarget( targetCloud );
-            ransac.setCorrespondences( corr );
-            ransac.setInlierFraction( 0 );
-            {
-                core::ScopedTimer t("Ransac");
-                d = ransac.estimate();
-            }
+            // ransac.setSource( queryCloud );
+            // ransac.setTarget( targetCloud );
+            // ransac.setCorrespondences( corr );
+            // ransac.setInlierFraction( 0 );
 
-            if(d) {
-                // Visualize
-                if (verbose)
-                    COVIS_MSG(d);
-                if( po.getFlag("visualize") ) {
-                    visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
-                }
-            } else {
-                COVIS_MSG_WARN("RANSAC failed!");
-            }
+            // {
+            //     core::ScopedTimer t("Ransac");
+            //     d = ransac.estimate();
+            // }
+            //
+            // if(d) {
+            //     // Visualize
+            //     if (verbose)
+            //         COVIS_MSG(d);
+            //     if( po.getFlag("visualize") ) {
+            //         visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
+            //     }
+            // } else {
+            //     COVIS_MSG_WARN("RANSAC failed!");
+            // }
         }
 
         if( po.getFlag("benchmark") ) {
@@ -242,6 +249,34 @@ int main( int argc, const char** argv )
                 // benchmark.printPrerejectionResults();
                 benchmark.clearResults();
                 benchmark.generateNewSeed();
+            // }
+        }
+
+        if( po.getFlag("benchmark-tejani") ) {
+            // Benchmark Tejani variables
+            bt.setRootPath( po.getValue("root-path") );
+            bt.setObjectDir( po.getValue("object-dir") );
+            bt.setSceneDir( po.getValue("scene-dir") );
+            bt.setPosePath( po.getValue("yml-file") );
+            bt.setObjExt( po.getValue("object-ext") );
+            bt.setSceneExt( po.getValue("scene-ext") );
+
+            bt.setResolution( po.getValue<float>("resolution") );
+            bt.setObjectScale( po.getValue<float>("object-scale") );
+            bt.setFar( po.getValue<float>("far") );
+            bt.setRadiusNormal( po.getValue<float>("radius-normal") );
+            bt.setResolutionQuery( po.getValue<float>("resolution-query") );
+            bt.setResolutionTarget( po.getValue<float>("resolution-target") );
+            bt.setRadiusFeature( po.getValue<float>("radius-feature") );
+            bt.setCutoff( po.getValue<size_t>("cutoff") );
+            bt.setFeature( po.getValue("feature") );
+            bt.setVerbose( verbose );
+
+            // for ( size_t i = 0; i < 1; i++ ) {
+                bt.run( &posePrior, "Base case" );
+                bt.printResults();
+                bt.clearResults();
+                bt.generateNewSeed();
             // }
         }
      }

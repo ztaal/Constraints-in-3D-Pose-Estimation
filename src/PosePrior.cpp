@@ -93,8 +93,6 @@ covis::core::Detection posePrior::estimate()
     // for( size_t i = 0; i < correspondences.size() / 20; i++ ) {
     // for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
 
-        // int source_corr = 1248;
-        // int target_corr = 1063;
         int source_corr = correspondences[i].query;
         int target_corr = correspondences[i].match[0];
         pose = Eigen::Matrix4f::Identity();
@@ -108,8 +106,8 @@ covis::core::Detection posePrior::estimate()
                                     this->target->points[target_corr].y,
                                     this->target->points[target_corr].z, 1);
         double distance = plane_normal.dot( targetPoint );
-        if (distance > 0)
-        	continue;
+        // if (distance > 0)
+        // 	continue;
 
         // Prerejection2: compare height of corr in target to source
             // double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
@@ -187,33 +185,33 @@ covis::core::Detection posePrior::estimate()
 
     }
 
-    // Visualize translations
-    pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-    for (size_t i = 0; i < pose_vector.size(); i++) {
-        PointT point;
-        point.x = pose_vector[i](0,3);
-        point.y = pose_vector[i](1,3);
-        point.z = pose_vector[i](2,3);
-        results->push_back(point);
-    }
-
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    viewer->setBackgroundColor (0, 0, 0);
-    viewer->addCoordinateSystem (1.0, "global");
-
-    viewer->addPointCloud<PointT> (results, "sample cloud");
-    viewer->addPointCloud<PointT> (this->target, "sample cloud2");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
-    pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
-    pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
-    viewer->updatePointCloud(results, red, "sample cloud");
-    viewer->updatePointCloud(this->target, blue, "sample cloud2");
-
-    while (!viewer->wasStopped ()) {
-        viewer->spinOnce (100);
-        boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-    }
+    // // Visualize translations
+    // pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
+    // for (size_t i = 0; i < pose_vector.size(); i++) {
+    //     PointT point;
+    //     point.x = pose_vector[i](0,3);
+    //     point.y = pose_vector[i](1,3);
+    //     point.z = pose_vector[i](2,3);
+    //     results->push_back(point);
+    // }
+    //
+    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    // viewer->setBackgroundColor (0, 0, 0);
+    // viewer->addCoordinateSystem (1.0, "global");
+    //
+    // viewer->addPointCloud<PointT> (results, "sample cloud");
+    // viewer->addPointCloud<PointT> (this->target, "sample cloud2");
+    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
+    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
+    // pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
+    // pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
+    // viewer->updatePointCloud(results, red, "sample cloud");
+    // viewer->updatePointCloud(this->target, blue, "sample cloud2");
+    //
+    // while (!viewer->wasStopped ()) {
+    //     viewer->spinOnce (100);
+    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    // }
 
     return result;
 }

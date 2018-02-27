@@ -10,11 +10,15 @@ include_directories( ${COVIS_INCLUDE_DIRS} )
 find_package( VTK 6.2 REQUIRED NO_MODULE )
 include( ${VTK_USE_FILE} )
 
-add_executable( aout src/main.cpp src/Ransac.cpp src/Timer.cpp src/Benchmark.cpp src/Correspondence.cpp src/PosePrior.cpp )
+add_executable( aout src/main.cpp src/Ransac.cpp src/Timer.cpp src/Benchmark.cpp
+                src/Correspondence.cpp src/PosePrior.cpp src/yml_loader.cpp
+                src/Benchmark_Tajani.cpp )
 target_link_libraries( aout ${COVIS_LIBRARIES} )
 
 find_package(Eigen3 3.3.2 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
+
+target_link_libraries(aout yaml-cpp)
 
 add_definitions(
     -Wno-deprecated-declarations

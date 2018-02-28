@@ -47,8 +47,7 @@ covis::core::Detection posePrior::estimate()
     core::Detection result;
     Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
     std::vector<Eigen::Matrix4f> pose_vector;
-    covis::core::Correspondence::Vec correspondences = *this->corr;
-    covis::core::sort(correspondences);
+    covis::core::sort(*this->corr);
 
     // Find largest plane
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
@@ -72,29 +71,17 @@ covis::core::Detection posePrior::estimate()
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
-    // Compute surface normals for the two matched correspondence
-    pcl::NormalEstimation<PointT, pcl::Normal> ne;
-    pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT> ());
-    ne.setRadiusSearch(4);
-    ne.setSearchMethod (tree);
-    pcl::PointCloud<pcl::Normal>::Ptr source_normals (new pcl::PointCloud<pcl::Normal>);
-    pcl::PointCloud<pcl::Normal>::Ptr target_normals (new pcl::PointCloud<pcl::Normal>);
-    ne.setInputCloud (this->source);
-    ne.compute (*source_normals);
-    ne.setInputCloud (this->target);
-    ne.compute (*target_normals);
-
     // Loop over correspondences
     // for( size_t i = 0; i < 1; i++ ) {
     // for( size_t i = 0; i < 10; i++ ) {
-    // for( size_t i = 0; i < correspondences.size(); i++ ) {
-    // for( size_t i = 0; i < correspondences.size() / 3; i++ ) {
-    for( size_t i = 0; i < correspondences.size() / 10; i++ ) {
-    // for( size_t i = 0; i < correspondences.size() / 20; i++ ) {
-    // for( size_t i = 0; i < correspondences.size() / 30; i++ ) {
+    // for( size_t i = 0; i < this->corr->size(); i++ ) {
+    for( size_t i = 0; i < this->corr->size() / 3; i++ ) {
+    // for( size_t i = 0; i < this->corr->size() / 10; i++ ) {
+    // for( size_t i = 0; i < this->corr->size() / 20; i++ ) {
+    // for( size_t i = 0; i < this->corr->size() / 30; i++ ) {
 
-        int source_corr = correspondences[i].query;
-        int target_corr = correspondences[i].match[0];
+        int source_corr = (*this->corr)[i].query;
+        int target_corr = (*this->corr)[i].match[0];
         pose = Eigen::Matrix4f::Identity();
 
         // Prerejection: ignore point if it is below the plane
@@ -139,6 +126,7 @@ covis::core::Detection posePrior::estimate()
         pose = transformation.matrix() * pose;
 
         // Project normals onto plane
+        // std::cout << "Normal 1: " << source_normals->points[source_corr].x << '\n';
         Eigen::Vector4f source_normal(this->source->points[source_corr].normal_x,
                                         this->source->points[source_corr].normal_y,
                                         this->source->points[source_corr].normal_z, 0);
@@ -165,7 +153,13 @@ covis::core::Detection posePrior::estimate()
 
         // Apply rotation
         pose = projected_transformation.matrix() * pose;
-        // visu::showDetection<PointT>( this->source, this->target, pose );
+
+        // Find angel between normals
+        source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
+        double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
+        // if (angle > 0.05)
+        if (angle > 0.1)
+            continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
@@ -174,7 +168,7 @@ covis::core::Detection posePrior::estimate()
         if( fe->inlierFraction() >= this->inlierFraction ) {
             pose_vector.push_back(pose);
             // Update result if updated model is the best so far
-            if(fe->penalty() < result.penalty) {
+            if(fe->penalty() < result.penalty && !pose.isZero(0)) {
                 result.pose = pose;
                 result.rmse = fe->rmse();
                 result.inlierfrac = fe->inlierFraction();

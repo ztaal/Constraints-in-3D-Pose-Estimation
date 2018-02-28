@@ -165,7 +165,6 @@ covis::core::Detection ransac::estimate()
         _allDetections = core::mask(_allDetections, keep);
     }
 
-
     return result;
 }
 

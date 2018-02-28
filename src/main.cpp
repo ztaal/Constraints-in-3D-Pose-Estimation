@@ -1,7 +1,6 @@
 
  /**  Todo list:
-  * TODO Change tejani benchmark so it calculates the corr when they are needed
-  * TODO Rewrite DatasetLoader to work without poses
+  * TODO Change benchmark so it outputs distance to gt
   * TODO Run tests with pose priors with one point
   * TODO Create a prerejection check that if the height difference between the corr and
          the plane in both the scene and object is too different discard it
@@ -273,7 +272,7 @@ int main( int argc, const char** argv )
             bt.setVerbose( verbose );
 
             // for ( size_t i = 0; i < 1; i++ ) {
-                bt.run( &posePrior, "Base case" );
+                bt.run( &posePrior, "Pose Prior" );
                 bt.printResults();
                 bt.clearResults();
                 bt.generateNewSeed();

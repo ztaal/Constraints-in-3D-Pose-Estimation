@@ -256,11 +256,10 @@ namespace covis {
                 struct Result
                 {
                     std::string name;
-                    std::vector<std::vector<double> > avgDistance;
-                    std::vector<std::vector<double> > medianDistance;
-                    std::vector<std::vector<covis::core::Detection> > d;
-                    std::vector<std::vector<double> > time;
-                    double totalTime;
+                    std::vector<double> avgDistance;
+                    std::vector<double> medianDistance;
+                    std::vector<covis::core::Detection> d;
+                    std::vector<double> time;
                 };
 
                 /// Generated seed used in ransac
@@ -287,17 +286,21 @@ namespace covis {
                 /// init flag, used to run @ref initBenchmark() once when @ref benchmark() is first called
                 boost::once_flag flagInit = BOOST_ONCE_INIT;
 
+                /// object features
+                feature::MatrixT objectFeat;
+
                 /// object cloud
-                std::vector<CloudT::Ptr> objectCloud;
+                CloudT::Ptr objectCloud;
+
+                /// scene meshes
+                std::vector<covis::util::DatasetLoader::ModelPtr> sceneMesh;
 
                 /// scene cloud
-                std::vector<CloudT::Ptr> sceneCloud;
+                CloudT::Ptr sceneCloud;
 
                 /// ground truth poses
                 std::vector<std::vector<Eigen::Matrix4f> > poses;
 
-                /// correspondences
-                std::vector< std::vector<covis::core::Correspondence::VecPtr> > correspondences;
 
                 /// results of the benchmarks
                 std::vector<Result> results;
@@ -351,12 +354,36 @@ namespace covis {
                                 std::vector<std::vector<Eigen::Matrix4f> > *poses);
 
                 /**
-                * Compute correspondences of each object with each scene
-                * @param pointer to objectMesh
+                 * Compute features of the object
+                 * @param pointer to objectMesh
+                 */
+                void computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh);
+
+                /**
+                * Compute correspondences of a scene
                 * @param pointer to sceneMesh
+                * @return correspondences
                 */
-                void computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                                            std::vector<util::DatasetLoader::ModelPtr> *sceneMesh);
+                covis::core::Correspondence::VecPtr computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh);
+
+                /**
+                * Compute the euclidean distance between the translation of two Matrix4f
+                * @param matrix 1
+                * @param matrix 2
+                */
+                inline double
+                norm( Eigen::Matrix4f p1, Eigen::Matrix4f p2 )
+                {
+                    PointT gtP;
+                    gtP.x = p1(0,3);
+                    gtP.y = p1(1,3);
+                    gtP.z = p1(2,3);
+                    PointT poseP;
+                    poseP.x = p2(0,3);
+                    poseP.y = p2(1,3);
+                    poseP.z = p2(2,3);
+                    return pcl::euclideanDistance(gtP, poseP);
+                }
 
                 /**
                 * Compute median of vector

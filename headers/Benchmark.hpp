@@ -297,7 +297,6 @@ namespace covis {
                     std::vector<std::vector<covis::core::Detection> > d;
                     std::vector<std::vector<binaryClassification> > prerejectionStats;
                     std::vector<std::vector<double> > time;
-                    double totalTime;
                 };
 
                 /// Generated seed used in ransac

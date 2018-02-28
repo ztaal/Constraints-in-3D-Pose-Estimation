@@ -61,23 +61,15 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
     this->objectLabels = dataset.getObjectLabels();
 }
 
-void Benchmark_Tejani::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
-                                                std::vector<util::DatasetLoader::ModelPtr> *sceneMesh)
+void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 {
-    std::vector<CloudT::Ptr> objectSurf, sceneSurf;
 
     // Surfaces and normals
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
-        this->resolution = 0;
-    for(size_t i = 0; i < objectMesh->size(); ++i) {
-        if(!resolutionInput)
-            this->resolution += detect::computeResolution((*objectMesh)[i]) * this->objectScale;
-        if(objectScale != 1)
-            (*objectMesh)[i] = filter::scale((*objectMesh)[i], this->objectScale);
-    }
-    if(!resolutionInput)
-        this->resolution /= float( objectMesh->size() );
+        this->resolution = detect::computeResolution(*objectMesh) * this->objectScale;
+    if(objectScale != 1)
+        *objectMesh = filter::scale(*objectMesh, this->objectScale);
 
     const float nrad =
             this->radiusNormal > 0.0 ?
@@ -89,6 +81,33 @@ void Benchmark_Tejani::computeCorrespondence(std::vector<util::DatasetLoader::Mo
             this->resolutionQuery > 0.0 ?
             this->resolutionQuery * this->resolution :
             5 * this->resolution;
+    const float frad =
+            this->radiusFeature > 0.0 ?
+            this->radiusFeature * this->resolution :
+            25 * this->resolution;
+
+    // Preprocess
+    CloudT::Ptr objectSurf = filter::preprocess<PointT>(*objectMesh, 1, true, this->far, this->resolution,
+                                            nrad, false, false, false);
+    COVIS_ASSERT(!objectSurf->empty());
+
+    // Generate feature points
+    this->objectCloud = filter::downsample<PointT>(objectSurf, resQuery);
+    COVIS_ASSERT(!this->objectCloud->empty());
+
+    // Compute features
+    this->objectFeat = feature::computeFeature<PointT>(this->feature, this->objectCloud, objectSurf, frad);
+}
+
+covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh)
+{
+    // Surfaces and normals
+    const float nrad =
+            this->radiusNormal > 0.0 ?
+            this->radiusNormal * this->resolution :
+            2 * this->resolution;
+
+    // Features and matching
     const float resTarget =
             this->resolutionTarget > 0.0 ?
             this->resolutionTarget * this->resolution :
@@ -97,74 +116,38 @@ void Benchmark_Tejani::computeCorrespondence(std::vector<util::DatasetLoader::Mo
             this->radiusFeature > 0.0 ?
             this->radiusFeature * this->resolution :
             25 * this->resolution;
-    const size_t cutoff = this->cutoff;
-    COVIS_ASSERT(cutoff > 0 && cutoff <= 100);
+    COVIS_ASSERT(this->cutoff > 0 && this->cutoff <= 100);
 
     // Preprocess
-    objectSurf.resize( objectMesh->size() );
-    for(size_t i = 0; i < objectMesh->size(); ++i) {
-        objectSurf[i] = filter::preprocess<PointT>((*objectMesh)[i], 1, true, this->far, this->resolution, nrad, false,
-                                                  false, false);
-        COVIS_ASSERT( !objectSurf[i]->empty() );
-    }
-
-    sceneSurf.resize(sceneMesh->size());
-    for(size_t i = 0; i < sceneMesh->size(); ++i) {
-        sceneSurf[i] = filter::preprocess<PointT>((*sceneMesh)[i], 1, true, this->far, this->resolution, nrad, false,
-                                                  false, false);
-        COVIS_ASSERT(!sceneSurf[i]->empty());
-    }
+    CloudT::Ptr sceneSurf = filter::preprocess<PointT>(*sceneMesh, 1, true, this->far,  this->resolution,
+                                            nrad, false, false, false);
+    COVIS_ASSERT(!sceneSurf->empty());
 
     // Generate feature points
-    this->objectCloud.resize(objectSurf.size());
-    for(size_t i = 0; i < objectSurf.size(); ++i) {
-        this->objectCloud[i] = filter::downsample<PointT>(objectSurf[i], resQuery);
-
-        COVIS_ASSERT(!this->objectCloud[i]->empty());
-    }
-
-    this->sceneCloud.resize(sceneSurf.size());
-    for(size_t i = 0; i < sceneSurf.size(); ++i) {
-        this->sceneCloud[i] = filter::downsample<PointT>(sceneSurf[i], resTarget);
-
-        COVIS_ASSERT(!this->sceneCloud[i]->empty());
-    }
+    this->sceneCloud = filter::downsample<PointT>(sceneSurf, resTarget);
+    COVIS_ASSERT(!this->sceneCloud->empty());
 
     // Compute features
-    std::vector<feature::MatrixT> objectFeat, sceneFeat;
-    objectFeat.resize(objectSurf.size());
-    for(size_t i = 0; i < objectSurf.size(); ++i) {
-        objectFeat[i] = feature::computeFeature<PointT>(this->feature, this->objectCloud[i], objectSurf[i], frad);
-    }
+    feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, frad);
 
-    sceneFeat.resize(sceneSurf.size());
-    for(size_t i = 0; i < sceneSurf.size(); ++i) {
-        sceneFeat[i] = feature::computeFeature<PointT>(this->feature, this->sceneCloud[i], sceneSurf[i], frad);
-    }
+    // Match features
+    covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(this->objectFeat, sceneFeat);
 
-     // Match features
-    this->correspondences.resize(sceneFeat.size());
-    for (size_t i = 0; i < sceneFeat.size(); i++) {
-        this->correspondences[i].resize(objectFeat.size());
-        for (size_t j = 0; j < objectFeat.size(); j++) {
-            this->correspondences[i][j] = detect::computeRatioMatches(objectFeat[j], sceneFeat[i]);
-
-            // Sort correspondences and cutoff at <cutoff> %
-            if(cutoff < 100) {
-                covis::core::sort(*this->correspondences[i][j]);
-                this->correspondences[i][j]->resize(this->correspondences[i][j]->size() * cutoff / 100);
-            }
-        }
+    // Sort correspondences and cutoff at <cutoff> %
+    if(this->cutoff < 100) {
+        covis::core::sort(*correspondences);
+        correspondences->resize(correspondences->size() * this->cutoff / 100);
     }
+    return correspondences;
 }
 
 void Benchmark_Tejani::initialize()
 {
     if(this->verbose)
         printf("Loading data\n");
-    std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh, sceneMesh;
-    loadData( &objectMesh, &sceneMesh, &this->poses );
-    computeCorrespondence( &objectMesh, &sceneMesh );
+    std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh;
+    loadData( &objectMesh, &this->sceneMesh, &this->poses );
+    computeObjFeat( &objectMesh[0] );
     generateNewSeed();
 }
 
@@ -181,53 +164,60 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
     // Benchmark
     {
         printf( "Benchmarking %s: \n", funcName.c_str() );
-        std::vector<std::vector<double> > time( this->sceneCloud.size() );
-        std::vector<std::vector<double> > avgDistance( this->sceneCloud.size() );
-        std::vector<std::vector<double> > medianDistance( this->sceneCloud.size() );
-        std::vector<std::vector<covis::core::Detection> > d( this->sceneCloud.size() );
+        std::vector<double> time( this->sceneMesh.size() );
+        std::vector<double> avgDistance( this->sceneMesh.size() );
+        std::vector<double> medianDistance( this->sceneMesh.size() );
+        std::vector<covis::core::Detection> d( this->sceneMesh.size() );
 
-        covis::core::ProgressDisplay pd( this->sceneCloud.size(), true );
+        covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
+        instance->setSource( this->objectCloud );
 
         // Start timer
         covis::core::Timer t;
 
         // Run through scenes and estimate pose of each object
-        for ( size_t i = 0; i < this->sceneCloud.size(); i++, ++pd ) {
-            d[i].resize( this->objectCloud.size() );
-            time[i].resize( this->objectCloud.size() );
-            avgDistance[i].resize( this->objectCloud.size() );
-            medianDistance[i].resize( this->objectCloud.size() );
+        for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
+            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence(&this->sceneMesh[i]);
+
+            instance->setTarget( this->sceneCloud );
+            instance->setCorrespondences( correspondence );
+
+            // Run pose estimation
             t.intermediate();
+            d[i] = instance->estimate();
+            time[i] = t.intermediate();
 
-            for ( size_t j = 0; j < this->objectCloud.size(); j++ ) {
-                instance->setSource( this->objectCloud[j] );
-                instance->setTarget( this->sceneCloud[i] );
-                instance->setCorrespondences( this->correspondences[i][j] );
-                d[i][j] = instance->estimate();
-                time[i][j] = t.intermediate();
-
+            if (d[i]) {
                 // Calculate distance from GT
-                CloudT gtCloud = *this->objectCloud[j];
-                CloudT poseCloud = *this->objectCloud[j];
+                CloudT gtCloud = *this->objectCloud;
+                CloudT poseCloud = *this->objectCloud;
 
-                covis::core::transform( poseCloud, d[i][j].pose );
-                covis::core::transform( gtCloud, this->poses[i][j] );
+                // Find gt pose closest to estimated pose
+                int poseIndex = 0;
+                double shortestDist = std::numeric_limits<double>::max();
+                for ( size_t j = 0; j < this->poses.size(); j++ ) {
+                    double dist = norm( this->poses[i][j], d[i].pose );
+                    if (dist < shortestDist) {
+                        shortestDist = dist;
+                        poseIndex = j;
+                    }
+                }
+                covis::core::transform( poseCloud, d[i].pose );
+                covis::core::transform( gtCloud, this->poses[i][poseIndex] );
 
                 std::vector<double> distance;
-                for ( auto corr : *this->correspondences[i][j] )
+                for ( auto corr : *correspondence )
                     distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
 
-                std::sort (distance.begin(), distance.end());
-                medianDistance[i][j] = this->median( distance );
+                medianDistance[i] = this->median( distance );
 
                 for ( auto &n : distance )
-                    avgDistance[i][j] += n;
-                avgDistance[i][j] = avgDistance[i][j] / distance.size();
+                    avgDistance[i] += n;
+                avgDistance[i] = avgDistance[i] / distance.size();
 
                 if (this->verbose) {
-                    COVIS_MSG( d[i][j].pose );
-                    visu::showDetection<PointT>( this->objectCloud[j],
-                        this->sceneCloud[i], d[i][j].pose );
+                    COVIS_MSG( d[i].pose );
+                    visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
             }
         }
@@ -236,7 +226,6 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         result.name = funcName;
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
-        result.totalTime = t.seconds();
     }
     // Store results of the Benchmark
     this->results.push_back( result );
@@ -249,87 +238,54 @@ void Benchmark_Tejani::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%80s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s%23s\033[m\n", "Function Name   ",
-        "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
-
-    // Data
-    std::vector<int> objAttempt( this->objectCloud.size() );
-    std::vector<int> objSuccessful( this->objectCloud.size() );
-    std::vector<double> avgObjTime( this->objectCloud.size() );
-    std::vector<double> avgObjRMSE( this->objectCloud.size() );
-    std::vector<double> avgObjPenalty( this->objectCloud.size() );
-    std::vector<double> avgObjInliers( this->objectCloud.size() );
-    std::vector<double> stddevObjInliers( this->objectCloud.size() );
+    printf( "\n\n\n\033[1m%95s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%10s(%%)%20s%20s%15s%15s%20s%23s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg Distance", "Median Distance", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
-        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
         int successful = 0;
-        int totalIterations = 0;
-        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
-            objAttempt[i] = 0;
-            objSuccessful[i] = 0;
-            double objRMSE = 0, objInliers = 0, objPenalty = 0;
-            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                totalIterations++;
-                objAttempt[i]++;
-                if ( result.d[j][i] ) {
-                    avgObjTime[i] += result.time[j][i];
-                    objRMSE += result.d[j][i].rmse;
-                    objPenalty += result.d[j][i].penalty;
-                    objInliers += result.d[j][i].inlierfrac;
-                    objSuccessful[i]++;
-                }
+        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0, avgTime = 0;
+        double avgDist = 0, avgMedianDist = 0, totalTime = 0;
+        for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
+            totalTime += result.time[i];
+            if ( result.d[i] ) {
+                avgRMSE += result.d[i].rmse;
+                avgInliers += result.d[i].inlierfrac;
+                avgPenalty += result.d[i].penalty;
+                avgTime += result.time[i];
+                avgDist += result.avgDistance[i];
+                avgMedianDist += result.medianDistance[i];
+                successful++;
             }
-            avgRMSE += objRMSE;
-            avgPenalty += objPenalty;
-            avgInliers += objInliers;
-            successful += objSuccessful[i];
-            avgObjRMSE[i] = objRMSE / objSuccessful[i];
-            avgObjPenalty[i] = objPenalty / objSuccessful[i];
-            avgObjInliers[i] = objInliers / objSuccessful[i];
         }
 
         avgRMSE = avgRMSE / successful;
         avgInliers = avgInliers / successful;
         avgPenalty = avgPenalty / successful;
-        double avgTime = result.totalTime / successful;
-        double failed = totalIterations - successful;
-        double failedPercent = (failed / totalIterations) * 100;
+        avgTime = avgTime / successful;
+        avgDist = avgDist / successful;
+        avgMedianDist = avgMedianDist / successful;
+        double failed = this->sceneMesh.size() - successful;
+        double failedPercent = (failed / this->sceneMesh.size()) * 100;
 
         // Calculate standard deviation
         double dist = 0;
-        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
-            double objDist = 0;
-            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                if ( result.d[j][i] ) {
-                    objDist += pow(result.d[j][i].inlierfrac - avgObjInliers[i], 2);
-                    dist += pow(result.d[j][i].inlierfrac - avgInliers, 2);
-                }
+        for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
+            if ( result.d[i] ) {
+                dist += pow(result.d[i].inlierfrac - avgInliers, 2);
             }
-            stddevObjInliers[i] = sqrt(objDist / objSuccessful[i]);
         }
         double stddevInliers = sqrt(dist / successful);
 
         // Print information
-        printf("%s\n",std::string(138, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\033[m\n",
-            result.name.c_str(), result.totalTime, avgTime, failedPercent,
-            avgRMSE, avgPenalty, avgInliers, stddevInliers );
-
-        // Print information about each object
-        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
-            double objFailed = objAttempt[i] - objSuccessful[i];
-            double objFailedPercent = (objFailed / objAttempt[i]) * 100;
-            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\n",
-                objectLabels[i].c_str(), avgObjTime[i],
-                avgObjTime[i] / objSuccessful[i], objFailedPercent,
-                avgObjRMSE[i], avgObjPenalty[i], avgObjInliers[i], stddevObjInliers[i] );
-        }
+        printf("%s\n",std::string(178, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%20.4f%20.4f%15.5f%15.4f%20.4f%23.4f\033[m\n",
+            result.name.c_str(), totalTime, avgTime, failedPercent, avgDist,
+            avgMedianDist, avgRMSE, avgPenalty, avgInliers, stddevInliers );
     }
-    printf("%s\n\n\n",std::string(138,'-').c_str());
+    printf("%s\n\n\n",std::string(178,'-').c_str());
 }
 
 void Benchmark_Tejani::saveResults( std::string path )
@@ -344,20 +300,18 @@ void Benchmark_Tejani::saveResults( std::string path )
         file << result.name << "\n";
         file << "Object,Time,Failed,RMSE,Penalty,InlierFrac,Avg Dist,Median Dist\n";
 
-        for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
-            for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
-                if ( result.d[j][i] ) {
-                    file << objectLabels[i] << ",";
-                    file << result.time[j][i] << ",";
-                    file << "0,";
-                    file << result.d[j][i].rmse << ",";
-                    file << result.d[j][i].penalty << ",";
-                    file << result.d[j][i].inlierfrac << ",";
-                    file << result.avgDistance[j][i] << ",";
-                    file << result.medianDistance[j][i] << "\n";
-                } else {
-                    file << "-,1,-,-,-,-,-\n";
-                }
+        for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
+            if ( result.d[i] ) {
+                file << objectLabels[i] << ",";
+                file << result.time[i] << ",";
+                file << "0,";
+                file << result.d[i].rmse << ",";
+                file << result.d[i].penalty << ",";
+                file << result.d[i].inlierfrac << ",";
+                file << result.avgDistance[i] << ",";
+                file << result.medianDistance[i] << "\n";
+            } else {
+                file << "-,1,-,-,-,-,-\n";
             }
         }
         file.close();

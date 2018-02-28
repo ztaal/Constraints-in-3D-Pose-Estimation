@@ -102,8 +102,7 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
             this->radiusFeature > 0.0 ?
             this->radiusFeature * this->resolution :
             25 * this->resolution;
-    const size_t cutoff = this->cutoff;
-    COVIS_ASSERT(cutoff > 0 && cutoff <= 100);
+    COVIS_ASSERT(this->cutoff > 0 && this->cutoff <= 100);
 
     // Preprocess
     objectSurf.resize( objectMesh->size() );
@@ -157,7 +156,7 @@ void Benchmark::computeCorrespondence(std::vector<util::DatasetLoader::ModelPtr>
             // Sort correspondences and cutoff at <cutoff> %
             if(cutoff < 100) {
                 covis::core::sort(*this->correspondences[i][j]);
-                this->correspondences[i][j]->resize(this->correspondences[i][j]->size() * cutoff / 100);
+                this->correspondences[i][j]->resize(this->correspondences[i][j]->size() * this->cutoff / 100);
             }
         }
     }
@@ -221,28 +220,28 @@ void Benchmark::run( class ransac *instance, std::string funcName )
                     instance->estimate_correction( this->poses[i][j] );
                     // instance->estimate_correction2( this->poses[i][j] );
 
-                // Calculate distance from GT
-                CloudT gtCloud = *this->objectCloud[j];
-                CloudT poseCloud = *this->objectCloud[j];
+                if (d[i][j]) {
+                    // Calculate distance from GT
+                    CloudT gtCloud = *this->objectCloud[j];
+                    CloudT poseCloud = *this->objectCloud[j];
 
-                covis::core::transform( poseCloud, d[i][j].pose );
-                covis::core::transform( gtCloud, this->poses[i][j] );
+                    covis::core::transform( poseCloud, d[i][j].pose );
+                    covis::core::transform( gtCloud, this->poses[i][j] );
 
-                std::vector<double> distance;
-                for ( auto corr : *this->correspondences[i][j] )
+                    std::vector<double> distance;
+                    for ( auto corr : *this->correspondences[i][j] )
                     distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
 
-                std::sort (distance.begin(), distance.end());
-                medianDistance[i][j] = this->median( distance );
+                    medianDistance[i][j] = this->median( distance );
 
-                for ( auto &n : distance )
+                    for ( auto &n : distance )
                     avgDistance[i][j] += n;
-                avgDistance[i][j] = avgDistance[i][j] / distance.size();
+                    avgDistance[i][j] = avgDistance[i][j] / distance.size();
 
-                if (this->verbose) {
-                    COVIS_MSG( d[i][j].pose );
-                    visu::showDetection<PointT>( this->objectCloud[j],
-                        this->sceneCloud[i], d[i][j].pose );
+                    if (this->verbose) {
+                        COVIS_MSG( d[i][j].pose );
+                        visu::showDetection<PointT>( this->objectCloud[j], this->sceneCloud[i], d[i][j].pose );
+                    }
                 }
             }
         }
@@ -251,7 +250,6 @@ void Benchmark::run( class ransac *instance, std::string funcName )
         result.name = funcName;
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
-        result.totalTime = t.seconds();
     }
     // Store results of the Benchmark
     this->results.push_back( result );
@@ -280,9 +278,8 @@ void Benchmark::printResults()
     // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
-        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
-        int successful = 0;
-        int totalIterations = 0;
+        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0, totalTime = 0;
+        int successful = 0, totalIterations = 0;
         for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             objAttempt[i] = 0;
             objSuccessful[i] = 0;
@@ -292,6 +289,7 @@ void Benchmark::printResults()
                 objAttempt[i] += objectMask[j][i];
                 if ( result.d[j][i] && objectMask[j][i] ) {
                     avgObjTime[i] += result.time[j][i];
+                    totalTime += result.time[j][i];
                     objRMSE += result.d[j][i].rmse;
                     objPenalty += result.d[j][i].penalty;
                     objInliers += result.d[j][i].inlierfrac;
@@ -310,7 +308,7 @@ void Benchmark::printResults()
         avgRMSE = avgRMSE / successful;
         avgInliers = avgInliers / successful;
         avgPenalty = avgPenalty / successful;
-        double avgTime = result.totalTime / successful;
+        double avgTime = totalTime / successful;
         double failed = totalIterations - successful;
         double failedPercent = (failed / totalIterations) * 100;
 
@@ -331,7 +329,7 @@ void Benchmark::printResults()
         // Print information
         printf("%s\n",std::string(138, '-').c_str());
         printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\033[m\n",
-            result.name.c_str(), result.totalTime, avgTime, failedPercent,
+            result.name.c_str(), totalTime, avgTime, failedPercent,
             avgRMSE, avgPenalty, avgInliers, stddevInliers );
 
         // Print information about each object

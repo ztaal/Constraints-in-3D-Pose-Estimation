@@ -216,13 +216,6 @@ namespace covis {
                 }
 
                 /**
-                 * Generates a new seed for the benchmark
-                 */
-                inline void generateNewSeed() {
-                    seed = std::time(0);
-                }
-
-                /**
                  * Benchmarks a function on the specified data set
                  * Running multiple instance of benchmark will store each individual benchmark
                  * To see the result of the benchmark call @ref @printResults()
@@ -262,9 +255,6 @@ namespace covis {
                     std::vector<double> time;
                 };
 
-                /// Generated seed used in ransac
-                size_t seed;
-
                 /// root path
                 std::string rootPath;
 
@@ -300,7 +290,6 @@ namespace covis {
 
                 /// ground truth poses
                 std::vector<std::vector<Eigen::Matrix4f> > poses;
-
 
                 /// results of the benchmarks
                 std::vector<Result> results;

@@ -55,7 +55,7 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
         (*sceneMesh).push_back(scene.scene);
     }
-    util::yml_loader yml( posePath );
+    util::yml_loader yml( this->rootPath + posePath );
     yml.load( poses );
     COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
     this->objectLabels = dataset.getObjectLabels();
@@ -127,6 +127,16 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
     this->sceneCloud = filter::downsample<PointT>(sceneSurf, resTarget);
     COVIS_ASSERT(!this->sceneCloud->empty());
 
+    // Remove stastical outliers
+    pcl::StatisticalOutlierRemoval<PointT> sor;
+    sor.setInputCloud(this->sceneCloud);
+    sor.setMeanK(1);
+    // sor.setMeanK(100);
+    sor.setStddevMulThresh(0);
+    // sor.setStddevMulThresh(0.5);
+    // sor.setStddevMulThresh(0.00005);
+    sor.filter(*this->sceneCloud);
+
     // Compute features
     feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, frad);
 
@@ -148,7 +158,6 @@ void Benchmark_Tejani::initialize()
     std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh;
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
     computeObjFeat( &objectMesh[0] );
-    generateNewSeed();
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
@@ -156,9 +165,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
     // Call init if it has not been called before
     boost::call_once([this]{initialize();}, this->flagInit);
 
-    // Seed all Benchmarks with same seed
-    covis::core::randgen.seed( this->seed );
-
+    // Instantiate result struct
     Result result;
 
     // Benchmark
@@ -215,10 +222,14 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                     avgDistance[i] += n;
                 avgDistance[i] = avgDistance[i] / distance.size();
 
-                if (this->verbose) {
+                if ( avgDistance[i] > 50 || this->verbose ) {
+                // if ( this->verbose ) {
+                    std::cout << "Distance: " << avgDistance[i] << '\n';
                     COVIS_MSG( d[i].pose );
                     visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
+            } else {
+                std::cout << "\nScene " << i << " Failed!\n";
             }
         }
         result.d = d;
@@ -238,8 +249,8 @@ void Benchmark_Tejani::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%95s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%10s(%%)%20s%20s%15s%15s%20s%23s\033[m\n", "Function Name   ",
+    printf( "\n\n\n\033[1m%93s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%10s(%%)%18s%18s%15s%15s%20s%23s\033[m\n", "Function Name   ",
         "Total Time", "Avg Time", "Failed", "Avg Distance", "Median Distance", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Excecution speed and error
@@ -280,12 +291,12 @@ void Benchmark_Tejani::printResults()
         double stddevInliers = sqrt(dist / successful);
 
         // Print information
-        printf("%s\n",std::string(178, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%20.4f%20.4f%15.5f%15.4f%20.4f%23.4f\033[m\n",
+        printf("%s\n",std::string(176, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%18.4f%18.4f%15.5f%15.4f%20.4f%23.4f\033[m\n",
             result.name.c_str(), totalTime, avgTime, failedPercent, avgDist,
             avgMedianDist, avgRMSE, avgPenalty, avgInliers, stddevInliers );
     }
-    printf("%s\n\n\n",std::string(178,'-').c_str());
+    printf("%s\n\n\n",std::string(176,'-').c_str());
 }
 
 void Benchmark_Tejani::saveResults( std::string path )

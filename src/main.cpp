@@ -37,7 +37,8 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
+    // po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
+    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // TODO Change back
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
@@ -94,10 +95,12 @@ int main( int argc, const char** argv )
     // Parse
     if(!po.parse(argc, argv))
         return 1;
-    po.print();
 
     // Misc.
     const bool verbose = po.getFlag("verbose");
+
+    if (verbose)
+        po.print();
 
     // Estimation
     const int sampleSize = po.getValue<int>("sample-size");
@@ -112,10 +115,6 @@ int main( int argc, const char** argv )
     const float prerejectionSimilarty = po.getValue<float>("prerejection-similarity");
     const bool noOcclusionReasoning = po.getFlag("no-occlusion-reasoning");
     const int viewAxis = po.getValue<int>("view-axis");
-    //
-    // class covis::util::yml_loader yml( po.getValue("yml-file") );
-    // yml.load();
-    // return 0;
 
     /*
      * Benchmark RANSAC
@@ -147,7 +146,8 @@ int main( int argc, const char** argv )
 
         if( po.getFlag("pose_prior") ) {
             posePrior.setInlierThreshold( inlierThreshold );
-            posePrior.setInlierFraction( 0.01 );
+            posePrior.setInlierFraction( 0.008 );
+            // posePrior.setInlierFraction( 0.02 );
             // posePrior.setInlierFraction( inlierFraction );
             posePrior.setViewAxis( viewAxis );
             posePrior.setVerbose( verbose );
@@ -275,7 +275,6 @@ int main( int argc, const char** argv )
                 bt.run( &posePrior, "Pose Prior" );
                 bt.printResults();
                 bt.clearResults();
-                bt.generateNewSeed();
             // }
         }
      }

@@ -31,6 +31,7 @@
 // Covis
 #include <covis/covis.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -146,23 +147,6 @@ namespace covis {
                     verbose = _verbose;
                 }
 
-                inline Eigen::Matrix3f ortogonal_basis(pcl::ModelCoefficients::Ptr coefficients)
-                {
-                    // Create ortogonal basis
-                    double a = coefficients->values[0];
-                    double b = coefficients->values[1];
-                    double c = coefficients->values[2];
-                    Eigen::Vector3f z(a, b, c);
-                    Eigen::Vector3f y(0, -c, b);
-                    Eigen::Vector3f x = z.cross(y);
-                    Eigen::Matrix3f frame;
-                    frame.col(0) = x;
-                    frame.col(1) = y;
-                    frame.col(2) = z;
-
-                    return frame;
-                }
-
                 /**
                  * Run pose prior estimation
                  * @return best detection, if any was found - this can be verified directly in a boolean expression:
@@ -198,6 +182,47 @@ namespace covis {
 
                 /// Verbose flag
                 bool verbose;
+
+                /**
+                * Compute the ortogonal basis from the plane normal
+                * @param plane coefficients
+                * @return ortogonal frame
+                */
+                inline Eigen::Matrix3f ortogonal_basis(pcl::ModelCoefficients::Ptr coefficients)
+                {
+                    // Create ortogonal basis
+                    double a = coefficients->values[0];
+                    double b = coefficients->values[1];
+                    double c = coefficients->values[2];
+                    Eigen::Vector3f z(a, b, c);
+                    Eigen::Vector3f y(0, -c, b);
+                    Eigen::Vector3f x = z.cross(y);
+                    Eigen::Matrix3f frame;
+                    frame.col(0) = x;
+                    frame.col(1) = y;
+                    frame.col(2) = z;
+
+                    return frame;
+                }
+
+                /**
+                * Compute the euclidean distance between the translation of two Matrix4f
+                * @param matrix 1
+                * @param matrix 2
+                */
+                inline double
+                norm( Eigen::Matrix4f p1, Eigen::Matrix4f p2 )
+                {
+                    PointT gtP;
+                    gtP.x = p1(0,3);
+                    gtP.y = p1(1,3);
+                    gtP.z = p1(2,3);
+                    PointT poseP;
+                    poseP.x = p2(0,3);
+                    poseP.y = p2(1,3);
+                    poseP.z = p2(2,3);
+                    return pcl::euclideanDistance(gtP, poseP);
+                }
         };
     }
 }

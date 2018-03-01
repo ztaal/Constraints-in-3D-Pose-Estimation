@@ -47,7 +47,7 @@ covis::core::Detection posePrior::estimate()
     core::Detection result;
     Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
     std::vector<Eigen::Matrix4f> pose_vector;
-    covis::core::sort(*this->corr);
+    // covis::core::sort(*this->corr);
 
     // Find largest plane
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
@@ -56,26 +56,44 @@ covis::core::Detection posePrior::estimate()
     seg.setOptimizeCoefficients(true);
     seg.setModelType(pcl::SACMODEL_PLANE);
     seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(100); // 1000
+    seg.setMaxIterations(1000); // 1000
     seg.setDistanceThreshold(10);
     seg.setInputCloud(this->target);
     seg.segment(*inliers, *coefficients);
 
-    // Check plane normal is facing the right direction
+    // Flip plane normal if it is facing the wrong direction TODO Fix
+    // std::cout << "\nCoeff 0: " << coefficients->values[0] <<'\n';
+    // std::cout << "Coeff 1: " << coefficients->values[1] <<'\n';
+    // std::cout << "Coeff 2: " << coefficients->values[2] <<'\n';
+    // std::cout << "Coeff 3: " << coefficients->values[3] <<'\n';
+    // if (coefficients->values[3] > 0) {
+    //     coefficients->values[0] = -1 * fabs(coefficients->values[0]);
+    //     coefficients->values[1] = -1 * fabs(coefficients->values[1]);
+    //     coefficients->values[2] = -1 * fabs(coefficients->values[2]);
+    //     coefficients->values[3] = -1 * fabs(coefficients->values[3]);
+    // }
+
     if (coefficients->values[2] > 0) {
         coefficients->values[0] = -1 * coefficients->values[0];
         coefficients->values[1] = -1 * coefficients->values[1];
         coefficients->values[2] = -1 * coefficients->values[2];
+        coefficients->values[3] = -1 * coefficients->values[3];
     }
 
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
+    // Find max z value of the source cloud
+    // Eigen::Vector4f min_pt, max_pt;
+    PointT min_pt, max_pt;
+    pcl::getMinMax3D( *this->source, min_pt, max_pt );
+
     // Loop over correspondences
     // for( size_t i = 0; i < 1; i++ ) {
     // for( size_t i = 0; i < 10; i++ ) {
-    // for( size_t i = 0; i < this->corr->size(); i++ ) {
-    for( size_t i = 0; i < this->corr->size() / 3; i++ ) {
+    for( size_t i = 0; i < this->corr->size(); i++ ) {
+    // for( size_t i = 0; i < this->corr->size() / 3; i++ ) {
+    // for( size_t i = 0; i < this->corr->size() / 5; i++ ) {
     // for( size_t i = 0; i < this->corr->size() / 10; i++ ) {
     // for( size_t i = 0; i < this->corr->size() / 20; i++ ) {
     // for( size_t i = 0; i < this->corr->size() / 30; i++ ) {
@@ -84,7 +102,6 @@ covis::core::Detection posePrior::estimate()
         int target_corr = (*this->corr)[i].match[0];
         pose = Eigen::Matrix4f::Identity();
 
-        // Prerejection: ignore point if it is below the plane
         Eigen::Vector4f plane_normal(coefficients->values[0],
                                         coefficients->values[1],
                                         coefficients->values[2],
@@ -92,17 +109,24 @@ covis::core::Detection posePrior::estimate()
         Eigen::Vector4f targetPoint(this->target->points[target_corr].x,
                                     this->target->points[target_corr].y,
                                     this->target->points[target_corr].z, 1);
-        double distance = plane_normal.dot( targetPoint );
-        // if (distance > 0)
+
+        // Prerejection: ignore point if it is below the plane
+        double tgt_dist = plane_normal.dot( targetPoint );
+        // if (tgt_dist > 0)
         // 	continue;
 
-        // Prerejection2: compare height of corr in target to source
-            // double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
-            // double src_dist = fabs(this->source->points[source_corr].z) * 2;
-            // const float dist_diff = (src_dist < tgt_dist ? src_dist / tgt_dist : tgt_dist / src_dist);
-            // if ( dist_diff < 0.7 )
-            //     continue;
+        // Prerejection2: if translation result in the object being below the plane
+        double src_dist = fabs(this->source->points[source_corr].z) * 2;
+        if ( fabs(tgt_dist) < src_dist )
+            continue;
 
+
+        // Prerejection3: compare height of corr in target to source
+        // double tgt_dist = pcl::pointToPlaneDistance (this->target->points[target_corr], plane_normal[0], plane_normal[1], plane_normal[2], plane_normal[3]);
+        // double src_dist = fabs(this->source->points[source_corr].z) * 2;
+        // const float dist_diff = (src_dist < tgt_dist ? src_dist / tgt_dist : tgt_dist / src_dist);
+        // if ( dist_diff < 0.7 )
+        //     continue;
 
         // Rotate source to fit target plane
         Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
@@ -126,7 +150,6 @@ covis::core::Detection posePrior::estimate()
         pose = transformation.matrix() * pose;
 
         // Project normals onto plane
-        // std::cout << "Normal 1: " << source_normals->points[source_corr].x << '\n';
         Eigen::Vector4f source_normal(this->source->points[source_corr].normal_x,
                                         this->source->points[source_corr].normal_y,
                                         this->source->points[source_corr].normal_z, 0);
@@ -154,21 +177,30 @@ covis::core::Detection posePrior::estimate()
         // Apply rotation
         pose = projected_transformation.matrix() * pose;
 
-        // Find angel between normals
+        // Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
+        // if (angle > 0.01)
         // if (angle > 0.05)
         if (angle > 0.1)
+            continue;
+
+        // Reject pose if it is below plane
+        double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
+        // if ( pose_dist < max_pt.z * 0.7 )
+        if ( pose_dist < max_pt.z * 0.8 )
             continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
+        pose_vector.push_back(pose);
         // If number of inliers (consensus set) is high enough
         if( fe->inlierFraction() >= this->inlierFraction ) {
-            pose_vector.push_back(pose);
             // Update result if updated model is the best so far
-            if(fe->penalty() < result.penalty && !pose.isZero(0)) {
+            if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
+            // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
+                // std::cout << "\ntgt_dist: " << tgt_dist << "\tsrc_dist: " << src_dist << '\n';
                 result.pose = pose;
                 result.rmse = fe->rmse();
                 result.inlierfrac = fe->inlierFraction();

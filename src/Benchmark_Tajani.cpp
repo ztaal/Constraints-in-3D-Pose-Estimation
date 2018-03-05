@@ -127,16 +127,6 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
     this->sceneCloud = filter::downsample<PointT>(sceneSurf, resTarget);
     COVIS_ASSERT(!this->sceneCloud->empty());
 
-    // Remove stastical outliers
-    pcl::StatisticalOutlierRemoval<PointT> sor;
-    sor.setInputCloud(this->sceneCloud);
-    sor.setMeanK(1);
-    // sor.setMeanK(100);
-    sor.setStddevMulThresh(0);
-    // sor.setStddevMulThresh(0.5);
-    // sor.setStddevMulThresh(0.00005);
-    sor.filter(*this->sceneCloud);
-
     // Compute features
     feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, frad);
 
@@ -222,9 +212,10 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                     avgDistance[i] += n;
                 avgDistance[i] = avgDistance[i] / distance.size();
 
-                if ( avgDistance[i] > 50 || this->verbose ) {
                 // if ( this->verbose ) {
-                    std::cout << "Distance: " << avgDistance[i] << '\n';
+                if ( avgDistance[i] > 80 || this->verbose ) {
+                // if ( avgDistance[i] > 50 || this->verbose ) {
+                    std::cout << "\nDistance: " << avgDistance[i] << '\n';
                     COVIS_MSG( d[i].pose );
                     visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }

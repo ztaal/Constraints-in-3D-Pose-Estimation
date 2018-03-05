@@ -31,7 +31,6 @@
 // Covis
 #include <covis/covis.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
-#include <pcl/filters/statistical_outlier_removal.h>
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;

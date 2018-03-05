@@ -1,5 +1,6 @@
 
  /**  Todo list:
+  * TODO Fix removing the back wall but not table
   * TODO Change benchmark so it outputs distance to gt
   * TODO Run tests with pose priors with one point
   * TODO Create a prerejection check that if the height difference between the corr and
@@ -37,8 +38,8 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    // po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
     po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)");
+    // po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // TODO Change back
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 

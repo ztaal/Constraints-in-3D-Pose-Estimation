@@ -164,6 +164,8 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         std::vector<double> time( this->sceneMesh.size() );
         std::vector<double> avgDistance( this->sceneMesh.size() );
         std::vector<double> medianDistance( this->sceneMesh.size() );
+        std::vector<double> translationDist( this->sceneMesh.size() );
+        std::vector<double> angle( this->sceneMesh.size() );
         std::vector<covis::core::Detection> d( this->sceneMesh.size() );
 
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
@@ -192,7 +194,8 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 // Find gt pose closest to estimated pose
                 int poseIndex = 0;
                 double shortestDist = std::numeric_limits<double>::max();
-                for ( size_t j = 0; j < this->poses.size(); j++ ) {
+                for ( size_t j = 0; j < this->poses[i].size(); j++ ) {
+                    // Find distance between translation
                     double dist = norm( this->poses[i][j], d[i].pose );
                     if (dist < shortestDist) {
                         shortestDist = dist;
@@ -212,10 +215,18 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                     avgDistance[i] += n;
                 avgDistance[i] = avgDistance[i] / distance.size();
 
+                // Find distance between translations
+                translationDist[i] = norm( this->poses[i][poseIndex], d[i].pose );
+
+                // Find angle between z-axis
+                Eigen::Vector3f poseTranslation = d[i].pose.block<3,1>(0, 2);
+                Eigen::Vector3f gtTranslation = this->poses[i][poseIndex].block<3,1>(0,2);
+                angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
+
                 // if ( this->verbose ) {
-                if ( avgDistance[i] > 80 || this->verbose ) {
-                // if ( avgDistance[i] > 50 || this->verbose ) {
-                    std::cout << "\nDistance: " << avgDistance[i] << '\n';
+                if ( translationDist[i] > 50 || angle[i] > 0.1 || this->verbose ) {
+                    std::cout << "\nDistance: " << translationDist[i] << '\n';
+                    std::cout << "Angle: " << angle[i] << '\n';
                     COVIS_MSG( d[i].pose );
                     visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
@@ -228,6 +239,8 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         result.name = funcName;
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
+        result.translationDist = translationDist;
+        result.angle = angle;
     }
     // Store results of the Benchmark
     this->results.push_back( result );
@@ -240,16 +253,17 @@ void Benchmark_Tejani::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%93s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%10s(%%)%18s%18s%15s%15s%20s%23s\033[m\n", "Function Name   ",
-        "Total Time", "Avg Time", "Failed", "Avg Distance", "Median Distance", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
+    printf( "\n\n\n\033[1m%105s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%13s%10s(%%)%15s%19s%15s%13s%14s%15s%18s%20s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg Distance", "Median Distance", "Avg T Dist",
+        "Avg Angle", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
         int successful = 0;
-        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0, avgTime = 0;
-        double avgDist = 0, avgMedianDist = 0, totalTime = 0;
+        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0, avgTime = 0, avgDist = 0;
+        double avgMedianDist = 0, avgTransDist = 0, avgAngle = 0, totalTime = 0;
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             totalTime += result.time[i];
             if ( result.d[i] ) {
@@ -259,6 +273,8 @@ void Benchmark_Tejani::printResults()
                 avgTime += result.time[i];
                 avgDist += result.avgDistance[i];
                 avgMedianDist += result.medianDistance[i];
+                avgTransDist += result.translationDist[i];
+                avgAngle += result.angle[i];
                 successful++;
             }
         }
@@ -269,6 +285,8 @@ void Benchmark_Tejani::printResults()
         avgTime = avgTime / successful;
         avgDist = avgDist / successful;
         avgMedianDist = avgMedianDist / successful;
+        avgTransDist = avgTransDist / successful;
+        avgAngle = avgAngle / successful;
         double failed = this->sceneMesh.size() - successful;
         double failedPercent = (failed / this->sceneMesh.size()) * 100;
 
@@ -282,12 +300,12 @@ void Benchmark_Tejani::printResults()
         double stddevInliers = sqrt(dist / successful);
 
         // Print information
-        printf("%s\n",std::string(176, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%18.4f%18.4f%15.5f%15.4f%20.4f%23.4f\033[m\n",
-            result.name.c_str(), totalTime, avgTime, failedPercent, avgDist,
-            avgMedianDist, avgRMSE, avgPenalty, avgInliers, stddevInliers );
+        printf("%s\n",std::string(192, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%13.4f%13.1f%15.4f%19.4f%15.4f%13.4f%14.5f%15.4f%18.4f%20.4f\033[m\n",
+            result.name.c_str(), totalTime, avgTime, failedPercent, avgDist, avgMedianDist,
+            avgTransDist, avgAngle, avgRMSE, avgPenalty, avgInliers, stddevInliers );
     }
-    printf("%s\n\n\n",std::string(176,'-').c_str());
+    printf("%s\n\n\n",std::string(192,'-').c_str());
 }
 
 void Benchmark_Tejani::saveResults( std::string path )

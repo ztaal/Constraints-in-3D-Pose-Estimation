@@ -253,6 +253,8 @@ namespace covis {
                     std::vector<double> medianDistance;
                     std::vector<covis::core::Detection> d;
                     std::vector<double> time;
+                    std::vector<double> translationDist;
+                    std::vector<double> angle;
                 };
 
                 /// root path
@@ -359,6 +361,7 @@ namespace covis {
                 * Compute the euclidean distance between the translation of two Matrix4f
                 * @param matrix 1
                 * @param matrix 2
+                * @return distance
                 */
                 inline double
                 norm( Eigen::Matrix4f p1, Eigen::Matrix4f p2 )

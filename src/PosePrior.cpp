@@ -100,7 +100,11 @@ covis::core::Detection posePrior::estimate()
             extract.setNegative(true);
             extract.filter(*tmp);
         }
-        // visu::showDetection<PointT>( this->source, tmp, pose );
+        visu::showDetection<PointT>( this->source, tmp, pose );
+
+        // Check if no plane was found
+        if (tmp->size() < this->target->size() * 0.2)
+            return result;
     }
 
     // Create ortogonal basis
@@ -123,9 +127,13 @@ covis::core::Detection posePrior::estimate()
         	continue;
 
         // Prerejection2: if translation result in the object being below the plane
-        double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z/2;
-        if ( fabs(tgt_dist) < src_dist * 0.5 )
-            continue;
+        double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z;
+        // if ( fabs(tgt_dist) < src_dist * 0.5 ) // 0.8
+        //     continue;
+
+        // Prerejection3: if translation result in the object being above the plane
+        // if ( fabs(tgt_dist) > src_dist ) // 0.8
+        //     continue;
 
         // Rotate source to fit target plane
         Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
@@ -176,27 +184,33 @@ covis::core::Detection posePrior::estimate()
         // Apply rotation
         pose = projected_transformation.matrix() * pose;
 
-        // Reject pose if it is below plane
+        // Prerejection4: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
-        if ( pose_dist < max_pt.z * 0.8 )
+        if ( pose_dist < max_pt.z * 0.8 ) // 0.8
             continue;
 
-        // Find angel between normals and reject pose if it is too large
+        // Prerejection4: Reject pose if it is above the plane
+        if ( pose_dist > max_pt.z * 1.2 ) // 1.2
+            continue;
+
+        // Prerejection5: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        // if (angle > 0.01)
         // if (angle > 0.05)
-        // if (angle > 0.1)
-        if (angle > 0.5)
+        // if (angle > 0.1) // Best so far
+        // if (angle > 0.18)
+        if (angle > 0.2) // Second best
+        // if (angle > 0.3)
+        // if (angle > 0.5)
         // if (angle > 1)
             continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
-        pose_vector.push_back(pose);
         // If number of inliers (consensus set) is high enough
         if( fe->inlierFraction() >= this->inlierFraction ) {
+            pose_vector.push_back(pose);
             // Update result if updated model is the best so far
             if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
             // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
@@ -210,33 +224,37 @@ covis::core::Detection posePrior::estimate()
 
     }
 
-    // // Visualize translations
-    // pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-    // for (size_t i = 0; i < pose_vector.size(); i++) {
-    //     PointT point;
-    //     point.x = pose_vector[i](0,3);
-    //     point.y = pose_vector[i](1,3);
-    //     point.z = pose_vector[i](2,3);
-    //     results->push_back(point);
-    // }
-    //
-    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    // viewer->setBackgroundColor (0, 0, 0);
-    // viewer->addCoordinateSystem (1.0, "global");
-    //
-    // viewer->addPointCloud<PointT> (results, "sample cloud");
-    // viewer->addPointCloud<PointT> (this->target, "sample cloud2");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
-    // viewer->updatePointCloud(results, red, "sample cloud");
-    // viewer->updatePointCloud(this->target, blue, "sample cloud2");
-    //
-    // while (!viewer->wasStopped ()) {
-    //     viewer->spinOnce (100);
-    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-    // }
+    bool show = false;
+    show = true;
+    if (show == true) {
+        // Visualize translations
+        pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
+        for (size_t i = 0; i < pose_vector.size(); i++) {
+            PointT point;
+            point.x = pose_vector[i](0,3);
+            point.y = pose_vector[i](1,3);
+            point.z = pose_vector[i](2,3);
+            results->push_back(point);
+        }
+
+        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+        viewer->setBackgroundColor (0, 0, 0);
+        viewer->addCoordinateSystem (1.0, "global");
+
+        viewer->addPointCloud<PointT> (results, "sample cloud");
+        viewer->addPointCloud<PointT> (this->target, "sample cloud2");
+        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud");
+        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "sample cloud2");
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> red(results, 255, 0, 0);
+        pcl::visualization::PointCloudColorHandlerCustom<PointT> blue(this->target, 0, 0, 255);
+        viewer->updatePointCloud(results, red, "sample cloud");
+        viewer->updatePointCloud(this->target, blue, "sample cloud2");
+
+        while (!viewer->wasStopped ()) {
+            viewer->spinOnce (100);
+            boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+        }
+    }
 
     return result;
 }

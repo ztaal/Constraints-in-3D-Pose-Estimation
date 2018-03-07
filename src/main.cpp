@@ -1,15 +1,30 @@
 
  /**  Todo list:
-  * TODO Fix removing the back wall but not table
-  * TODO Change benchmark so it outputs distance to gt
   * TODO Run tests with pose priors with one point
   * TODO Create a prerejection check that if the height difference between the corr and
          the plane in both the scene and object is too different discard it
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
-  * TODO Prerejection idea: look at the angle between the normals if they are off discard
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
   */
+
+// Errors 01
+    // Off Position
+        // 41, 47,  55, 88, 113, 124, 126, 127, 130, 131, 134, 135, 136, 137, 138,
+        // 139, 140, 141, 142, 147, 148, 151, 153, 154, 156, 157, 158, 159, 164, 168
+        // 170, 171, 172, 174, 175, 176, 178, 179, 183, 185, 186, 187, 188, 189, 190
+        // 191, 195, 197
+
+    // Failed test 2
+        // 38, 41
+// Errors 02
+    // None
+// Errors 03
+    // Off Position
+        // 16, 84, 87, 89, 90, 91, 92, 93, 94, 95, 96, 101, 121, 123, 124, 126,
+        // 128, 129,
+    // wall
+        // 105
 
 // Covis
 #include <covis/covis.h>
@@ -59,6 +74,7 @@ int main( int argc, const char** argv )
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
+    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
@@ -148,6 +164,7 @@ int main( int argc, const char** argv )
         if( po.getFlag("pose_prior") ) {
             posePrior.setInlierThreshold( inlierThreshold );
             posePrior.setInlierFraction( 0.008 );
+            // posePrior.setInlierFraction( 0.008 ); // Best so far
             // posePrior.setInlierFraction( 0.02 );
             // posePrior.setInlierFraction( inlierFraction );
             posePrior.setViewAxis( viewAxis );

@@ -255,6 +255,7 @@ namespace covis {
                     std::vector<double> time;
                     std::vector<double> translationDist;
                     std::vector<double> angle;
+                    std::vector<bool> failed;
                 };
 
                 /// root path

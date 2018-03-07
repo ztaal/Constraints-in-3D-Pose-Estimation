@@ -166,6 +166,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         std::vector<double> medianDistance( this->sceneMesh.size() );
         std::vector<double> translationDist( this->sceneMesh.size() );
         std::vector<double> angle( this->sceneMesh.size() );
+        std::vector<bool> failed( this->sceneMesh.size() );
         std::vector<covis::core::Detection> d( this->sceneMesh.size() );
 
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
@@ -223,9 +224,18 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 Eigen::Vector3f gtTranslation = this->poses[i][poseIndex].block<3,1>(0,2);
                 angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
 
+                // Check if pose is good or bad
+                if ( translationDist[i] > 30 || angle[i] > 0.15) {
+                    failed[i] = true;
+                } else {
+                    failed[i] = false;
+                }
+
                 // if ( this->verbose ) {
-                if ( translationDist[i] > 50 || angle[i] > 0.1 || this->verbose ) {
-                    std::cout << "\nDistance: " << translationDist[i] << '\n';
+                if ( translationDist[i] > 30 || angle[i] > 0.15 || this->verbose ) { // 0.2
+                // if ( translationDist[i] > 50 || angle[i] > 0.1 || this->verbose ) {
+                    std::cout << "\nScene " << i << "\n";
+                    std::cout << "Distance: " << translationDist[i] << '\n';
                     std::cout << "Angle: " << angle[i] << '\n';
                     COVIS_MSG( d[i].pose );
                     visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
@@ -241,6 +251,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         result.medianDistance = medianDistance;
         result.translationDist = translationDist;
         result.angle = angle;
+        result.failed = failed;
     }
     // Store results of the Benchmark
     this->results.push_back( result );
@@ -254,9 +265,9 @@ void Benchmark_Tejani::printResults()
 
     // Header
     printf( "\n\n\n\033[1m%105s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%13s%10s(%%)%15s%19s%15s%13s%14s%15s%18s%20s\033[m\n", "Function Name   ",
-        "Total Time", "Avg Time", "Failed", "Avg Distance", "Median Distance", "Avg T Dist",
-        "Avg Angle", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
+    printf( "\033[1m%20s%15s%13s%10s(%%)%17s%20s%15s%14s%14s%15s%18s%20s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg Corr Dist", "Median Corr Dist", "Avg T Dist",
+        "Avg T Angle", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
@@ -266,7 +277,7 @@ void Benchmark_Tejani::printResults()
         double avgMedianDist = 0, avgTransDist = 0, avgAngle = 0, totalTime = 0;
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             totalTime += result.time[i];
-            if ( result.d[i] ) {
+            if ( result.d[i] && !result.failed[i] ) {
                 avgRMSE += result.d[i].rmse;
                 avgInliers += result.d[i].inlierfrac;
                 avgPenalty += result.d[i].penalty;
@@ -293,22 +304,22 @@ void Benchmark_Tejani::printResults()
         // Calculate standard deviation
         double dist = 0;
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
-            if ( result.d[i] ) {
+            if ( result.d[i] && !result.failed[i] ) {
                 dist += pow(result.d[i].inlierfrac - avgInliers, 2);
             }
         }
         double stddevInliers = sqrt(dist / successful);
 
         // Print information
-        printf("%s\n",std::string(192, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%13.4f%13.1f%15.4f%19.4f%15.4f%13.4f%14.5f%15.4f%18.4f%20.4f\033[m\n",
+        printf("%s\n",std::string(195, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%13.4f%13.1f%17.4f%20.4f%15.4f%14.4f%14.5f%15.4f%18.4f%20.4f\033[m\n",
             result.name.c_str(), totalTime, avgTime, failedPercent, avgDist, avgMedianDist,
             avgTransDist, avgAngle, avgRMSE, avgPenalty, avgInliers, stddevInliers );
     }
-    printf("%s\n\n\n",std::string(192,'-').c_str());
+    printf("%s\n\n\n",std::string(195,'-').c_str());
 }
 
-void Benchmark_Tejani::saveResults( std::string path )
+void Benchmark_Tejani::saveResults( std::string path ) // TODO Add missing variables
 {
     // Sanity checks
     COVIS_ASSERT_MSG( this->results.size() > 0,
@@ -321,7 +332,7 @@ void Benchmark_Tejani::saveResults( std::string path )
         file << "Object,Time,Failed,RMSE,Penalty,InlierFrac,Avg Dist,Median Dist\n";
 
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
-            if ( result.d[i] ) {
+            if ( result.d[i] && !result.failed[i] ) {
                 file << objectLabels[i] << ",";
                 file << result.time[i] << ",";
                 file << "0,";

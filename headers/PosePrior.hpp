@@ -203,25 +203,6 @@ namespace covis {
 
                     return frame;
                 }
-
-                /**
-                * Compute the euclidean distance between the translation of two Matrix4f
-                * @param matrix 1
-                * @param matrix 2
-                */
-                inline double
-                norm( Eigen::Matrix4f p1, Eigen::Matrix4f p2 )
-                {
-                    PointT gtP;
-                    gtP.x = p1(0,3);
-                    gtP.y = p1(1,3);
-                    gtP.z = p1(2,3);
-                    PointT poseP;
-                    poseP.x = p2(0,3);
-                    poseP.y = p2(1,3);
-                    poseP.z = p2(2,3);
-                    return pcl::euclideanDistance(gtP, poseP);
-                }
         };
     }
 }

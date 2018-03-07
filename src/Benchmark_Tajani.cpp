@@ -237,8 +237,8 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                     std::cout << "\nScene " << i << "\n";
                     std::cout << "Distance: " << translationDist[i] << '\n';
                     std::cout << "Angle: " << angle[i] << '\n';
-                    COVIS_MSG( d[i].pose );
-                    visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
+                    // COVIS_MSG( d[i].pose );
+                    // visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
             } else {
                 std::cout << "\nScene " << i << " Failed!\n";

@@ -10,18 +10,20 @@
 
 // Errors 01
     // Off Position
-        // 41, 47,  55, 88, 113, 124, 126, 127, 130, 131, 134, 135, 136, 137, 138,
+        //  41,  47,  55,  88, 113, 124, 126, 127, 130, 131, 134, 135, 136, 137, 138,
         // 139, 140, 141, 142, 147, 148, 151, 153, 154, 156, 157, 158, 159, 164, 168
         // 170, 171, 172, 174, 175, 176, 178, 179, 183, 185, 186, 187, 188, 189, 190
         // 191, 195, 197
 
     // Failed test 2
-        // 38, 41
+        //  38,  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154,
+        // 156, 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186,
+        // 188, 189, 190, 191,
 // Errors 02
     // None
 // Errors 03
     // Off Position
-        // 16, 84, 87, 89, 90, 91, 92, 93, 94, 95, 96, 101, 121, 123, 124, 126,
+        //  16,  84,  87,  89,  90,  91,  92,  93,  94,  95,  96, 101, 121, 123, 124, 126,
         // 128, 129,
     // wall
         // 105
@@ -75,7 +77,7 @@ int main( int argc, const char** argv )
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
     // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
-    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
+    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back (best)
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");

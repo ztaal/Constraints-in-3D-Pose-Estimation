@@ -48,6 +48,21 @@ covis::core::Detection posePrior::estimate()
     Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
     std::vector<Eigen::Matrix4f> pose_vector;
 
+    // Find centroid
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*this->source, centroid);
+
+    // Find distance to closest point
+    PointT point;
+    point.x = centroid(0,3);
+    point.y = centroid(1,3);
+    point.z = centroid(2,3);
+    std::vector<double> centroidDist;
+    for (size_t i = 0; i < this->source->size(); i++) {
+        centroidDist.push_back( pcl::euclideanDistance(point, this->source->points[i]) );
+    }
+    std::sort(centroidDist.begin(), centroidDist.end());
+
     // Find table
     Eigen::Vector4f plane_normal;
     CloudT::Ptr tmp (new CloudT);
@@ -120,15 +135,15 @@ covis::core::Detection posePrior::estimate()
         int target_corr = (*this->corr)[i].match[0];
         pose = Eigen::Matrix4f::Identity();
 
-        // Prerejection: ignore point if it is below the plane
+        // Constraint1: ignore point if it is below the plane
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         if (tgt_dist < 0)
         	continue;
 
-        // Prerejection2: if translation result in the object being below the plane
+        // Constraint2: if translation result in the object being below the plane
         double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z;
-        // if ( fabs(tgt_dist) < src_dist * 0.5 ) // 0.8
+        // if ( fabs(tgt_dist) < src_dist * 0.8 ) // 0.8
         //     continue;
 
         // Prerejection3: if translation result in the object being above the plane
@@ -184,16 +199,16 @@ covis::core::Detection posePrior::estimate()
         // Apply rotation
         pose = projected_transformation.matrix() * pose;
 
-        // Prerejection4: Reject pose if it is below the plane
+        // Constraint3: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
         if ( pose_dist < max_pt.z * 0.8 ) // 0.8
             continue;
 
-        // Prerejection4: Reject pose if it is above the plane
+        // Constraint4: Reject pose if it is above the plane
         if ( pose_dist > max_pt.z * 1.2 ) // 1.2
             continue;
 
-        // Prerejection5: Find angel between normals and reject pose if it is too large
+        // Constraint5: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
         // if (angle > 0.05)
@@ -210,10 +225,26 @@ covis::core::Detection posePrior::estimate()
 
         // If number of inliers (consensus set) is high enough
         if( fe->inlierFraction() >= this->inlierFraction ) {
+
+            // Find closest point
+            point.x = pose(0,3);
+            point.y = pose(1,3);
+            point.z = pose(2,3);
+            std::vector<double> distance;
+            for (size_t j = 0; j < this->target->size(); j++) {
+                distance.push_back( pcl::euclideanDistance(point, this->target->points[j]) );
+            }
+            std::sort(distance.begin(), distance.end());
+
+            // If closest point is too far away reject pose
+            if ( distance[0] > centroidDist[0] * 2 )
+                continue;
+
             pose_vector.push_back(pose);
+
             // Update result if updated model is the best so far
             if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
-            // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
+                // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
                 result.pose = pose;
                 result.rmse = fe->rmse();
                 result.inlierfrac = fe->inlierFraction();
@@ -225,12 +256,11 @@ covis::core::Detection posePrior::estimate()
     }
 
     bool show = false;
-    show = true;
+    // show = true;
     if (show == true) {
         // Visualize translations
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
         for (size_t i = 0; i < pose_vector.size(); i++) {
-            PointT point;
             point.x = pose_vector[i](0,3);
             point.y = pose_vector[i](1,3);
             point.z = pose_vector[i](2,3);

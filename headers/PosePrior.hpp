@@ -105,6 +105,15 @@ namespace covis {
                 }
 
                 /**
+                 * Set source centroid distance
+                 * @param distance
+                 */
+                inline void setSrcCentroidDist( float _srcCentroidDist ) {
+                    COVIS_ASSERT( _srcCentroidDist > 0 );
+                    srcCentroidDist = _srcCentroidDist;
+                }
+
+                /**
                  * Set Euclidean inlier threshold
                  * @param inlier threshold
                  */
@@ -166,6 +175,9 @@ namespace covis {
 
                 /// Correspondences
                 core::Correspondence::VecPtr corr;
+
+                /// Distrance to the cloest point from source centroid
+                double srcCentroidDist;
 
                 /// Euclidean inlier threshold
                 float inlierThreshold;

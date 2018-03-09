@@ -237,6 +237,13 @@ namespace covis {
                 void saveResults( std::string _path );
 
                 /**
+                 * Saves poses of the benchmarks to .yml files
+                 * call @ref run() before calling this
+                 * @param save path
+                 */
+                void savePoses( std::string _path );
+
+                /**
                  * Clear results of the benchmarks
                  */
                 inline void clearResults() {
@@ -245,7 +252,7 @@ namespace covis {
 
             private:
 
-                /// struct contaning all benchmark results
+                /// Struct contaning all benchmark results
                 struct Result
                 {
                     std::string name;
@@ -256,48 +263,57 @@ namespace covis {
                     std::vector<double> translationDist;
                     std::vector<double> angle;
                     std::vector<bool> failed;
+                    std::vector<Eigen::Matrix4f> poses;
+                    std::vector<std::string> sceneLabels;
+                    std::string objectLabel;
                 };
 
-                /// root path
+                /// Root path
                 std::string rootPath;
 
-                /// object directory
+                /// Object directory
                 std::string objDir;
 
-                /// scene directory
+                /// Scene directory
                 std::string sceneDir;
 
-                /// pose path
+                /// Pose path
                 std::string posePath;
 
-                /// object extensions
+                /// Object extensions
                 std::string objExt;
 
-                /// scene extensions
+                /// Scene extensions
                 std::string sceneExt;
 
-                /// init flag, used to run @ref initBenchmark() once when @ref benchmark() is first called
+                /// Init flag, used to run @ref initBenchmark() once when @ref benchmark() is first called
                 boost::once_flag flagInit = BOOST_ONCE_INIT;
 
-                /// object features
+                /// Object features
                 feature::MatrixT objectFeat;
 
-                /// object cloud
+                /// Object cloud
                 CloudT::Ptr objectCloud;
 
-                /// scene meshes
+                /// Distrance to the cloest point from centroid
+                double centroidDist;
+
+                /// Scene meshes
                 std::vector<covis::util::DatasetLoader::ModelPtr> sceneMesh;
 
-                /// scene cloud
+                /// Scene cloud
                 CloudT::Ptr sceneCloud;
 
-                /// ground truth poses
+                /// Ground truth poses
                 std::vector<std::vector<Eigen::Matrix4f> > poses;
 
-                /// results of the benchmarks
+                /// Results of the benchmarks
                 std::vector<Result> results;
 
-                /// object labels
+                /// Scene labels
+                std::vector<std::string> sceneLabels;
+
+                /// Object labels
                 std::vector<std::string> objectLabels;
 
                 /// Resolution of scene and object clouds

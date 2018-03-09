@@ -59,16 +59,16 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
     yml.load( poses );
     COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
     this->objectLabels = dataset.getObjectLabels();
+    this->sceneLabels = dataset.getSceneLabels();
 }
 
 void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 {
-
     // Surfaces and normals
     const bool resolutionInput = (this->resolution > 0.0f);
     if(!resolutionInput)
         this->resolution = detect::computeResolution(*objectMesh) * this->objectScale;
-    if(objectScale != 1)
+    if(this->objectScale != 1)
         *objectMesh = filter::scale(*objectMesh, this->objectScale);
 
     const float nrad =
@@ -97,6 +97,22 @@ void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 
     // Compute features
     this->objectFeat = feature::computeFeature<PointT>(this->feature, this->objectCloud, objectSurf, frad);
+
+    // Compute centroid
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*this->objectCloud, centroid);
+
+    // Find distance to closest point
+    PointT point;
+    point.x = centroid(0,3);
+    point.y = centroid(1,3);
+    point.z = centroid(2,3);
+    std::vector<int> nn_indices(1);
+    std::vector<float> nn_dists(1);
+    pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
+    tree->setInputCloud(this->objectCloud);
+    tree->nearestKSearch(point, 1, nn_indices, nn_dists);
+    this->centroidDist = sqrt(nn_dists[0]);
 }
 
 covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh)
@@ -168,16 +184,19 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         std::vector<double> angle( this->sceneMesh.size() );
         std::vector<bool> failed( this->sceneMesh.size() );
         std::vector<covis::core::Detection> d( this->sceneMesh.size() );
+        std::vector<Eigen::Matrix4f> poses( this->sceneMesh.size() );
 
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
         instance->setSource( this->objectCloud );
+        instance->setSrcCentroidDist( this->centroidDist );
 
         // Start timer
         covis::core::Timer t;
 
         // Run through scenes and estimate pose of each object
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
-            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence(&this->sceneMesh[i]);
+            int sceneIndex = std::stoi(this->sceneLabels[i]);
+            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
 
             instance->setTarget( this->sceneCloud );
             instance->setCorrespondences( correspondence );
@@ -195,17 +214,20 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 // Find gt pose closest to estimated pose
                 int poseIndex = 0;
                 double shortestDist = std::numeric_limits<double>::max();
-                for ( size_t j = 0; j < this->poses[i].size(); j++ ) {
+                for ( size_t j = 0; j < this->poses[sceneIndex].size(); j++ ) {
                     // Find distance between translation
-                    double dist = norm( this->poses[i][j], d[i].pose );
+                    double dist = norm( this->poses[sceneIndex][j], d[i].pose );
                     if (dist < shortestDist) {
                         shortestDist = dist;
                         poseIndex = j;
                     }
                 }
+
+                // Transform clouds
                 covis::core::transform( poseCloud, d[i].pose );
                 covis::core::transform( gtCloud, this->poses[i][poseIndex] );
 
+                // Calculate distances
                 std::vector<double> distance;
                 for ( auto corr : *correspondence )
                     distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
@@ -217,31 +239,31 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 avgDistance[i] = avgDistance[i] / distance.size();
 
                 // Find distance between translations
-                translationDist[i] = norm( this->poses[i][poseIndex], d[i].pose );
+                translationDist[i] = norm( this->poses[sceneIndex][poseIndex], d[i].pose );
 
                 // Find angle between z-axis
                 Eigen::Vector3f poseTranslation = d[i].pose.block<3,1>(0, 2);
-                Eigen::Vector3f gtTranslation = this->poses[i][poseIndex].block<3,1>(0,2);
+                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][poseIndex].block<3,1>(0,2);
                 angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
 
                 // Check if pose is good or bad
-                if ( translationDist[i] > 30 || angle[i] > 0.15) {
+                poses[i] = d[i].pose;
+                if ( translationDist[i] > 30 || angle[i] > 0.2) {
                     failed[i] = true;
                 } else {
                     failed[i] = false;
                 }
 
-                // if ( this->verbose ) {
-                if ( translationDist[i] > 30 || angle[i] > 0.15 || this->verbose ) { // 0.2
-                // if ( translationDist[i] > 50 || angle[i] > 0.1 || this->verbose ) {
-                    std::cout << "\nScene " << i << "\n";
+                if ( failed[i] || this->verbose ) {
+                    std::cout << "\nScene " << sceneIndex << "\n";
                     std::cout << "Distance: " << translationDist[i] << '\n';
                     std::cout << "Angle: " << angle[i] << '\n';
-                    // COVIS_MSG( d[i].pose );
-                    // visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
+                    COVIS_MSG( d[i].pose );
+                    if ( this->verbose )
+                        visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
             } else {
-                std::cout << "\nScene " << i << " Failed!\n";
+                std::cout << "\nScene " << sceneIndex << " Failed!\n";
             }
         }
         result.d = d;
@@ -252,6 +274,9 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         result.translationDist = translationDist;
         result.angle = angle;
         result.failed = failed;
+        result.objectLabel = this->objectLabels[0];
+        result.sceneLabels = this->sceneLabels;
+        result.poses = poses;
     }
     // Store results of the Benchmark
     this->results.push_back( result );
@@ -333,7 +358,6 @@ void Benchmark_Tejani::saveResults( std::string path ) // TODO Add missing varia
 
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             if ( result.d[i] && !result.failed[i] ) {
-                file << objectLabels[i] << ",";
                 file << result.time[i] << ",";
                 file << "0,";
                 file << result.d[i].rmse << ",";
@@ -346,5 +370,33 @@ void Benchmark_Tejani::saveResults( std::string path ) // TODO Add missing varia
             }
         }
         file.close();
+    }
+}
+
+void Benchmark_Tejani::savePoses( std::string path )
+{
+    // Sanity checks
+    COVIS_ASSERT_MSG( this->results.size() > 0,
+        "Run Benchmark() atleast once before calling saveResults( std::string )." );
+
+    for( auto &result : this->results ) {
+        std::string objLabel = result.objectLabel;
+        objLabel.erase(0,4);
+        std::string filePath = path + objLabel + "/";
+        for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
+            if ( result.d[i] && !result.failed[i] ) {
+                ofstream file;
+                file.open( filePath + result.sceneLabels[i] + "_" + objLabel + ".yml" );
+                Eigen::Matrix4f P = result.poses[i];
+                file << "ests:\n";
+                file << "- R: [" << P(0,0) << ", " << P(0,1) << ", " << P(0,2) << ", "
+                                 << P(1,0) << ", " << P(1,1) << ", " << P(1,2) << ", "
+                                 << P(2,0) << ", " << P(2,1) << ", " << P(2,2) << ", ]\n";
+                file << "  score: 1\n";
+                file << "  t: [" << P(0,3) << ", " << P(1,3) << ", " << P(2,3) << "]\n";
+                file << "run_time: " << result.time[i];
+                file.close();
+            }
+        }
     }
 }

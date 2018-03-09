@@ -1,32 +1,19 @@
 
  /**  Todo list:
   * TODO Run tests with pose priors with one point
-  * TODO Create a prerejection check that if the height difference between the corr and
-         the plane in both the scene and object is too different discard it
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
   */
 
 // Errors 01
-    // Off Position
-        //  41,  47,  55,  88, 113, 124, 126, 127, 130, 131, 134, 135, 136, 137, 138,
-        // 139, 140, 141, 142, 147, 148, 151, 153, 154, 156, 157, 158, 159, 164, 168
-        // 170, 171, 172, 174, 175, 176, 178, 179, 183, 185, 186, 187, 188, 189, 190
-        // 191, 195, 197
-
-    // Failed test 2
-        //  38,  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154,
-        // 156, 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186,
-        // 188, 189, 190, 191,
+    //  38,  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154,
+    // 156, 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186,
+    // 188, 189, 190, 191
 // Errors 02
     // None
 // Errors 03
-    // Off Position
-        //  16,  84,  87,  89,  90,  91,  92,  93,  94,  95,  96, 101, 121, 123, 124, 126,
-        // 128, 129,
-    // wall
-        // 105
+    // 90, 95, 105, 181, 187, 188, 189, 190, 191, 217, 465,
 
 // Covis
 #include <covis/covis.h>
@@ -45,7 +32,11 @@ typedef pcl::PointXYZRGBNormal PointT;
 
 int main( int argc, const char** argv )
 {
+    core::ScopedTimer t("Benchmark");
     printf( " -- Initialized Program\n\n" );
+
+    // Set pcl log level
+    pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
 
     // Setup program options
     core::ProgramOptions po;
@@ -89,7 +80,8 @@ int main( int argc, const char** argv )
 
     // Misc.
     po.addFlag('v', "verbose", "show additional information");
-    po.addFlag('z', "visualize", "show additional results");
+    po.addFlag('z', "visualize", "vizualize transformation");
+    po.addFlag('s', "save", "save poses");
 
     // Ransac
     po.addFlag('r', "ransac", "ransac");
@@ -294,6 +286,8 @@ int main( int argc, const char** argv )
             // for ( size_t i = 0; i < 1; i++ ) {
                 bt.run( &posePrior, "Pose Prior" );
                 bt.printResults();
+                if (po.getFlag("save"))
+                    bt.savePoses("../poseData/");
                 bt.clearResults();
             // }
         }

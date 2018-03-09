@@ -41,27 +41,20 @@ covis::core::Detection posePrior::estimate()
         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
 
     fe->setInlierThreshold( this->inlierThreshold );
-    fe->setTarget(this->target);
+    fe->setTarget( this->target );
 
     // Instantiate variables
     core::Detection result;
     Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
     std::vector<Eigen::Matrix4f> pose_vector;
 
+    // Instantiate kd tree
+    pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
+    tree->setInputCloud(this->target);
+
     // Find centroid
     Eigen::Vector4f centroid;
     pcl::compute3DCentroid(*this->source, centroid);
-
-    // Find distance to closest point
-    PointT point;
-    point.x = centroid(0,3);
-    point.y = centroid(1,3);
-    point.z = centroid(2,3);
-    std::vector<double> centroidDist;
-    for (size_t i = 0; i < this->source->size(); i++) {
-        centroidDist.push_back( pcl::euclideanDistance(point, this->source->points[i]) );
-    }
-    std::sort(centroidDist.begin(), centroidDist.end());
 
     // Find table
     Eigen::Vector4f plane_normal;
@@ -115,7 +108,7 @@ covis::core::Detection posePrior::estimate()
             extract.setNegative(true);
             extract.filter(*tmp);
         }
-        visu::showDetection<PointT>( this->source, tmp, pose );
+        // visu::showDetection<PointT>( this->source, tmp, pose );
 
         // Check if no plane was found
         if (tmp->size() < this->target->size() * 0.2)
@@ -142,7 +135,7 @@ covis::core::Detection posePrior::estimate()
         	continue;
 
         // Constraint2: if translation result in the object being below the plane
-        double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z;
+        // double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z;
         // if ( fabs(tgt_dist) < src_dist * 0.8 ) // 0.8
         //     continue;
 
@@ -227,17 +220,17 @@ covis::core::Detection posePrior::estimate()
         if( fe->inlierFraction() >= this->inlierFraction ) {
 
             // Find closest point
+            PointT point;
             point.x = pose(0,3);
             point.y = pose(1,3);
             point.z = pose(2,3);
-            std::vector<double> distance;
-            for (size_t j = 0; j < this->target->size(); j++) {
-                distance.push_back( pcl::euclideanDistance(point, this->target->points[j]) );
-            }
-            std::sort(distance.begin(), distance.end());
+            std::vector<int> nn_indices(1);
+            std::vector<float> nn_dists(1);
+            tree->nearestKSearch(point, 1, nn_indices, nn_dists);
+            double tgtCentroidDist = sqrt(nn_dists[0]);
 
             // If closest point is too far away reject pose
-            if ( distance[0] > centroidDist[0] * 2 )
+            if ( tgtCentroidDist > this->srcCentroidDist * 2 )
                 continue;
 
             pose_vector.push_back(pose);
@@ -261,6 +254,7 @@ covis::core::Detection posePrior::estimate()
         // Visualize translations
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
         for (size_t i = 0; i < pose_vector.size(); i++) {
+            PointT point;
             point.x = pose_vector[i](0,3);
             point.y = pose_vector[i](1,3);
             point.z = pose_vector[i](2,3);

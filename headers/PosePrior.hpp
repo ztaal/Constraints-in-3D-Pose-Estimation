@@ -55,6 +55,7 @@ namespace covis {
                  * Constructor: set default parameters:
                  *   - inlierThreshold (@ref setInlierThreshold()): 5
                  *   - inlierFraction (@ref setInlierFraction()): 0.05
+                 *   - icpIterations (@ref setIcpIterations()): 50
                  *   - occlusionReasoning (@ref setOcclusionReasoning()): false
                  *   - viewAxis (@ref setViewAxis()): 0
                  *   - verbose (@ref setPrerejection()): false
@@ -62,6 +63,7 @@ namespace covis {
                 posePrior() :
                     inlierThreshold(5),
                     inlierFraction(0.05),
+                    icpIterations(50),
                     occlusionReasoning(false),
                     viewAxis(0),
                     verbose(false) {}
@@ -132,6 +134,15 @@ namespace covis {
                 }
 
                 /**
+                 * Set number of Iterative Closest Point iterations
+                 * @param iterations
+                 */
+                inline void setIcpIterations( int _icpIterations ) {
+                    COVIS_ASSERT( _icpIterations > 0 );
+                    icpIterations = _icpIterations;
+                }
+
+                /**
                  * Set occlusion reasoning flag
                  * @param occlusionReasoning flag
                  */
@@ -145,6 +156,14 @@ namespace covis {
                  */
                 inline void setViewAxis( int _viewAxis ) {
                     viewAxis = _viewAxis;
+                }
+
+                /**
+                 * Set modelIndex
+                 * @param index [1, 2, 3, 4, 5, 6]
+                 */
+                inline void setModelIndex( int _modelIndex ) {
+                    modelIndex = _modelIndex;
                 }
 
                 /**
@@ -185,6 +204,9 @@ namespace covis {
                 /// Visibility or required fraction of inliers of the source points [0,1]
                 float inlierFraction;
 
+                /// Iterative Closest Point Iterations
+                float icpIterations;
+
                 /// Enable removal of occluded points
                 bool occlusionReasoning;
 
@@ -193,6 +215,9 @@ namespace covis {
 
                 /// Verbose flag
                 bool verbose;
+
+                /// Model index used for correcting axis
+                int modelIndex;
 
                 /**
                 * Compute the ortogonal basis from the plane normal

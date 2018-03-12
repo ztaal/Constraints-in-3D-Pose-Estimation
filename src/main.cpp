@@ -7,13 +7,33 @@
   */
 
 // Errors 01
-    //  38,  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154,
-    // 156, 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186,
-    // 188, 189, 190, 191
+    //  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154, 156,
+    // 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186, 188
+    // 189, 190, 191
 // Errors 02
     // None
 // Errors 03
-    // 90, 95, 105, 181, 187, 188, 189, 190, 191, 217, 465,
+    // 90, 95, 105, 181, 465,
+// Errors 04
+    // 231, 256, 259, 262, 394, 409
+// Errors 05
+    //  54,  55,  58,  59,  60,  61,  62,  63,  64,  70,  71,  72,  77,  85,  86
+    //  88,  90,  91,  93,  94
+// Errors 06
+    //  29,  30, 169, 283, 284, 287, 300
+
+// Benchmark Errors 01
+    // 135, 142 -- 135, 142
+// Benchmark Errors 02
+    // None -- None
+// Benchmark Errors 03
+    // None -- 393, 399, 410, 520
+// Benchmark Errors 04
+    // 262, 409 -- 262, 409
+// Benchmark Errors 05
+    //  40 -- 40
+// Benchmark Errors 06
+    //  30 -- 30, 88, 151, 196, 292, 302
 
 // Covis
 #include <covis/covis.h>
@@ -46,31 +66,22 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)");
-    // po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)");
-    // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // TODO Change back
+    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // 5
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
-    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
-    // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // Other feature: ppfhistfull
-    // po.addOption("resolution-query", 20, "resolution of query features in mr (<= 0 for five resolution units)");
-    // po.addOption("resolution-target", 20, "resolution of target features in mr (<= 0 for five resolution units)");
-    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // TODO Change back
-    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // TODO Change back
-    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)");
-    // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)");
-    po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
+    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // si
+    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // 20
+    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // 20
+    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // 25
+    po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // 50
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    // po.addOption("inlier-threshold", 't', 0, "RANSAC inlier threshold (<= 0 for infinite)");
-    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back
-    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // TODO Change back (best)
-    // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
-    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // TODO Change back
+    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // 0
+    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // 0.15
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");

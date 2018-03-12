@@ -189,6 +189,8 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
         instance->setSource( this->objectCloud );
         instance->setSrcCentroidDist( this->centroidDist );
+        std::string objLabel = this->objectLabels[0];
+        instance->setModelIndex( std::atoi(objLabel.erase(0,4).c_str()) );
 
         // Start timer
         covis::core::Timer t;
@@ -248,7 +250,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
 
                 // Check if pose is good or bad
                 poses[i] = d[i].pose;
-                if ( translationDist[i] > 30 || angle[i] > 0.2) {
+                if ( translationDist[i] > 30 || angle[i] > 0.275) {
                     failed[i] = true;
                 } else {
                     failed[i] = false;
@@ -384,7 +386,7 @@ void Benchmark_Tejani::savePoses( std::string path )
         objLabel.erase(0,4);
         std::string filePath = path + objLabel + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
-            if ( result.d[i] && !result.failed[i] ) {
+            if ( result.d[i] ) {
                 ofstream file;
                 file.open( filePath + result.sceneLabels[i] + "_" + objLabel + ".yml" );
                 Eigen::Matrix4f P = result.poses[i];

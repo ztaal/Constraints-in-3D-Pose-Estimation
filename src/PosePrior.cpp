@@ -48,6 +48,22 @@ covis::core::Detection posePrior::estimate()
     Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
     std::vector<Eigen::Matrix4f> pose_vector;
 
+    // Find max z value of the source cloud
+    PointT min_pt, max_pt;
+    pcl::getMinMax3D( *this->source, min_pt, max_pt );
+    double maxDist = fabs(max_pt.z) + fabs(min_pt.z);
+
+    // Correction of pose due to the models not being proberbly aligned with the axis TODO remove when correct models are used
+    Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
+    Eigen::Vector3f v = Eigen::Vector3f::UnitX();
+    if (modelIndex == 1 || modelIndex == 3) {
+        double theta = -3;
+        correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    } else if (modelIndex == 5) {
+        double theta = -10;
+        correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    }
+
     // Instantiate kd tree
     pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
     tree->setInputCloud(this->target);
@@ -95,8 +111,6 @@ covis::core::Detection posePrior::estimate()
             if (dist > 5 && dist < 150) // TODO Add threshold variables
                 pointsOnPlane++;
         }
-        // std::cout << "pointsOnPlane: " << pointsOnPlane << '\n';
-        // std::cout << "Threshold: " << this->corr->size() * 0.15 << '\n';
 
         if (pointsOnPlane > this->corr->size() * 0.15) { // TODO Add threshold variable
             plane_normal = normal;
@@ -108,25 +122,20 @@ covis::core::Detection posePrior::estimate()
             extract.setNegative(true);
             extract.filter(*tmp);
         }
-        // visu::showDetection<PointT>( this->source, tmp, pose );
 
         // Check if no plane was found
-        if (tmp->size() < this->target->size() * 0.2)
+        if (tmp->size() < this->target->size() * 0.2)  // TODO add variable
             return result;
     }
 
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
-    // Find max z value of the source cloud
-    PointT min_pt, max_pt;
-    pcl::getMinMax3D( *this->source, min_pt, max_pt );
-
     // Loop over correspondences
     for( size_t i = 0; i < this->corr->size(); i++ ) {
         int source_corr = (*this->corr)[i].query;
         int target_corr = (*this->corr)[i].match[0];
-        pose = Eigen::Matrix4f::Identity();
+        pose = correctionT * Eigen::Matrix4f::Identity();
 
         // Constraint1: ignore point if it is below the plane
         PointT tgtPoint = this->target->points[target_corr];
@@ -194,23 +203,17 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint3: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
-        if ( pose_dist < max_pt.z * 0.8 ) // 0.8
+        if ( pose_dist < (maxDist/2) * 0.8 ) // 0.8  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
             continue;
 
         // Constraint4: Reject pose if it is above the plane
-        if ( pose_dist > max_pt.z * 1.2 ) // 1.2
+        if ( pose_dist > (maxDist/2) * 1.2 ) // 1.2  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
             continue;
 
         // Constraint5: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        // if (angle > 0.05)
-        // if (angle > 0.1) // Best so far
-        // if (angle > 0.18)
-        if (angle > 0.2) // Second best
-        // if (angle > 0.3)
-        // if (angle > 0.5)
-        // if (angle > 1)
+        if (angle > 0.2) // 0.2  // TODO add variable
             continue;
 
         // Find consensus set
@@ -230,7 +233,7 @@ covis::core::Detection posePrior::estimate()
             double tgtCentroidDist = sqrt(nn_dists[0]);
 
             // If closest point is too far away reject pose
-            if ( tgtCentroidDist > this->srcCentroidDist * 2 )
+            if ( tgtCentroidDist > this->srcCentroidDist * 2 ) // TODO add variable
                 continue;
 
             pose_vector.push_back(pose);
@@ -245,13 +248,29 @@ covis::core::Detection posePrior::estimate()
                 result.penalty = fe->penalty();
             }
         }
-
     }
 
+    // Iterative Closest Point (refine pose)
+    if (result) {
+        pcl::IterativeClosestPoint<PointT, PointT> icp;
+        icp.setMaximumIterations( this->icpIterations );
+        icp.setInputSource( this->source );
+        icp.setInputTarget( this->target );
+        icp.setMaxCorrespondenceDistance( this->inlierThreshold );
+        CloudT tmp;
+        icp.align( tmp, result.pose );
+        if(icp.hasConverged()) {
+            result.pose = icp.getFinalTransformation();
+            result.rmse = icp.getFitnessScore();
+        } else {
+            result.clear();
+        }
+    }
+
+    // Visualize translations
     bool show = false;
     // show = true;
     if (show == true) {
-        // Visualize translations
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
         for (size_t i = 0; i < pose_vector.size(); i++) {
             PointT point;

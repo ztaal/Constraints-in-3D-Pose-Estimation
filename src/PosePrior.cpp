@@ -108,11 +108,11 @@ covis::core::Detection posePrior::estimate()
             PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
             double dist = pcl::pointToPlaneDistance(corrPoint, normal);
-            if (dist > 5 && dist < 150) // TODO Add threshold variables
+            if (dist > 10 && dist < 200) // TODO Add threshold variables
                 pointsOnPlane++;
         }
-
-        if (pointsOnPlane > this->corr->size() * 0.15) { // TODO Add threshold variable
+        
+        if (pointsOnPlane > this->corr->size() * 0.3) { // TODO Add threshold variable
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -124,12 +124,15 @@ covis::core::Detection posePrior::estimate()
         }
 
         // Check if no plane was found
-        if (tmp->size() < this->target->size() * 0.2)  // TODO add variable
+        if (tmp->size() < this->target->size() * 0.5)  // TODO add variable
             return result;
     }
 
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
+
+    // Test
+    double previousDist = std::numeric_limits<double>::max();
 
     // Loop over correspondences
     for( size_t i = 0; i < this->corr->size(); i++ ) {
@@ -140,7 +143,8 @@ covis::core::Detection posePrior::estimate()
         // Constraint1: ignore point if it is below the plane
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        if (tgt_dist < 0)
+        // if (tgt_dist < 0)
+        if (tgt_dist < tgt_dist * -0.1)
         	continue;
 
         // Constraint2: if translation result in the object being below the plane
@@ -201,52 +205,49 @@ covis::core::Detection posePrior::estimate()
         // Apply rotation
         pose = projected_transformation.matrix() * pose;
 
-        // Constraint3: Reject pose if it is below the plane
+        // Constraint2: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
         if ( pose_dist < (maxDist/2) * 0.8 ) // 0.8  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
             continue;
 
-        // Constraint4: Reject pose if it is above the plane
+        // Constraint3: Reject pose if it is above the plane
         if ( pose_dist > (maxDist/2) * 1.2 ) // 1.2  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
             continue;
 
-        // Constraint5: Find angel between normals and reject pose if it is too large
+        // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
         if (angle > 0.2) // 0.2  // TODO add variable
             continue;
 
+        // Find closest point
+        PointT point;
+        point.x = pose(0,3);
+        point.y = pose(1,3);
+        point.z = pose(2,3);
+        std::vector<int> nn_indices(1);
+        std::vector<float> nn_dists(1);
+        tree->nearestKSearch(point, 1, nn_indices, nn_dists);
+        double tgtCentroidDist = sqrt(nn_dists[0]);
+
+        // Constraint5: If closest point is too far away reject pose
+        if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+            continue;
+
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
-        // If number of inliers (consensus set) is high enough
-        if( fe->inlierFraction() >= this->inlierFraction ) {
-
-            // Find closest point
-            PointT point;
-            point.x = pose(0,3);
-            point.y = pose(1,3);
-            point.z = pose(2,3);
-            std::vector<int> nn_indices(1);
-            std::vector<float> nn_dists(1);
-            tree->nearestKSearch(point, 1, nn_indices, nn_dists);
-            double tgtCentroidDist = sqrt(nn_dists[0]);
-
-            // If closest point is too far away reject pose
-            if ( tgtCentroidDist > this->srcCentroidDist * 2 ) // TODO add variable
-                continue;
-
             pose_vector.push_back(pose);
 
-            // Update result if updated model is the best so far
-            if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
-                // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
-                result.pose = pose;
-                result.rmse = fe->rmse();
-                result.inlierfrac = fe->inlierFraction();
-                result.outlierfrac = fe->outlierFraction();
-                result.penalty = fe->penalty();
-            }
+        // Update result if updated model is the best so far
+        if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
+            // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
+            previousDist = tgtCentroidDist;
+            result.pose = pose;
+            result.rmse = fe->rmse();
+            result.inlierfrac = fe->inlierFraction();
+            result.outlierfrac = fe->outlierFraction();
+            result.penalty = fe->penalty();
         }
     }
 

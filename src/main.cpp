@@ -1,39 +1,49 @@
 
  /**  Todo list:
-  * TODO Run tests with pose priors with one point
+  * TODO Get 98% on tejani with pose priors
+  * TODO Test pose priors with different inlier threshold for icp
+  * TODO Try with different normal radius
+  * TODO Test speed correctly (with corr calc)
+  * TODO Add centroid distance threshold to RANSAC
+  * TODO Change ransac so it works on tejani
+  * TODO Test ransac on tejani
+  * TODO Test pose priors on new data set
+  * TODO Try add color check to pose priror
+  * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
   * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
   */
 
-// Errors 01
-    //  41,  91, 124, 127, 130, 131, 134, 135, 136, 140, 141, 149, 151, 154, 156,
-    // 157, 158, 159, 164, 170, 171, 172, 174, 175, 176, 177, 178, 179, 186, 188
-    // 189, 190, 191
-// Errors 02
-    // None
-// Errors 03
-    // 90, 95, 105, 181, 465,
-// Errors 04
-    // 231, 256, 259, 262, 394, 409
-// Errors 05
-    //  54,  55,  58,  59,  60,  61,  62,  63,  64,  70,  71,  72,  77,  85,  86
-    //  88,  90,  91,  93,  94
-// Errors 06
-    //  29,  30, 169, 283, 284, 287, 300
-
 // Benchmark Errors 01
-    // 135, 142 -- 135, 142
+    // 135, 142
 // Benchmark Errors 02
-    // None -- None
+    // None
 // Benchmark Errors 03
-    // None -- 393, 399, 410, 520
+    // 393
 // Benchmark Errors 04
-    // 262, 409 -- 262, 409
+    // None
 // Benchmark Errors 05
-    //  40 -- 40
+    //  40
 // Benchmark Errors 06
-    //  30 -- 30, 88, 151, 196, 292, 302
+    // 196, 282, 292
+
+// Guide on how run data on server
+    // Mount: sudo sshfs -o allow_other msteenberg@sdur-2.sandbox.tek.sdu.dk:/ /media/ztaal/sdur-2
+    // Connect: vglconnect -s msteenberg@sdur-2.sandbox.tek.sdu.dk
+    // Navigate: cd /workspace/sixd_toolkit/tools
+    // Run: vglrun python eval_calc_errors.py
+    // Run: vglrun python eval_loc.py
+    // Run: vglrun python vis_sixd_poses.py
+    // Inspect: cd /home/msteenberg/data
+    // Unmount: fusermount /media/ztaal/sdur-2 -u
+// Notes
+    // root folder needs to have lower case dataset name (e.g. data_tejani)
+    // eval_calc_errors.py && vis_sixd_poses.py
+        // Change result_base og result_path
+    // eval_loc.py
+        // Change error_bpath
+        // Set require_all_errors = false
 
 // Covis
 #include <covis/covis.h>
@@ -298,7 +308,7 @@ int main( int argc, const char** argv )
                 bt.run( &posePrior, "Pose Prior" );
                 bt.printResults();
                 if (po.getFlag("save"))
-                    bt.savePoses("../poseData/");
+                    bt.savePoses("../data_tejani/");
                 bt.clearResults();
             // }
         }

@@ -16,7 +16,7 @@
   */
 
 // Benchmark Errors 01
-    // 135, 142
+    // 135
 // Benchmark Errors 02
     // None
 // Benchmark Errors 03
@@ -26,7 +26,7 @@
 // Benchmark Errors 05
     //  40
 // Benchmark Errors 06
-    // 196, 282, 292
+    // 282, 292
 
 // Guide on how run data on server
     // Mount: sudo sshfs -o allow_other msteenberg@sdur-2.sandbox.tek.sdu.dk:/ /media/ztaal/sdur-2
@@ -90,7 +90,7 @@ int main( int argc, const char** argv )
 
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    po.addOption("inlier-threshold", 't', 10, "RANSAC inlier threshold (<= 0 for infinite)"); // 0
+    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // 0
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // 0.15
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");

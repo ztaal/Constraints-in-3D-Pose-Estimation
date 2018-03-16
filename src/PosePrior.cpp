@@ -78,6 +78,8 @@ covis::core::Detection posePrior::estimate()
     pcl::copyPointCloud(*this->target, *tmp);
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
 
+    // std::cout << "Dist: " << this->srcCentroidDist << '\n';
+
     while(true) {
         // Find largest plane
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
@@ -108,11 +110,11 @@ covis::core::Detection posePrior::estimate()
             PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
             double dist = pcl::pointToPlaneDistance(corrPoint, normal);
-            if (dist > 10 && dist < 200) // TODO Add threshold variables
+            if (dist > 5 && dist < 200) // TODO Add threshold variables
                 pointsOnPlane++;
         }
-        
-        if (pointsOnPlane > this->corr->size() * 0.3) { // TODO Add threshold variable
+
+        if (pointsOnPlane > this->corr->size() * 0.25) { // TODO Add threshold variable
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -254,6 +256,7 @@ covis::core::Detection posePrior::estimate()
     // Iterative Closest Point (refine pose)
     if (result) {
         pcl::IterativeClosestPoint<PointT, PointT> icp;
+        // pcl::IterativeClosestPointWithNormals<PointT, PointT> icp;
         icp.setMaximumIterations( this->icpIterations );
         icp.setInputSource( this->source );
         icp.setInputTarget( this->target );
@@ -270,7 +273,7 @@ covis::core::Detection posePrior::estimate()
 
     // Visualize translations
     bool show = false;
-    // show = true;
+    show = true;
     if (show == true) {
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
         for (size_t i = 0; i < pose_vector.size(); i++) {

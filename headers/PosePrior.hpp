@@ -53,7 +53,7 @@ namespace covis {
             public:
                 /**
                  * Constructor: set default parameters:
-                 *   - inlierThreshold (@ref setInlierThreshold()): 5
+                 *   - inlierThreshold (@ref setInlierThreshold()): 10
                  *   - inlierFraction (@ref setInlierFraction()): 0.05
                  *   - icpIterations (@ref setIcpIterations()): 50
                  *   - occlusionReasoning (@ref setOcclusionReasoning()): false
@@ -61,7 +61,7 @@ namespace covis {
                  *   - verbose (@ref setPrerejection()): false
                  */
                 posePrior() :
-                    inlierThreshold(5),
+                    inlierThreshold(10),
                     inlierFraction(0.05),
                     icpIterations(100),
                     occlusionReasoning(false),

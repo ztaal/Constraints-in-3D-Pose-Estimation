@@ -197,6 +197,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
 
         // Run through scenes and estimate pose of each object
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
+            t.intermediate();
             int sceneIndex = std::stoi(this->sceneLabels[i]);
             covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
 
@@ -204,7 +205,6 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
             instance->setCorrespondences( correspondence );
 
             // Run pose estimation
-            t.intermediate();
             d[i] = instance->estimate();
             time[i] = t.intermediate();
 
@@ -283,6 +283,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
     // Store results of the Benchmark
     this->results.push_back( result );
 }
+
 
 void Benchmark_Tejani::printResults()
 {

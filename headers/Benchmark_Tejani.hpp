@@ -216,10 +216,10 @@ namespace covis {
                 }
 
                 /**
-                 * Benchmarks a function on the specified data set
+                 * Benchmarks posePrior on the specified data set
                  * Running multiple instance of benchmark will store each individual benchmark
                  * To see the result of the benchmark call @ref @printResults()
-                 * @param ransac instance, benchmark name
+                 * @param posePrior instance, benchmark name
                  */
                 void run( class posePrior *instance, std::string _funcName );
 

@@ -1,8 +1,6 @@
 
  /**  Todo list:
-  * TODO Get 98% on tejani with pose priors
-  * TODO Test pose priors with different inlier threshold for icp
-  * TODO Try with different normal radius
+  * TODO Get 98.5% on tejani with pose priors
   * TODO Test speed correctly (with corr calc)
   * TODO Add centroid distance threshold to RANSAC
   * TODO Change ransac so it works on tejani
@@ -76,7 +74,7 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // 5
+    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // 15
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
@@ -90,7 +88,7 @@ int main( int argc, const char** argv )
 
     // Estimation
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // 0
+    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // 0 // 8
     po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // 0.15
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
@@ -178,37 +176,11 @@ int main( int argc, const char** argv )
 
         if( po.getFlag("pose_prior") ) {
             posePrior.setInlierThreshold( inlierThreshold );
-            posePrior.setInlierFraction( 0.008 );
-            // posePrior.setInlierFraction( 0.008 ); // Best so far
-            // posePrior.setInlierFraction( 0.02 );
-            // posePrior.setInlierFraction( inlierFraction );
             posePrior.setViewAxis( viewAxis );
             posePrior.setVerbose( verbose );
-
-            // Pose Prior
-            // posePrior.setSource( queryCloud );
-            // posePrior.setTarget( targetCloud );
-            // posePrior.setCorrespondences( corr );
-            // posePrior.setInlierFraction( 0.01 );
-
-            // {
-            //     core::ScopedTimer t("Pose priors");
-            //     d = posePrior.estimate();
-            // }
-            // if(d) {
-            //     // Visualize
-            //     if (verbose)
-            //         COVIS_MSG(d);
-            //     if( po.getFlag("visualize") ) {
-            //         visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
-            //     }
-            // } else {
-            //     COVIS_MSG_WARN("Pose priors failed!");
-            // }
         }
 
         if( po.getFlag("ransac") ) {
-
             // Ransac variables
             ransac.setIterations( iterations );
             ransac.setSampleSize( sampleSize );
@@ -221,28 +193,6 @@ int main( int argc, const char** argv )
             ransac.setOcclusionReasoning( noOcclusionReasoning );
             ransac.setPrerejectionSimilarity( prerejectionSimilarty );
             ransac.setVerbose( verbose );
-
-            // Ransac
-            // ransac.setSource( queryCloud );
-            // ransac.setTarget( targetCloud );
-            // ransac.setCorrespondences( corr );
-            // ransac.setInlierFraction( 0 );
-
-            // {
-            //     core::ScopedTimer t("Ransac");
-            //     d = ransac.estimate();
-            // }
-            //
-            // if(d) {
-            //     // Visualize
-            //     if (verbose)
-            //         COVIS_MSG(d);
-            //     if( po.getFlag("visualize") ) {
-            //         visu::showDetection<PointT>( queryCloud, targetCloud, d.pose );
-            //     }
-            // } else {
-            //     COVIS_MSG_WARN("RANSAC failed!");
-            // }
         }
 
         if( po.getFlag("benchmark") ) {
@@ -304,13 +254,11 @@ int main( int argc, const char** argv )
             bt.setFeature( po.getValue("feature") );
             bt.setVerbose( verbose );
 
-            // for ( size_t i = 0; i < 1; i++ ) {
-                bt.run( &posePrior, "Pose Prior" );
-                bt.printResults();
-                if (po.getFlag("save"))
-                    bt.savePoses("../data_tejani/");
-                bt.clearResults();
-            // }
+            bt.run( &posePrior, "Pose Prior" );
+            bt.printResults();
+            if (po.getFlag("save"))
+                bt.savePoses("../data_tejani/");
+            bt.clearResults();
         }
      }
 

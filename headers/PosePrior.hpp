@@ -54,15 +54,13 @@ namespace covis {
                 /**
                  * Constructor: set default parameters:
                  *   - inlierThreshold (@ref setInlierThreshold()): 10
-                 *   - inlierFraction (@ref setInlierFraction()): 0.05
-                 *   - icpIterations (@ref setIcpIterations()): 50
+                 *   - icpIterations (@ref setIcpIterations()): 100
                  *   - occlusionReasoning (@ref setOcclusionReasoning()): false
                  *   - viewAxis (@ref setViewAxis()): 0
                  *   - verbose (@ref setPrerejection()): false
                  */
                 posePrior() :
                     inlierThreshold(10),
-                    inlierFraction(0.05),
                     icpIterations(100),
                     occlusionReasoning(false),
                     viewAxis(0),
@@ -122,15 +120,6 @@ namespace covis {
                 inline void setInlierThreshold( float _inlierThreshold ) {
                     COVIS_ASSERT(_inlierThreshold > 0);
                     inlierThreshold = _inlierThreshold;
-                }
-
-                /**
-                 * Set required inlier fraction (must be in [0,1])
-                 * @param inlier fraction
-                 */
-                inline void setInlierFraction( float _inlierFraction ) {
-                    COVIS_ASSERT(_inlierFraction >= 0 && _inlierFraction <= 1);
-                    inlierFraction = _inlierFraction;
                 }
 
                 /**
@@ -215,9 +204,6 @@ namespace covis {
 
                 /// Euclidean inlier threshold
                 float inlierThreshold;
-
-                /// Visibility or required fraction of inliers of the source points [0,1]
-                float inlierFraction;
 
                 /// Iterative Closest Point Iterations
                 float icpIterations;

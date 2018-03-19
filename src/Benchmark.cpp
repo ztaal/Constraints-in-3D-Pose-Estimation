@@ -262,9 +262,10 @@ void Benchmark::printResults()
         "Run Benchmark() atleast once before calling printResults()." );
 
     // Header
-    printf( "\n\n\n\033[1m%80s\033[m\n", "BENCHMARK RESULTS" );
-    printf( "\033[1m%20s%15s%15s%10s(%%)%15s%15s%20s%23s\033[m\n", "Function Name   ",
-        "Total Time", "Avg Time", "Failed", "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
+    printf( "\n\n\n\033[1m%90s\033[m\n", "BENCHMARK RESULTS" );
+    printf( "\033[1m%20s%15s%15s%10s(%%)%17s%20s%15s%15s%20s%23s\033[m\n", "Function Name   ",
+        "Total Time", "Avg Time", "Failed", "Avg Corr Dist", "Median Corr Dist",
+        "Avg RMSE", "Avg Penalty", "Avg InlierFrac", "Stddev InlierFrac" );
 
     // Data
     std::vector<int> objAttempt( this->objectCloud.size() );
@@ -273,17 +274,22 @@ void Benchmark::printResults()
     std::vector<double> avgObjRMSE( this->objectCloud.size() );
     std::vector<double> avgObjPenalty( this->objectCloud.size() );
     std::vector<double> avgObjInliers( this->objectCloud.size() );
+    std::vector<double> avgObjMedianDist( this->objectCloud.size() );
+    std::vector<double> avgObjDist( this->objectCloud.size() );
     std::vector<double> stddevObjInliers( this->objectCloud.size() );
 
     // Excecution speed and error
     for( auto &result : this->results ) {
         // Calculate averages
-        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0, totalTime = 0;
         int successful = 0, totalIterations = 0;
+        double avgRMSE = 0, avgInliers = 0, avgPenalty = 0;
+        double avgDist = 0, avgMedianDist = 0, totalTime = 0;
+
         for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             objAttempt[i] = 0;
             objSuccessful[i] = 0;
             double objRMSE = 0, objInliers = 0, objPenalty = 0;
+            double objDist = 0, objMedianDist = 0;
             for ( unsigned int j = 0; j < this->sceneCloud.size(); j++ ) {
                 totalIterations += objectMask[j][i];
                 objAttempt[i] += objectMask[j][i];
@@ -293,21 +299,29 @@ void Benchmark::printResults()
                     objRMSE += result.d[j][i].rmse;
                     objPenalty += result.d[j][i].penalty;
                     objInliers += result.d[j][i].inlierfrac;
+                    objDist += result.avgDistance[j][i];
+                    objMedianDist += result.medianDistance[j][i];
                     objSuccessful[i]++;
                 }
             }
             avgRMSE += objRMSE;
             avgPenalty += objPenalty;
             avgInliers += objInliers;
+            avgDist += objDist;
+            avgMedianDist += objMedianDist;
             successful += objSuccessful[i];
             avgObjRMSE[i] = objRMSE / objSuccessful[i];
             avgObjPenalty[i] = objPenalty / objSuccessful[i];
             avgObjInliers[i] = objInliers / objSuccessful[i];
+            avgObjDist[i] = objDist / objSuccessful[i];
+            avgObjMedianDist[i] = objMedianDist / objSuccessful[i];
         }
 
         avgRMSE = avgRMSE / successful;
         avgInliers = avgInliers / successful;
         avgPenalty = avgPenalty / successful;
+        avgDist = avgDist / successful;
+        avgMedianDist = avgMedianDist / successful;
         double avgTime = totalTime / successful;
         double failed = totalIterations - successful;
         double failedPercent = (failed / totalIterations) * 100;
@@ -327,22 +341,22 @@ void Benchmark::printResults()
         double stddevInliers = sqrt(dist / successful);
 
         // Print information
-        printf("%s\n",std::string(138, '-').c_str());
-        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\033[m\n",
-            result.name.c_str(), totalTime, avgTime, failedPercent,
-            avgRMSE, avgPenalty, avgInliers, stddevInliers );
+        printf("%s\n",std::string(160, '-').c_str());
+        printf( " \033[1m%-20s%14.4f%15.4f%13.1f%17f%20f%15.5f%15.4f%20.4f%23.4f\033[m\n",
+            result.name.c_str(), totalTime, avgTime, failedPercent, avgDist,
+            avgMedianDist, avgRMSE, avgPenalty, avgInliers, stddevInliers );
 
         // Print information about each object
         for ( unsigned int i = 0; i < this->objectCloud.size(); i++ ) {
             double objFailed = objAttempt[i] - objSuccessful[i];
             double objFailedPercent = (objFailed / objAttempt[i]) * 100;
-            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%15.5f%15.4f%20.4f%23.4f\n",
+            printf( "\033[3m%15s\033[m%20.4f%15.4f%13.1f%17f%20f%15.5f%15.4f%20.4f%23.4f\n",
                 objectLabels[i].c_str(), avgObjTime[i],
-                avgObjTime[i] / objSuccessful[i], objFailedPercent,
+                avgObjTime[i] / objSuccessful[i], objFailedPercent, avgObjDist[i], avgObjMedianDist[i],
                 avgObjRMSE[i], avgObjPenalty[i], avgObjInliers[i], stddevObjInliers[i] );
         }
     }
-    printf("%s\n\n\n",std::string(138,'-').c_str());
+    printf("%s\n\n\n",std::string(160,'-').c_str());
 }
 
 void Benchmark::printPrerejectionResults()

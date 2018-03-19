@@ -88,7 +88,7 @@ covis::core::Detection posePrior::estimate()
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
         seg.setMaxIterations(1000); // 1000
-        seg.setDistanceThreshold(10);
+        seg.setDistanceThreshold(10); // 10
         seg.setInputCloud(tmp);
         seg.segment(*inliers, *coefficients);
 
@@ -146,17 +146,8 @@ covis::core::Detection posePrior::estimate()
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         // if (tgt_dist < 0)
-        if (tgt_dist < tgt_dist * -0.1)
+        if (tgt_dist < tgt_dist * -0.1) // -0.1
         	continue;
-
-        // Constraint2: if translation result in the object being below the plane
-        // double src_dist = fabs(this->source->points[source_corr].z) + max_pt.z;
-        // if ( fabs(tgt_dist) < src_dist * 0.8 ) // 0.8
-        //     continue;
-
-        // Prerejection3: if translation result in the object being above the plane
-        // if ( fabs(tgt_dist) > src_dist ) // 0.8
-        //     continue;
 
         // Rotate source to fit target plane
         Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
@@ -209,18 +200,18 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint2: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
-        if ( pose_dist < (maxDist/2) * 0.8 ) // 0.8  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
+        if ( pose_dist < (maxDist/2) * 0.8 ) // 0.8  // TODO add variable
             continue;
 
         // Constraint3: Reject pose if it is above the plane
-        if ( pose_dist > (maxDist/2) * 1.2 ) // 1.2  // TODO add variable // TODO CHECK THAT THIS STILL WORKS
+        if ( pose_dist > (maxDist/2) * 1.2 ) // 1.2  // TODO add variable
             continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        if (angle > 0.2) // 0.2  // TODO add variable
-            continue;
+        // if (angle > 0.2) // 0.2  // TODO add variable
+        //     continue;
 
         // Find closest point
         PointT point;
@@ -239,11 +230,10 @@ covis::core::Detection posePrior::estimate()
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
 
-            pose_vector.push_back(pose);
+        pose_vector.push_back(pose);
 
         // Update result if updated model is the best so far
         if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
-            // if(fe->penalty() < result.penalty && !pose.isZero(0)) {
             previousDist = tgtCentroidDist;
             result.pose = pose;
             result.rmse = fe->rmse();
@@ -260,6 +250,7 @@ covis::core::Detection posePrior::estimate()
         icp.setMaximumIterations( this->icpIterations );
         icp.setInputSource( this->source );
         icp.setInputTarget( this->target );
+        // icp.setMaxCorrespondenceDistance( 8 );
         icp.setMaxCorrespondenceDistance( this->inlierThreshold );
         CloudT tmp;
         icp.align( tmp, result.pose );
@@ -273,7 +264,7 @@ covis::core::Detection posePrior::estimate()
 
     // Visualize translations
     bool show = false;
-    show = true;
+    // show = true;
     if (show == true) {
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
         for (size_t i = 0; i < pose_vector.size(); i++) {

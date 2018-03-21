@@ -1,6 +1,5 @@
 
  /**  Todo list:
-  * TODO Get 98.5% on tejani with pose priors
   * TODO Test speed correctly (with corr calc)
   * TODO Add centroid distance threshold to RANSAC
   * TODO Change ransac so it works on tejani
@@ -74,22 +73,28 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // 15
+    // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
+    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
-    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // si
+    // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // si
+    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // ppf
     po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // 20
     po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // 20
-    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // 25
-    po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // 50
+    // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
+    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
+    // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
+    po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
-    po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // 0 // 8
-    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // 0.15
+    po.addOption("iterations", 'i', 100000, "RANSAC iterations");
+    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // UWA
+    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
+    // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
+    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");
@@ -239,7 +244,7 @@ int main( int argc, const char** argv )
             bt.setRootPath( po.getValue("root-path") );
             bt.setObjectDir( po.getValue("object-dir") );
             bt.setSceneDir( po.getValue("scene-dir") );
-            bt.setPosePath( po.getValue("yml-file") );
+            bt.setPoseFile( po.getValue("yml-file") );
             bt.setObjExt( po.getValue("object-ext") );
             bt.setSceneExt( po.getValue("scene-ext") );
 
@@ -254,10 +259,16 @@ int main( int argc, const char** argv )
             bt.setFeature( po.getValue("feature") );
             bt.setVerbose( verbose );
 
+            // ransac.setPrerejectionD( true );
+            // ransac.setPrerejectionG( true );
+            // ransac.setPrerejectionD( false );
+            // ransac.setPrerejectionG( false );
+            // bt.run( &ransac, "Ransac" );
             bt.run( &posePrior, "Pose Prior" );
             bt.printResults();
             if (po.getFlag("save"))
                 bt.savePoses("../data_tejani/");
+                // bt.savePoses("../ransac_tejani/");
             bt.clearResults();
         }
      }

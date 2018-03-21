@@ -55,10 +55,16 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
         util::DatasetLoader::SceneEntry scene = dataset.at(i);
         (*sceneMesh).push_back(scene.scene);
     }
-    util::yml_loader yml( this->rootPath + posePath );
+    util::yml_loader yml( this->rootPath + this->sceneDir + "/../" + this->poseFile );
     yml.load( poses );
     COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
-    this->objectLabels = dataset.getObjectLabels();
+
+    std::string tmp;
+    for (size_t i = 0; i < this->sceneDir.length(); i++)
+        if( isdigit(this->sceneDir[i]) )
+            tmp += this->sceneDir[i];
+    this->objectIndex = std::atoi(tmp.c_str()) - 1;
+    this->objectLabel = dataset.getObjectLabels()[this->objectIndex];
     this->sceneLabels = dataset.getSceneLabels();
 }
 
@@ -163,7 +169,7 @@ void Benchmark_Tejani::initialize()
         printf("Loading data\n");
     std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh;
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
-    computeObjFeat( &objectMesh[0] );
+    computeObjFeat( &objectMesh[this->objectIndex] );
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
@@ -189,8 +195,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
         instance->setSource( this->objectCloud );
         instance->setSrcCentroidDist( this->centroidDist );
-        std::string objLabel = this->objectLabels[0];
-        instance->setModelIndex( std::atoi(objLabel.erase(0,4).c_str()) );
+        instance->setModelIndex( std::atoi(this->objectLabel.erase(0,4).c_str()) );
 
         // Start timer
         covis::core::Timer t;
@@ -276,7 +281,123 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         result.translationDist = translationDist;
         result.angle = angle;
         result.failed = failed;
-        result.objectLabel = this->objectLabels[0];
+        result.objectLabel = this->objectLabel;
+        result.sceneLabels = this->sceneLabels;
+        result.poses = poses;
+    }
+    // Store results of the Benchmark
+    this->results.push_back( result );
+}
+
+
+void Benchmark_Tejani::run( class ransac *instance, std::string funcName )
+{
+    // Call init if it has not been called before
+    boost::call_once([this]{initialize();}, this->flagInit);
+
+    // Instantiate result struct
+    Result result;
+
+    // Benchmark
+    {
+        printf( "Benchmarking %s: \n", funcName.c_str() );
+        std::vector<double> time( this->sceneMesh.size() );
+        std::vector<double> avgDistance( this->sceneMesh.size() );
+        std::vector<double> medianDistance( this->sceneMesh.size() );
+        std::vector<double> translationDist( this->sceneMesh.size() );
+        std::vector<double> angle( this->sceneMesh.size() );
+        std::vector<bool> failed( this->sceneMesh.size() );
+        std::vector<covis::core::Detection> d( this->sceneMesh.size() );
+        std::vector<Eigen::Matrix4f> poses( this->sceneMesh.size() );
+
+        covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
+        instance->setSource( this->objectCloud );
+
+        // Start timer
+        covis::core::Timer t;
+
+        // Run through scenes and estimate pose of each object
+        for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
+            t.intermediate();
+            int sceneIndex = std::stoi(this->sceneLabels[i]);
+            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
+
+            instance->setTarget( this->sceneCloud );
+            instance->setCorrespondences( correspondence );
+
+            // Run pose estimation
+            d[i] = instance->estimate();
+            time[i] = t.intermediate();
+
+            if (d[i]) {
+                // Calculate distance from GT
+                CloudT gtCloud = *this->objectCloud;
+                CloudT poseCloud = *this->objectCloud;
+
+                // Find gt pose closest to estimated pose
+                int poseIndex = 0;
+                double shortestDist = std::numeric_limits<double>::max();
+                for ( size_t j = 0; j < this->poses[sceneIndex].size(); j++ ) {
+                    // Find distance between translation
+                    double dist = norm( this->poses[sceneIndex][j], d[i].pose );
+                    if (dist < shortestDist) {
+                        shortestDist = dist;
+                        poseIndex = j;
+                    }
+                }
+
+                // Transform clouds
+                covis::core::transform( poseCloud, d[i].pose );
+                covis::core::transform( gtCloud, this->poses[i][poseIndex] );
+
+                // Calculate distances
+                std::vector<double> distance;
+                for ( auto corr : *correspondence )
+                    distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
+
+                medianDistance[i] = this->median( distance );
+
+                for ( auto &n : distance )
+                    avgDistance[i] += n;
+                avgDistance[i] = avgDistance[i] / distance.size();
+
+                // Find distance between translations
+                translationDist[i] = norm( this->poses[sceneIndex][poseIndex], d[i].pose );
+
+                // Find angle between z-axis
+                Eigen::Vector3f poseTranslation = d[i].pose.block<3,1>(0, 2);
+                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][poseIndex].block<3,1>(0,2);
+                angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
+
+                // Check if pose is good or bad
+                poses[i] = d[i].pose;
+                if ( translationDist[i] > 30 || angle[i] > 0.275) {
+                    failed[i] = true;
+                } else {
+                    failed[i] = false;
+                }
+
+                if ( failed[i] || this->verbose ) {
+                    std::cout << "\nScene " << sceneIndex << "\n";
+                    std::cout << "Distance: " << translationDist[i] << '\n';
+                    std::cout << "Angle: " << angle[i] << '\n';
+                    COVIS_MSG( d[i].pose );
+                    if ( this->verbose )
+                        visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
+                }
+            } else {
+                std::cout << "\nScene " << sceneIndex << " Failed!\n";
+            }
+        }
+        result.d = d;
+        result.time = time;
+        result.name = funcName;
+        result.avgDistance = avgDistance;
+        result.medianDistance = medianDistance;
+        result.translationDist = translationDist;
+        result.angle = angle;
+        result.failed = failed;
+        result.objectLabel = this->objectLabel;
         result.sceneLabels = this->sceneLabels;
         result.poses = poses;
     }

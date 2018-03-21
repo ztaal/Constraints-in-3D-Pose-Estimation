@@ -184,7 +184,7 @@ namespace covis {
                 /// Correspondences
                 core::Correspondence::VecPtr corr;
 
-                /// Distrance to the cloest point from source centroid
+                /// Distance to the cloest point from source centroid
                 double srcCentroidDist;
 
                 // double lower_plane_dist_threshold = 5

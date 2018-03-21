@@ -51,7 +51,7 @@ covis::core::Detection posePrior::estimate()
     // Find max z value of the source cloud
     PointT min_pt, max_pt;
     pcl::getMinMax3D( *this->source, min_pt, max_pt );
-    double maxDist = fabs(max_pt.z) + fabs(min_pt.z);
+    double maxDist = max_pt.z - min_pt.z;
 
     // Correction of pose due to the models not being proberbly aligned with the axis TODO remove when correct models are used
     Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
@@ -146,8 +146,8 @@ covis::core::Detection posePrior::estimate()
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         // if (tgt_dist < 0)
-        if (tgt_dist < tgt_dist * -0.1) // -0.1
-        	continue;
+        // if (tgt_dist < tgt_dist * -0.1) // -0.1
+        // 	continue;
 
         // Rotate source to fit target plane
         Eigen::Vector4f corrPoint(this->source->points[source_corr].x,

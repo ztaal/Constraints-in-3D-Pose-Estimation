@@ -37,6 +37,9 @@
 // Pose Prior
 #include "../headers/PosePrior.hpp"
 
+// Ransac
+#include "../headers/Ransac.hpp"
+
 // YML loader
 #include "../headers/yml_loader.hpp"
 
@@ -112,11 +115,11 @@ namespace covis {
                 }
 
                 /**
-                 * Set file path to the ground truth poses
-                 * @param pose path
+                 * Set name of file containing the ground truth poses
+                 * @param pose file
                  */
-                inline void setPosePath( std::string _posePath ) {
-                    posePath = _posePath;
+                inline void setPoseFile( std::string _poseFile ) {
+                    poseFile = _poseFile;
                 }
 
                 /**
@@ -224,6 +227,14 @@ namespace covis {
                 void run( class posePrior *instance, std::string _funcName );
 
                 /**
+                 * Benchmarks ransac on the specified data set
+                 * Running multiple instance of benchmark will store each individual benchmark
+                 * To see the result of the benchmark call @ref @printResults()
+                 * @param ransac instance, benchmark name
+                 */
+                void run( class ransac *instance, std::string _funcName );
+
+                /**
                  * Print results of the benchmarks
                  * call @ref run() before calling this
                  */
@@ -278,7 +289,7 @@ namespace covis {
                 std::string sceneDir;
 
                 /// Pose path
-                std::string posePath;
+                std::string poseFile;
 
                 /// Object extensions
                 std::string objExt;
@@ -295,7 +306,7 @@ namespace covis {
                 /// Object cloud
                 CloudT::Ptr objectCloud;
 
-                /// Distrance to the cloest point from centroid
+                /// Distance to the cloest point from centroid on the object
                 double centroidDist;
 
                 /// Scene meshes
@@ -314,7 +325,10 @@ namespace covis {
                 std::vector<std::string> sceneLabels;
 
                 /// Object labels
-                std::vector<std::string> objectLabels;
+                std::string objectLabel;
+
+                /// Object index
+                int objectIndex;
 
                 /// Resolution of scene and object clouds
                 float resolution;

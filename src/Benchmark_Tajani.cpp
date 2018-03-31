@@ -64,7 +64,8 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
         if( isdigit(this->sceneDir[i]) )
             tmp += this->sceneDir[i];
     this->objectIndex = std::atoi(tmp.c_str()) - 1;
-    this->objectLabel = dataset.getObjectLabels()[this->objectIndex];
+    this->objectLabel = tmp;
+    // this->objectLabel = dataset.getObjectLabels()[this->objectIndex];
     this->sceneLabels = dataset.getSceneLabels();
 }
 
@@ -87,10 +88,10 @@ void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
             this->resolutionQuery > 0.0 ?
             this->resolutionQuery * this->resolution :
             5 * this->resolution;
-    const float frad =
-            this->radiusFeature > 0.0 ?
-            this->radiusFeature * this->resolution :
-            25 * this->resolution;
+    this->frad =
+                this->radiusFeature <= 1.0 ?
+                this->radiusFeature * covis::detect::computeDiagonal(*objectMesh) :
+                this->radiusFeature * this->resolution;
 
     // Preprocess
     CloudT::Ptr objectSurf = filter::preprocess<PointT>(*objectMesh, 1, true, this->far, this->resolution,
@@ -102,7 +103,7 @@ void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
     COVIS_ASSERT(!this->objectCloud->empty());
 
     // Compute features
-    this->objectFeat = feature::computeFeature<PointT>(this->feature, this->objectCloud, objectSurf, frad);
+    this->objectFeat = feature::computeFeature<PointT>(this->feature, this->objectCloud, objectSurf, this->frad);
 
     // Compute centroid
     Eigen::Vector4f centroid;
@@ -134,10 +135,6 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
             this->resolutionTarget > 0.0 ?
             this->resolutionTarget * this->resolution :
             5 * this->resolution;
-    const float frad =
-            this->radiusFeature > 0.0 ?
-            this->radiusFeature * this->resolution :
-            25 * this->resolution;
     COVIS_ASSERT(this->cutoff > 0 && this->cutoff <= 100);
 
     // Preprocess
@@ -150,7 +147,7 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
     COVIS_ASSERT(!this->sceneCloud->empty());
 
     // Compute features
-    feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, frad);
+    feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, this->frad);
 
     // Match features
     covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(this->objectFeat, sceneFeat);
@@ -195,7 +192,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
         instance->setSource( this->objectCloud );
         instance->setSrcCentroidDist( this->centroidDist );
-        instance->setModelIndex( std::atoi(this->objectLabel.erase(0,4).c_str()) );
+        instance->setModelIndex( std::atoi(this->objectLabel.c_str()) );
 
         // Start timer
         covis::core::Timer t;
@@ -505,7 +502,6 @@ void Benchmark_Tejani::savePoses( std::string path )
 
     for( auto &result : this->results ) {
         std::string objLabel = result.objectLabel;
-        objLabel.erase(0,4);
         std::string filePath = path + objLabel + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             if ( result.d[i] ) {

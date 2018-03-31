@@ -351,6 +351,9 @@ namespace covis {
                 /// Feature estimation radius
                 float radiusFeature;
 
+                // Feature radius
+                float frad;
+
                 /// Cutoff % for the best correspondences for RANSAC based on feature distance
                 size_t cutoff;
 

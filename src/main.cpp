@@ -1,29 +1,13 @@
-
  /**  Todo list:
-  * TODO Test speed correctly (with corr calc)
-  * TODO Add centroid distance threshold to RANSAC
-  * TODO Change ransac so it works on tejani
-  * TODO Test ransac on tejani
+  * TODO Reenable ICP
   * TODO Test pose priors on new data set
+  * TODO Add centroid distance threshold to RANSAC
+  * TODO Pose priors with two points
   * TODO Try add color check to pose priror
   * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
-  * TODO Pose priors with two points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
   */
-
-// Benchmark Errors 01
-    // 135
-// Benchmark Errors 02
-    // None
-// Benchmark Errors 03
-    // 393
-// Benchmark Errors 04
-    // None
-// Benchmark Errors 05
-    //  40
-// Benchmark Errors 06
-    // 282, 292
 
 // Guide on how run data on server
     // Mount: sudo sshfs -o allow_other msteenberg@sdur-2.sandbox.tek.sdu.dk:/ /media/ztaal/sdur-2
@@ -41,6 +25,14 @@
     // eval_loc.py
         // Change error_bpath
         // Set require_all_errors = false
+
+// Get errors:
+// cat errors_05.yml | grep -E "0: 0.[3-9][0-9]*|0: 1." | sed -r 's/.{10}//' | sed 's/,.*//'
+
+// Hintertoisser Error 05
+//    9,   11,   12,   13,   36,   39,   69,  161,  179,  219,  304,  318,  330,  335,  377,
+//  450,  458,  471,  504,  510,  597,  628,  664,  665,  826,  827,  840,  842,  846,  916
+//  951,  992,  998, 1016, 1050, 1051, 1078, 1180, 1182
 
 // Covis
 #include <covis/covis.h>
@@ -83,18 +75,22 @@ int main( int argc, const char** argv )
     po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // 20
     po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // 20
     // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
-    po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
+    // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
+    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
+    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Test
     // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
     po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
-    po.addOption("iterations", 'i', 100000, "RANSAC iterations");
+    po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // UWA
-    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
+    // po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
+    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Hintertoisser
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
-    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
+    // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
+    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");
@@ -267,7 +263,8 @@ int main( int argc, const char** argv )
             bt.run( &posePrior, "Pose Prior" );
             bt.printResults();
             if (po.getFlag("save"))
-                bt.savePoses("../data_tejani/");
+                // bt.savePoses("../data_tejani/");
+                bt.savePoses("../data_hinterstoisser/");
                 // bt.savePoses("../ransac_tejani/");
             bt.clearResults();
         }

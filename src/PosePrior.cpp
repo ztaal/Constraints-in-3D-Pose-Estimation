@@ -55,14 +55,14 @@ covis::core::Detection posePrior::estimate()
 
     // Correction of pose due to the models not being proberbly aligned with the axis TODO remove when correct models are used
     Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
-    Eigen::Vector3f v = Eigen::Vector3f::UnitX();
-    if (modelIndex == 1 || modelIndex == 3) {
-        double theta = -3;
-        correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
-    } else if (modelIndex == 5) {
-        double theta = -10;
-        correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
-    }
+    // Eigen::Vector3f v = Eigen::Vector3f::UnitX();
+    // if (modelIndex == 1 || modelIndex == 3) {
+    //     double theta = -3;
+    //     correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    // } else if (modelIndex == 5) {
+    //     double theta = -10;
+    //     correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    // }
 
     // Instantiate kd tree
     pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
@@ -89,6 +89,7 @@ covis::core::Detection posePrior::estimate()
         seg.setMethodType(pcl::SAC_RANSAC);
         seg.setMaxIterations(1000); // 1000
         seg.setDistanceThreshold(10); // 10
+        // seg.setDistanceThreshold(10); // Tejani // 10
         seg.setInputCloud(tmp);
         seg.segment(*inliers, *coefficients);
 
@@ -109,12 +110,15 @@ covis::core::Detection posePrior::estimate()
         for (size_t i = 0; i < this->corr->size(); i++) {
             PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
-            double dist = pcl::pointToPlaneDistance(corrPoint, normal);
-            if (dist > 5 && dist < 200) // TODO Add threshold variables
+            double dist = fabs(pcl::pointToPlaneDistance(corrPoint, normal));
+            if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
+            // if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
                 pointsOnPlane++;
         }
-
-        if (pointsOnPlane > this->corr->size() * 0.25) { // TODO Add threshold variable
+        // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
+        // std::cout << "Threshold: " << this->corr->size() * 0.15 << '\n';
+        if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
+        // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -126,7 +130,7 @@ covis::core::Detection posePrior::estimate()
         }
 
         // Check if no plane was found
-        if (tmp->size() < this->target->size() * 0.5)  // TODO add variable
+        if (tmp->size() < this->target->size() * 0.3)  // TODO add variable
             return result;
     }
 
@@ -200,11 +204,13 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint2: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
-        if ( pose_dist < (maxDist/2) * 0.8 ) // 0.8  // TODO add variable
+        // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani  // TODO add variable
+        if ( pose_dist < (maxDist/2) * 0.9 ) // 0.8  // TODO add variable
             continue;
 
         // Constraint3: Reject pose if it is above the plane
-        if ( pose_dist > (maxDist/2) * 1.2 ) // 1.2  // TODO add variable
+        // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani  // TODO add variable
+        if ( pose_dist > (maxDist/2) * 1.1 ) // 1.2  // TODO add variable
             continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
@@ -225,6 +231,8 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint5: If closest point is too far away reject pose
         if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        // if ( tgtCentroidDist > this->srcCentroidDist * 1.6 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
 
         // Find consensus set
@@ -267,13 +275,20 @@ covis::core::Detection posePrior::estimate()
     // show = true;
     if (show == true) {
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-        for (size_t i = 0; i < pose_vector.size(); i++) {
-            PointT point;
-            point.x = pose_vector[i](0,3);
-            point.y = pose_vector[i](1,3);
-            point.z = pose_vector[i](2,3);
-            results->push_back(point);
+        for (size_t i = 0; i < this->corr->size(); i++) {
+            PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
+            Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
+            double dist = pcl::pointToPlaneDistance(corrPoint, plane_normal);
+            // if (dist > 0 && dist < 150) // Hintertoisser TODO Add threshold variables
+            results->push_back(corrPoint);
         }
+        // for (size_t i = 0; i < pose_vector.size(); i++) {
+        //     PointT point;
+        //     point.x = pose_vector[i](0,3);
+        //     point.y = pose_vector[i](1,3);
+        //     point.z = pose_vector[i](2,3);
+        //     results->push_back(point);
+        // }
 
         boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
         viewer->setBackgroundColor (0, 0, 0);

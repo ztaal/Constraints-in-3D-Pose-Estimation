@@ -88,8 +88,7 @@ covis::core::Detection posePrior::estimate()
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
         seg.setMaxIterations(1000); // 1000
-        seg.setDistanceThreshold(10); // 10
-        // seg.setDistanceThreshold(10); // Tejani // 10
+        seg.setDistanceThreshold(10); // Tejani // 10
         seg.setInputCloud(tmp);
         seg.segment(*inliers, *coefficients);
 
@@ -110,15 +109,15 @@ covis::core::Detection posePrior::estimate()
         for (size_t i = 0; i < this->corr->size(); i++) {
             PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
-            double dist = fabs(pcl::pointToPlaneDistance(corrPoint, normal));
-            if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
+            double dist = pcl::pointToPlaneDistance(corrPoint, normal);
             // if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
+            if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
                 pointsOnPlane++;
         }
         // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
         // std::cout << "Threshold: " << this->corr->size() * 0.15 << '\n';
-        if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
         // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
+        if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -230,7 +229,8 @@ covis::core::Detection posePrior::estimate()
         double tgtCentroidDist = sqrt(nn_dists[0]);
 
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 1.6 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;

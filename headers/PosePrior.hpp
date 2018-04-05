@@ -61,7 +61,7 @@ namespace covis {
                  */
                 posePrior() :
                     inlierThreshold(10),
-                    icpIterations(100),
+                    icpIterations(50),
                     occlusionReasoning(false),
                     viewAxis(0),
                     verbose(false) {}
@@ -233,7 +233,7 @@ namespace covis {
                     double c = coefficients->values[2];
                     Eigen::Vector3f z(a, b, c);
                     Eigen::Vector3f y(0, -c, b);
-                    Eigen::Vector3f x = z.cross(y);
+                    Eigen::Vector3f x = y.cross(z);
                     Eigen::Matrix3f frame;
                     frame.col(0) = x;
                     frame.col(1) = y;

@@ -87,7 +87,7 @@ covis::core::Detection posePrior::estimate()
         seg.setOptimizeCoefficients(true);
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setMaxIterations(1000); // 1000
+        seg.setMaxIterations(1500); // 1000
         seg.setDistanceThreshold(10); // Tejani // 10
         seg.setInputCloud(tmp);
         seg.segment(*inliers, *coefficients);
@@ -115,7 +115,7 @@ covis::core::Detection posePrior::estimate()
                 pointsOnPlane++;
         }
         // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
-        // std::cout << "Threshold: " << this->corr->size() * 0.15 << '\n';
+        // std::cout << "Threshold: " << this->corr->size() * 0.18 << '\n';
         // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
         if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
             plane_normal = normal;
@@ -147,23 +147,21 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint1: ignore point if it is below the plane
         PointT tgtPoint = this->target->points[target_corr];
+        PointT srcPoint = this->source->points[source_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         // if (tgt_dist < 0)
         // if (tgt_dist < tgt_dist * -0.1) // -0.1
         // 	continue;
 
         // Rotate source to fit target plane
-        Eigen::Vector4f corrPoint(this->source->points[source_corr].x,
-                                    this->source->points[source_corr].y,
-                                    this->source->points[source_corr].z,
-                                    1);
         Eigen::Affine3f transformation = Eigen::Affine3f::Identity();
         transformation.rotate(target_frame);
 
         // Translation
-        transformation.translation() << this->target->points[target_corr].x - this->source->points[source_corr].x,
-                                        this->target->points[target_corr].y - this->source->points[source_corr].y,
-                                        this->target->points[target_corr].z - this->source->points[source_corr].z;
+        Eigen::Vector4f corrPoint(srcPoint.x, srcPoint.y, srcPoint.z, 1);
+        transformation.translation() << tgtPoint.x - srcPoint.x,
+                                        tgtPoint.y - srcPoint.y,
+                                        tgtPoint.z - srcPoint.z;
 
         // Subtract the correspondence to rotate around the correspondence
         Eigen::Affine3f correction = Eigen::Affine3f::Identity();
@@ -174,12 +172,8 @@ covis::core::Detection posePrior::estimate()
         pose = transformation.matrix() * pose;
 
         // Project normals onto plane
-        Eigen::Vector4f source_normal(this->source->points[source_corr].normal_x,
-                                        this->source->points[source_corr].normal_y,
-                                        this->source->points[source_corr].normal_z, 0);
-        Eigen::Vector3f target_normal(this->target->points[target_corr].normal_x,
-                                        this->target->points[target_corr].normal_y,
-                                        this->target->points[target_corr].normal_z);
+        Eigen::Vector4f source_normal(srcPoint.normal_x, srcPoint.normal_y, srcPoint.normal_z, 0);
+        Eigen::Vector3f target_normal(tgtPoint.normal_x, tgtPoint.normal_y, tgtPoint.normal_z);
         source_normal = transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         Eigen::Vector3f source_projected = (source_normal.head<3>() - source_normal.head<3>().dot(plane_normal.head<3>()) * plane_normal.head<3>()).normalized();
         Eigen::Vector3f target_projected = (target_normal - target_normal.dot(plane_normal.head<3>()) * plane_normal.head<3>()).normalized();
@@ -203,20 +197,23 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint2: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
-        // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani  // TODO add variable
-        if ( pose_dist < (maxDist/2) * 0.9 ) // 0.8  // TODO add variable
+        // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani // TODO add variable
+        // if ( pose_dist < (maxDist/2) * 0.9 ) // TODO add variable // 09 BEST
+        if ( pose_dist < (maxDist/2) * 0.9 ) // TODO add variable
             continue;
 
         // Constraint3: Reject pose if it is above the plane
-        // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani  // TODO add variable
-        if ( pose_dist > (maxDist/2) * 1.1 ) // 1.2  // TODO add variable
+        // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
+        // if ( pose_dist > (maxDist/2) * 1.1 ) // TODO add variable // 1.1 BEST
+        if ( pose_dist > (maxDist/2) * 1.1 ) // TODO add variable
             continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        // if (angle > 0.2) // 0.2  // TODO add variable
-        //     continue;
+        if (angle > 0.2) // TODO add variable // 0.5 BEST
+        // if (angle > 0.05) // 0.2  // TODO add variable
+            continue;
 
         // Find closest point
         PointT point;
@@ -227,11 +224,11 @@ covis::core::Detection posePrior::estimate()
         std::vector<float> nn_dists(1);
         tree->nearestKSearch(point, 1, nn_indices, nn_dists);
         double tgtCentroidDist = sqrt(nn_dists[0]);
-
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 05 BEST
+        // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
+        // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.25 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
-        // if ( tgtCentroidDist > this->srcCentroidDist * 1.6 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
 
@@ -275,20 +272,20 @@ covis::core::Detection posePrior::estimate()
     // show = true;
     if (show == true) {
         pcl::PointCloud<PointT>::Ptr results( new pcl::PointCloud<PointT>() );
-        for (size_t i = 0; i < this->corr->size(); i++) {
-            PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
-            Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
-            double dist = pcl::pointToPlaneDistance(corrPoint, plane_normal);
-            // if (dist > 0 && dist < 150) // Hintertoisser TODO Add threshold variables
-            results->push_back(corrPoint);
-        }
-        // for (size_t i = 0; i < pose_vector.size(); i++) {
-        //     PointT point;
-        //     point.x = pose_vector[i](0,3);
-        //     point.y = pose_vector[i](1,3);
-        //     point.z = pose_vector[i](2,3);
-        //     results->push_back(point);
+        // for (size_t i = 0; i < this->corr->size(); i++) {
+        //     PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
+        //     Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
+        //     double dist = pcl::pointToPlaneDistance(corrPoint, plane_normal);
+        //     // if (dist > 0 && dist < 150) // Hintertoisser TODO Add threshold variables
+        //     results->push_back(corrPoint);
         // }
+        for (size_t i = 0; i < pose_vector.size(); i++) {
+            PointT point;
+            point.x = pose_vector[i](0,3);
+            point.y = pose_vector[i](1,3);
+            point.z = pose_vector[i](2,3);
+            results->push_back(point);
+        }
 
         boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
         viewer->setBackgroundColor (0, 0, 0);

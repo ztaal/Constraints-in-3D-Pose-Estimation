@@ -153,8 +153,8 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
     covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(this->objectFeat, sceneFeat);
 
     // Sort correspondences and cutoff at <cutoff> %
+    covis::core::sort(*correspondences);
     if(this->cutoff < 100) {
-        covis::core::sort(*correspondences);
         correspondences->resize(correspondences->size() * this->cutoff / 100);
     }
     return correspondences;
@@ -259,15 +259,15 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 }
 
                 if ( failed[i] || this->verbose ) {
-                    std::cout << "\nScene " << sceneIndex << "\n";
-                    std::cout << "Distance: " << translationDist[i] << '\n';
-                    std::cout << "Angle: " << angle[i] << '\n';
-                    COVIS_MSG( d[i].pose );
+                    std::cout << "\nFailed scene: " << sceneIndex << "\n";
+                    // std::cout << "Distance: " << translationDist[i] << '\n';
+                    // std::cout << "Angle: " << angle[i] << '\n';
+                    // COVIS_MSG( d[i].pose );
                     if ( this->verbose )
                         visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
             } else {
-                std::cout << "\nScene " << sceneIndex << " Failed!\n";
+                std::cout << "\n!Scene " << sceneIndex << " Failed!\n";
             }
         }
         result.d = d;
@@ -375,15 +375,15 @@ void Benchmark_Tejani::run( class ransac *instance, std::string funcName )
                 }
 
                 if ( failed[i] || this->verbose ) {
-                    std::cout << "\nScene " << sceneIndex << "\n";
-                    std::cout << "Distance: " << translationDist[i] << '\n';
-                    std::cout << "Angle: " << angle[i] << '\n';
-                    COVIS_MSG( d[i].pose );
+                    std::cout << "\nFailed scene: " << sceneIndex << "\n";
+                    // std::cout << "Distance: " << translationDist[i] << '\n';
+                    // std::cout << "Angle: " << angle[i] << '\n';
+                    // COVIS_MSG( d[i].pose );
                     if ( this->verbose )
                         visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
                 }
             } else {
-                std::cout << "\nScene " << sceneIndex << " Failed!\n";
+                std::cout << "\n!Scene " << sceneIndex << " Failed!\n";
             }
         }
         result.d = d;

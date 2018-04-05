@@ -30,9 +30,10 @@
 // cat errors_05.yml | grep -E "0: 0.[3-9][0-9]*|0: 1." | sed -r 's/.{10}//' | sed 's/,.*//'
 
 // Hintertoisser Error 05
-//    9,   11,   12,   13,   36,   39,   69,  161,  179,  219,  304,  318,  330,  335,  377,
-//  450,  458,  471,  504,  510,  597,  628,  664,  665,  826,  827,  840,  842,  846,  916
-//  951,  992,  998, 1016, 1050, 1051, 1078, 1180, 1182
+//    9,   13,   36,   69,  161,  179,  219,  304,  318,  335,  450,  458,  471,  504,  552,
+//  628,  664,  665,  679,  827,  840,  951,  998, 1016, 1050, 1051, 1180, 1182
+
+// Errors: 38
 
 // Covis
 #include <covis/covis.h>
@@ -66,18 +67,22 @@ int main( int argc, const char** argv )
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
-    po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
+    // po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
+    po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
     // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // si
     po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // ppf
-    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // 20
-    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // 20
+    po.addOption("resolution-query", 8, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser
+    po.addOption("resolution-target", 8, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser
+    // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Tejani
+    // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
     // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
-    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
-    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Test
+    po.addOption("radius-feature", 'f', 0.15, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
+    // po.addOption("radius-feature", 'f', 0.2, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser BEST
+    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
     // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
     po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");
@@ -87,7 +92,8 @@ int main( int argc, const char** argv )
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // UWA
     // po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
-    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Hintertoisser
+    po.addOption("inlier-threshold", 't', 8, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser
+    // po.addOption("inlier-threshold", 't', 6, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser BEST
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
     // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
     po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
@@ -130,8 +136,8 @@ int main( int argc, const char** argv )
     // Misc.
     const bool verbose = po.getFlag("verbose");
 
-    if (verbose)
-        po.print();
+    // if (verbose)
+    //     po.print();
 
     // Estimation
     const int sampleSize = po.getValue<int>("sample-size");

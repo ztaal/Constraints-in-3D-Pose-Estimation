@@ -48,25 +48,26 @@ namespace covis {
          */
         class yml_loader {
             public:
-                /**
-                 * Constructor: set path
-                 * @param filePath file path
-                 */
-                yml_loader(const std::string& _filePath = "") :
-                            filePath(_filePath.empty() ? "." : _filePath) {}
 
-                /// empty destructor
+                /// Empty Constructor
+                yml_loader() {};
+
+                /// Empty destructor
                 ~yml_loader() {};
 
                 /**
-                 * Load the contents of a yml file into a std::vector<std::vector<Eigen::Matrix4f> >
+                 * Load the ground truth poses from a yml file into a std::vector<std::vector<Eigen::Matrix4f> >
                  * @param vector vector Eigen matrix
                  */
-                void load( std::vector<std::vector<Eigen::Matrix4f> > *poses );
+                void load_gt( std::string filePath, std::vector<std::vector<Eigen::Matrix4f> > *poses );
+
+                /**
+                 * Load the benchmark indices from a yml file into a std::vector<int> >
+                 * @return vector int
+                 */
+                void load_benchmark( std::string filePath, std::string index, std::vector<int> *indices );
 
             private:
-                /// File path
-                std::string filePath;
 
                 /**
                  * Converts two std::vector<double> to an Eigen::Matrix4f

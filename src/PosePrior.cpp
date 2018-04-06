@@ -199,19 +199,19 @@ covis::core::Detection posePrior::estimate()
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
         // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani // TODO add variable
         // if ( pose_dist < (maxDist/2) * 0.9 ) // TODO add variable // 09 BEST
-        if ( pose_dist < (maxDist/2) * 0.9 ) // TODO add variable
+        if ( pose_dist < (maxDist/2) * 0.8 ) // TODO add variable
             continue;
 
         // Constraint3: Reject pose if it is above the plane
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
         // if ( pose_dist > (maxDist/2) * 1.1 ) // TODO add variable // 1.1 BEST
-        if ( pose_dist > (maxDist/2) * 1.1 ) // TODO add variable
+        if ( pose_dist > (maxDist/2) * 1.2 ) // TODO add variable
             continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        if (angle > 0.2) // TODO add variable // 0.5 BEST
+        if (angle > 0.5) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
             continue;
 
@@ -225,7 +225,7 @@ covis::core::Detection posePrior::estimate()
         tree->nearestKSearch(point, 1, nn_indices, nn_dists);
         double tgtCentroidDist = sqrt(nn_dists[0]);
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 05 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.25 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable

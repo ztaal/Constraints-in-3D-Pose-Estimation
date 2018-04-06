@@ -1,3 +1,0 @@
-0.9 Dissimilarity 2
-Object,Time,Failed,RMSE,Penalty,InlierFrac,Avg Dist,Median Dist
-chef,6.15787,0,0.568835,0.403874,0.000363769,166.772,163.426

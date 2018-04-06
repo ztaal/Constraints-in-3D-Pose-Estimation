@@ -123,6 +123,14 @@ namespace covis {
                 }
 
                 /**
+                 * Set name of file containing the benchmark indices
+                 * @param benchmark file
+                 */
+                inline void setBenchmarkFile( std::string _benchmarkFile ) {
+                    benchmarkFile = _benchmarkFile;
+                }
+
+                /**
                  * Set extenstion of the object files
                  * @param file extenstion
                  */
@@ -290,6 +298,9 @@ namespace covis {
 
                 /// Pose path
                 std::string poseFile;
+
+                /// Benchmark path
+                std::string benchmarkFile;
 
                 /// Object extensions
                 std::string objExt;

@@ -29,7 +29,7 @@
 
 using namespace covis::util;
 
-void yml_loader::load( std::vector<std::vector<Eigen::Matrix4f> > *poses )
+void yml_loader::load_gt( std::string filePath, std::vector<std::vector<Eigen::Matrix4f> > *poses )
 {
     // Open file
     std::vector<YAML::Node> file = YAML::LoadAllFromFile( filePath );
@@ -46,4 +46,17 @@ void yml_loader::load( std::vector<std::vector<Eigen::Matrix4f> > *poses )
             (*poses)[i].push_back( vec2eigen(R, T) );
         }
 	}
+}
+
+void yml_loader::load_benchmark( std::string filePath, std::string index, std::vector<int> *indices )
+{
+    // Open file
+    std::vector<YAML::Node> file = YAML::LoadAllFromFile( filePath );
+    if (file[0].IsNull())
+        COVIS_THROW("Cannot open file \"" << filePath << "\" for reading!");
+
+    // Loop over indices
+    const YAML::Node& scene = file[0];
+    index.erase(0, std::min(index.find_first_not_of('0'), index.size()-1));
+    *indices = scene[index].as<std::vector<int> >();
 }

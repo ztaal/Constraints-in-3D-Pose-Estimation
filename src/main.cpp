@@ -1,9 +1,9 @@
  /**  Todo list:
-  * TODO Reenable ICP
   * TODO Test pose priors on new data set
   * TODO Add centroid distance threshold to RANSAC
-  * TODO Pose priors with two points
   * TODO Try add color check to pose priror
+  * TODO Pose priors with two points
+  * TODO Test on T-less
   * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
@@ -68,21 +68,19 @@ int main( int argc, const char** argv )
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
     // po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
-    po.addOption("radius-normal", 'n', 10, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser
+    po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 10 BEST
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
     // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // si
     po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // ppf
-    po.addOption("resolution-query", 8, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser
-    po.addOption("resolution-target", 8, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser
+    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser // 8 BEST
+    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser // 8 BEST
     // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
     // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
-    po.addOption("radius-feature", 'f', 0.15, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
-    // po.addOption("radius-feature", 'f', 0.2, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser BEST
-    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser
+    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.15 BEST
     // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
     po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");
@@ -92,8 +90,7 @@ int main( int argc, const char** argv )
     po.addOption("iterations", 'i', 10000, "RANSAC iterations");
     // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // UWA
     // po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
-    po.addOption("inlier-threshold", 't', 8, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser
-    // po.addOption("inlier-threshold", 't', 6, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser BEST
+    po.addOption("inlier-threshold", 't', 8, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser // 8 BEST
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
     // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
     po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
@@ -117,6 +114,7 @@ int main( int argc, const char** argv )
     po.addOption("query", 'q', "models", "mesh or point cloud file for query model");
     po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
     po.addOption("yml-file", 'y', "ground_truth", "path to yml file contaning ground truth poses");
+    po.addOption("benchmark-file", 'b', "benchmark", "path to yml file contaning benchmark indices");
     po.addFlag('t', "benchmark-tejani", "benchmark tejani");
 
     // Benchmark
@@ -247,6 +245,7 @@ int main( int argc, const char** argv )
             bt.setObjectDir( po.getValue("object-dir") );
             bt.setSceneDir( po.getValue("scene-dir") );
             bt.setPoseFile( po.getValue("yml-file") );
+            bt.setBenchmarkFile( po.getValue("benchmark-file") );
             bt.setObjExt( po.getValue("object-ext") );
             bt.setSceneExt( po.getValue("scene-ext") );
 

@@ -49,24 +49,34 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
     if(this->verbose)
         COVIS_MSG(dataset);
 
-    // Load object cloud, scene clouds and GT poses
-    *objectMesh = dataset.getObjects();
-    for(size_t i = 0; i < dataset.size(); ++i) {
-        util::DatasetLoader::SceneEntry scene = dataset.at(i);
-        (*sceneMesh).push_back(scene.scene);
-    }
-    util::yml_loader yml( this->rootPath + this->sceneDir + "/../" + this->poseFile );
-    yml.load( poses );
-    COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
-
     std::string tmp;
     for (size_t i = 0; i < this->sceneDir.length(); i++)
         if( isdigit(this->sceneDir[i]) )
             tmp += this->sceneDir[i];
     this->objectIndex = std::atoi(tmp.c_str()) - 1;
     this->objectLabel = tmp;
-    // this->objectLabel = dataset.getObjectLabels()[this->objectIndex];
     this->sceneLabels = dataset.getSceneLabels();
+
+    // Load object cloud, scene clouds and GT poses
+    std::string gtFilePath = this->rootPath + this->sceneDir + "/../" + this->poseFile;
+    std::string benchmarkFilePath = this->rootPath + this->benchmarkFile;
+    util::yml_loader yml;
+    std::vector<int> indices;
+    yml.load_gt( gtFilePath, poses );
+    yml.load_benchmark( benchmarkFilePath, this->objectLabel, &indices );
+    *objectMesh = dataset.getObjects();
+    if ( dataset.size() < indices.size() ) {
+        for(size_t i = 0; i < dataset.size(); ++i) {
+            util::DatasetLoader::SceneEntry scene = dataset.at(i);
+            (*sceneMesh).push_back(scene.scene);
+        }
+    } else {
+        for(size_t i = 0; i < indices.size(); ++i) {
+            util::DatasetLoader::SceneEntry scene = dataset.at(indices[i]);
+            (*sceneMesh).push_back(scene.scene);
+        }
+    }
+    COVIS_ASSERT( !objectMesh->empty() && !sceneMesh->empty() && !poses->empty() );
 }
 
 void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)

@@ -65,7 +65,7 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
     yml.load_gt( gtFilePath, poses );
     yml.load_benchmark( benchmarkFilePath, this->objectLabel, &indices );
     *objectMesh = dataset.getObjects();
-    if ( dataset.size() < indices.size() ) {
+    if ( dataset.size() <= indices.size() ) {
         for(size_t i = 0; i < dataset.size(); ++i) {
             util::DatasetLoader::SceneEntry scene = dataset.at(i);
             (*sceneMesh).push_back(scene.scene);

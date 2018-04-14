@@ -61,7 +61,8 @@ namespace covis {
                  */
                 posePrior() :
                     inlierThreshold(10),
-                    icpIterations(50),
+                    // icpIterations(50), // Hintertoisser // BEST 50
+                    icpIterations(100), // Tejani 100
                     occlusionReasoning(false),
                     viewAxis(0),
                     verbose(false) {}
@@ -240,6 +241,23 @@ namespace covis {
                     frame.col(2) = z;
 
                     return frame;
+                }
+
+                /**
+                * Compute median of vector
+                * @param vector
+                */
+                inline double
+                median( std::vector<double> v )
+                {
+                    std::sort(v.begin(), v.end());
+                    v.erase(v.begin() + int(v.size() / 6), v.begin() + v.size());
+                    size_t size = v.size();
+
+                    if (size % 2 == 0)
+                        return (v[size / 2 - 1] + v[size / 2]) / 2;
+
+                    return v[size / 2];
                 }
         };
     }

@@ -1,9 +1,8 @@
  /**  Todo list:
-  * TODO Test pose priors on new data set
-  * TODO Add centroid distance threshold to RANSAC
   * TODO Try add color check to pose priror
-  * TODO Pose priors with two points
   * TODO Test on T-less
+  * TODO Add centroid distance threshold to RANSAC
+  * TODO Pose priors with two points
   * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
@@ -68,19 +67,19 @@ int main( int argc, const char** argv )
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
     // po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
-    po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 10 BEST
+    po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 5 BEST
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
     // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // si
     po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // ppf
-    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser // 8 BEST
-    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser // 8 BEST
+    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser // 5 BEST
+    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser // 5 BEST
     // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
     // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
-    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.15 BEST
+    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.3 BEST
     // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
     po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");

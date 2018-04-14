@@ -269,7 +269,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
                 }
 
                 if ( failed[i] || this->verbose ) {
-                    std::cout << "\nFailed scene: " << sceneIndex << "\n";
+                    // std::cout << "\nFailed scene: " << sceneIndex << "\n";
                     // std::cout << "Distance: " << translationDist[i] << '\n';
                     // std::cout << "Angle: " << angle[i] << '\n';
                     // COVIS_MSG( d[i].pose );

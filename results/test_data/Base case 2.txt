@@ -1,0 +1,3 @@
+Base case 2
+Object,Time,Failed,RMSE,Penalty,InlierFrac,Avg Dist,Median Dist
+chef,7.65371,0,0.568835,0.403874,0.000363769,166.772,163.426

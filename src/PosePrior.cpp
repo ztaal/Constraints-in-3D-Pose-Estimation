@@ -158,7 +158,7 @@ covis::core::Detection posePrior::estimate()
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
-    // std::cout << "\nSize: " << this->corr->size() << '\n';
+    // Remove correspondences that are below the plane
     for( auto it = this->corr->begin(); it != this->corr->end(); ) {
         int target_corr = (*it).match[0];
         PointT tgtPoint = this->target->points[target_corr];
@@ -168,7 +168,6 @@ covis::core::Detection posePrior::estimate()
         else
             ++it;
     }
-    // std::cout << "Size: " << this->corr->size() << '\n';
 
     // Loop over correspondences
     for( size_t i = 0; i < this->corr->size(); i++ ) {
@@ -250,6 +249,12 @@ covis::core::Detection posePrior::estimate()
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
         if (angle > 0.5) // TODO add variable // 0.5 BEST
+        // if (angle > 0.05) // 0.2  // TODO add variable
+            continue;
+
+        // Constraint4.5: Find angel between plane normal and source normal and reject pose if it is too large
+        double planeAngle = atan2( (plane_normal.head<3>().cross(target_normal)).norm(), plane_normal.head<3>().dot(target_normal) );
+        if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
             continue;
 

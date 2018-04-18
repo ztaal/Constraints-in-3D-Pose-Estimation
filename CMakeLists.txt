@@ -4,6 +4,7 @@ project( Constraints-in-3D-Pose-Estimation )
 set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /usr/lib/vtk-6.2)
 
 find_package( COVIS HINTS /home/ztaal/covis/build/lib/cmake/COVIS )
+# find_package( yaml-cpp HINTS /home/ztaal/yaml-cpp/build/ )
 add_definitions( ${COVIS_DEFINITIONS} )
 include_directories( ${COVIS_INCLUDE_DIRS} )
 
@@ -18,6 +19,7 @@ target_link_libraries( aout ${COVIS_LIBRARIES} )
 find_package(Eigen3 3.3.2 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
+target_include_directories(aout PRIVATE "/home/ztaal/yaml-cpp/include/")
 target_link_libraries(aout yaml-cpp)
 
 add_definitions(

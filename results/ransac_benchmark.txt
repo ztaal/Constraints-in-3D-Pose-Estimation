@@ -1,0 +1,4 @@
+Ransac Tejani
+
+Scene Recall: 1: 0.480, 2: 0.380, 3: 0.120, 4: 0.080, 5: 0.080, 6: 0.300
+Total Recall: 0.2400

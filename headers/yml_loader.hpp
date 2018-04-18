@@ -32,7 +32,7 @@
 #include <covis/covis.h>
 
 // YMAL loader_3d
-#include </usr/local/include/yaml-cpp/yaml.h>
+#include "yaml-cpp/yaml.h"
 
 namespace covis {
     namespace util {

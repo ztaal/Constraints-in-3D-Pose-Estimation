@@ -158,17 +158,17 @@ covis::core::Detection posePrior::estimate()
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
 
-    // std::cout << "\nSize: " << this->corr->size() << '\n';
+    // Remove correspondences that are below the plane
     for( auto it = this->corr->begin(); it != this->corr->end(); ) {
         int target_corr = (*it).match[0];
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        if (tgt_dist < 0)
+        // if (tgt_dist < 0)
+        if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
             it = this->corr->erase(it);
         else
             ++it;
     }
-    // std::cout << "Size: " << this->corr->size() << '\n';
 
     // Loop over correspondences
     for( size_t i = 0; i < this->corr->size(); i++ ) {
@@ -253,6 +253,12 @@ covis::core::Detection posePrior::estimate()
         // if (angle > 0.05) // 0.2  // TODO add variable
             continue;
 
+        // Constraint4.5: Find angel between plane normal and source normal and reject pose if it is too large
+        double planeAngle = atan2( (plane_normal.head<3>().cross(target_normal)).norm(), plane_normal.head<3>().dot(target_normal) );
+        if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
+        // if (angle > 0.05) // 0.2  // TODO add variable
+            continue;
+
         // Find closest point
         PointT point;
         point.x = pose(0,3);
@@ -309,41 +315,41 @@ covis::core::Detection posePrior::estimate()
         // double srcAngle = atan2( (source_normal.head<3>().cross(srcVector)).norm(), source_normal.head<3>().dot(srcVector) );
         // double angleDiff = fabs(tgtAngle - srcAngle) / ((tgtAngle + srcAngle) / 2);
         // // if (angleDiff > 0.01 && !ignore)
-        // // if (angleDiff > 0.25)
-        // //     continue;
+        // if (angleDiff > 0.1)
+        //     continue;
         // // std::cout << "angleDiff: " << angleDiff << " \ttgtAngle: " << tgtAngle << " \tsrcAngle: " << srcAngle << '\n';
         // // if (colorAngle > 0.1)
 
         // Constraint6: Color
-        // // srcPoint
-        // int numberOfPoints = 10;
-        // std::vector<double> tgtRGB = {0, 0, 0};
-        // std::vector<double> srcRGB = {0, 0, 0};
-        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
-        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
-        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
-        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
-        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
-        // for (int i = 0; i < numberOfPoints; i++) {
-        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
-        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
-        //     tgtRGB[0] += int(tgtColorPoint.r);
-        //     tgtRGB[1] += int(tgtColorPoint.g);
-        //     tgtRGB[2] += int(tgtColorPoint.b);
-        //     srcRGB[0] += int(srcColorPoint.r);
-        //     srcRGB[1] += int(srcColorPoint.g);
-        //     srcRGB[2] += int(srcColorPoint.b);
-        // }
-        // tgtRGB[0] /= numberOfPoints;
-        // tgtRGB[1] /= numberOfPoints;
-        // tgtRGB[2] /= numberOfPoints;
-        // srcRGB[0] /= numberOfPoints;
-        // srcRGB[1] /= numberOfPoints;
-        // srcRGB[2] /= numberOfPoints;
-        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        // srcPoint
+        int numberOfPoints = 10;
+        std::vector<double> tgtRGB = {0, 0, 0};
+        std::vector<double> srcRGB = {0, 0, 0};
+        // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
+        std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
+        std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
+        tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
+        srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
+        for (int i = 0; i < numberOfPoints; i++) {
+            PointT tgtColorPoint = this->target->points[tgtIndices[i]];
+            PointT srcColorPoint = this->source->points[srcIndices[i]];
+            tgtRGB[0] += int(tgtColorPoint.r);
+            tgtRGB[1] += int(tgtColorPoint.g);
+            tgtRGB[2] += int(tgtColorPoint.b);
+            srcRGB[0] += int(srcColorPoint.r);
+            srcRGB[1] += int(srcColorPoint.g);
+            srcRGB[2] += int(srcColorPoint.b);
+        }
+        tgtRGB[0] /= numberOfPoints;
+        tgtRGB[1] /= numberOfPoints;
+        tgtRGB[2] /= numberOfPoints;
+        srcRGB[0] /= numberOfPoints;
+        srcRGB[1] /= numberOfPoints;
+        srcRGB[2] /= numberOfPoints;
+        double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         // std::cout << "colorDist: " << colorDist << "\tthreshold: " << threshold << '\n';
-        // if (colorDist > 70)
-        //     continue;
+        if (colorDist > 70)
+            continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models

@@ -67,7 +67,7 @@ int main( int argc, const char** argv )
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
     // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
     // po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
-    po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 5 BEST
+    po.addOption("radius-normal", 'n', 6, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 6 BEST
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
@@ -104,6 +104,7 @@ int main( int argc, const char** argv )
     po.addFlag('v', "verbose", "show additional information");
     po.addFlag('z', "visualize", "vizualize transformation");
     po.addFlag('s', "save", "save poses");
+    po.addFlag("save-dir", "save directory");
 
     // Ransac
     po.addFlag('r', "ransac", "ransac");
@@ -267,8 +268,9 @@ int main( int argc, const char** argv )
             bt.run( &posePrior, "Pose Prior" );
             bt.printResults();
             if (po.getFlag("save"))
+                bt.savePoses(po.getValue("save-dir"));
                 // bt.savePoses("../data_tejani/");
-                bt.savePoses("../data_hinterstoisser/");
+                // bt.savePoses("../data_hinterstoisser/");
                 // bt.savePoses("../ransac_tejani/");
             bt.clearResults();
         }

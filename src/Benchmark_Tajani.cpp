@@ -88,10 +88,14 @@ void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
     if(this->objectScale != 1)
         *objectMesh = filter::scale(*objectMesh, this->objectScale);
 
-    const float nrad =
-            this->radiusNormal > 0.0 ?
-            this->radiusNormal * this->resolution :
-            2 * this->resolution;
+    // const float nrad =
+    //         this->radiusNormal > 0.0 ?
+    //         this->radiusNormal * this->resolution :
+    //         2 * this->resolution;
+    this->nrad =
+            this->radiusNormal <= 1.0 ?
+            this->radiusNormal * covis::detect::computeDiagonal(*objectMesh) :
+            this->radiusNormal * this->resolution;
 
     // Features and matching
     const float resQuery =
@@ -135,10 +139,10 @@ void Benchmark_Tejani::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh)
 {
     // Surfaces and normals
-    const float nrad =
-            this->radiusNormal > 0.0 ?
-            this->radiusNormal * this->resolution :
-            2 * this->resolution;
+    // const float nrad =
+    //         this->radiusNormal > 0.0 ?
+    //         this->radiusNormal * this->resolution :
+    //         2 * this->resolution;
 
     // Features and matching
     const float resTarget =
@@ -149,7 +153,7 @@ covis::core::Correspondence::VecPtr Benchmark_Tejani::computeCorrespondence(util
 
     // Preprocess
     CloudT::Ptr sceneSurf = filter::preprocess<PointT>(*sceneMesh, 1, true, this->far,  this->resolution,
-                                            nrad, false, false, false);
+                                            this->nrad, false, false, false);
     COVIS_ASSERT(!sceneSurf->empty());
 
     // Generate feature points
@@ -177,6 +181,17 @@ void Benchmark_Tejani::initialize()
     std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh;
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
     computeObjFeat( &objectMesh[this->objectIndex] );
+
+    covis::visu::Visu3D tmp;
+    pcl::PCLPointCloud2 cloud2;
+    pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
+    pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
+    // tmp.addPointCloud(cloud3);
+    tmp.addMesh(objectMesh[this->objectIndex]);
+    tmp.setBackgroundColor(255, 255, 255);
+    tmp.setBackgroundGradient(false);
+    tmp.setShowOrigo(true);
+    tmp.show();
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
@@ -514,9 +529,9 @@ void Benchmark_Tejani::savePoses( std::string path )
         std::string objLabel = result.objectLabel;
         std::string filePath = path + objLabel + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
+            ofstream file;
+            file.open( filePath + result.sceneLabels[i] + "_" + objLabel + ".yml" );
             if ( result.d[i] ) {
-                ofstream file;
-                file.open( filePath + result.sceneLabels[i] + "_" + objLabel + ".yml" );
                 Eigen::Matrix4f P = result.poses[i];
                 file << "ests:\n";
                 file << "- R: [" << P(0,0) << ", " << P(0,1) << ", " << P(0,2) << ", "
@@ -525,8 +540,16 @@ void Benchmark_Tejani::savePoses( std::string path )
                 file << "  score: 1\n";
                 file << "  t: [" << P(0,3) << ", " << P(1,3) << ", " << P(2,3) << "]\n";
                 file << "run_time: " << result.time[i];
-                file.close();
+            } else {
+                file << "ests:\n";
+                file << "- R: [" << "0, 0, 0, "
+                                 << "0, 0, 0, "
+                                 << "0, 0, 0, ]\n";
+                file << "  score: 1\n";
+                file << "  t: [0, 0, 0]\n";
+                file << "run_time: " << 0;
             }
+            file.close();
         }
     }
 }

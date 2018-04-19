@@ -104,7 +104,7 @@ int main( int argc, const char** argv )
     po.addFlag('v', "verbose", "show additional information");
     po.addFlag('z', "visualize", "vizualize transformation");
     po.addFlag('s', "save", "save poses");
-    po.addFlag("save-dir", "save directory");
+    po.addOption("save-dir", "save directory");
 
     // Ransac
     po.addFlag('r', "ransac", "ransac");

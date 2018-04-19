@@ -341,6 +341,9 @@ namespace covis {
                 /// Object index
                 int objectIndex;
 
+                /// Scene indices
+                std::vector<int> sceneIdx;
+
                 /// Resolution of scene and object clouds
                 float resolution;
 

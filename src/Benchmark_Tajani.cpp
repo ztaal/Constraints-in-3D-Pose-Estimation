@@ -61,18 +61,19 @@ void Benchmark_Tejani::loadData(std::vector<util::DatasetLoader::ModelPtr> *obje
     std::string gtFilePath = this->rootPath + this->sceneDir + "/../" + this->poseFile;
     std::string benchmarkFilePath = this->rootPath + this->benchmarkFile;
     util::yml_loader yml;
-    std::vector<int> indices;
     yml.load_gt( gtFilePath, poses );
-    yml.load_benchmark( benchmarkFilePath, this->objectLabel, &indices );
+    yml.load_benchmark( benchmarkFilePath, this->objectLabel, &this->sceneIdx );
     *objectMesh = dataset.getObjects();
-    if ( dataset.size() <= indices.size() ) {
+    if ( dataset.size() <= this->sceneIdx.size() ) {
+        this->sceneIdx.clear();
         for(size_t i = 0; i < dataset.size(); ++i) {
+            this->sceneIdx.push_back(i);
             util::DatasetLoader::SceneEntry scene = dataset.at(i);
             (*sceneMesh).push_back(scene.scene);
         }
     } else {
-        for(size_t i = 0; i < indices.size(); ++i) {
-            util::DatasetLoader::SceneEntry scene = dataset.at(indices[i]);
+        for(size_t i = 0; i < this->sceneIdx.size(); ++i) {
+            util::DatasetLoader::SceneEntry scene = dataset.at(this->sceneIdx[i]);
             (*sceneMesh).push_back(scene.scene);
         }
     }
@@ -182,16 +183,63 @@ void Benchmark_Tejani::initialize()
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
     computeObjFeat( &objectMesh[this->objectIndex] );
 
-    covis::visu::Visu3D tmp;
-    pcl::PCLPointCloud2 cloud2;
-    pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
-    pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
-    // tmp.addPointCloud(cloud3);
-    tmp.addMesh(objectMesh[this->objectIndex]);
-    tmp.setBackgroundColor(255, 255, 255);
-    tmp.setBackgroundGradient(false);
-    tmp.setShowOrigo(true);
-    tmp.show();
+    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+
+    // vtkSmartPointer<vtkPolyData> poly_data;
+    // pcl::io::mesh2vtk(*objectMesh[this->objectIndex],poly_data);
+    // viewer->addModelFromPolyData(poly_data,"poly_data",0);
+    // viewer->addCoordinateSystem (1.0);
+    // viewer->initCameraParameters ();
+
+    // // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "poly_data");
+    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 0, "poly_data");
+    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LUT, pcl::visualization::PCL_VISUALIZER_LUT_GREY, "poly_data");
+    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,pcl::visualization::PCL_VISUALIZER_SHADING_PHONG,"poly_data");
+    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,pcl::visualization::PCL_VISUALIZER_SHADING_PHONG,"poly_data");
+    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 255, 0, 0, "poly_data");
+    // // viewer->setBackgroundColor(0, 0, 0);
+    // viewer->setBackgroundColor(255, 255, 255);
+    // viewer->addCoordinateSystem (1.0);
+
+    // viewer->setBackgroundColor(255, 255, 255);
+    // viewer->addCoordinateSystem (1.0);
+    // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "polygon");
+    // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+    //                                     pcl::visualization::PCL_VISUALIZER_SHADING_PHONG, "polygon");
+    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 135, 135, 135, "polygon");
+    // // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+    // //                                     pcl::visualization::PCL_VISUALIZER_SHADING_PHONG, "polygon");
+    // // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "meshes", 0);
+    // viewer->initCameraParameters ();
+    // // viewer->getRendererCollection()->InitTraversal()
+    // // viewer->setCameraPosition(0.0497412, -0.196849, -0.0978747, 0.0427789, -0.185814, 0.0496169, -0.0956887, -0.992963, 0.0697719);
+    // // viewer->setCameraFieldOfView(0.523599);
+    // // // viewer->setCameraClipDistances(0.00522511, 5.22511);
+    // // viewer->setPosition(1650, 152);
+    // // viewer->setSize(631, 491);
+    // viewer->setCameraPosition(0, 0, -1, 0, 0, 1, 0, -1, 0); // 1 m behind origo, focusing at (0,0,1)
+    // while (!viewer->wasStopped ()){
+    //     viewer->spinOnce (100);
+    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+    // }
+
+    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    // viewer->setBackgroundColor (0, 0, 0);
+    // viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
+    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+    // viewer->addCoordinateSystem (1.0);
+    // viewer->initCameraParameters ();
+
+    // covis::visu::Visu3D tmp;
+    // pcl::PCLPointCloud2 cloud2;
+    // pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
+    // pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
+    // // tmp.addPointCloud(cloud3);
+    // tmp.addMesh(objectMesh[this->objectIndex]);
+    // tmp.setBackgroundColor(255, 255, 255);
+    // tmp.setBackgroundGradient(false);
+    // tmp.setShowOrigo(true);
+    // tmp.show();
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
@@ -225,7 +273,7 @@ void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )
         // Run through scenes and estimate pose of each object
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
             t.intermediate();
-            int sceneIndex = std::stoi(this->sceneLabels[i]);
+            int sceneIndex = std::stoi(this->sceneLabels[this->sceneIdx[i]]);
             covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
 
             instance->setTarget( this->sceneCloud );
@@ -341,7 +389,7 @@ void Benchmark_Tejani::run( class ransac *instance, std::string funcName )
         // Run through scenes and estimate pose of each object
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
             t.intermediate();
-            int sceneIndex = std::stoi(this->sceneLabels[i]);
+            int sceneIndex = std::stoi(this->sceneLabels[this->sceneIdx[i]]);
             covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
 
             instance->setTarget( this->sceneCloud );
@@ -530,7 +578,7 @@ void Benchmark_Tejani::savePoses( std::string path )
         std::string filePath = path + objLabel + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             ofstream file;
-            file.open( filePath + result.sceneLabels[i] + "_" + objLabel + ".yml" );
+            file.open( filePath + result.sceneLabels[this->sceneIdx[i]] + "_" + objLabel + ".yml" );
             if ( result.d[i] ) {
                 Eigen::Matrix4f P = result.poses[i];
                 file << "ests:\n";

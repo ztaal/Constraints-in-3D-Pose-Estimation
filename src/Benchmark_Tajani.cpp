@@ -184,62 +184,23 @@ void Benchmark_Tejani::initialize()
     computeObjFeat( &objectMesh[this->objectIndex] );
 
     // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-
-    // vtkSmartPointer<vtkPolyData> poly_data;
-    // pcl::io::mesh2vtk(*objectMesh[this->objectIndex],poly_data);
-    // viewer->addModelFromPolyData(poly_data,"poly_data",0);
+    // vtkSmartPointer<vtkPolyData> object_data;
+    // pcl::io::mesh2vtk(*objectMesh[this->objectIndex],object_data);
+    // viewer->addModelFromPolyData(object_data,"object_data",0);
+    // covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[0] );
+    // viewer->addPointCloud<PointT> (this->sceneCloud, "scene_cloud");
+    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LUT, pcl::visualization::PCL_VISUALIZER_LUT_GREY, "object_data");
+    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,pcl::visualization::PCL_VISUALIZER_SHADING_PHONG,"object_data");
+    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "scene_cloud");
+    //
+    // viewer->initCameraParameters();
     // viewer->addCoordinateSystem (1.0);
-    // viewer->initCameraParameters ();
-
-    // // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "poly_data");
-    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 0, "poly_data");
-    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LUT, pcl::visualization::PCL_VISUALIZER_LUT_GREY, "poly_data");
-    // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,pcl::visualization::PCL_VISUALIZER_SHADING_PHONG,"poly_data");
-    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,pcl::visualization::PCL_VISUALIZER_SHADING_PHONG,"poly_data");
-    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 255, 0, 0, "poly_data");
-    // // viewer->setBackgroundColor(0, 0, 0);
     // viewer->setBackgroundColor(255, 255, 255);
-    // viewer->addCoordinateSystem (1.0);
-
-    // viewer->setBackgroundColor(255, 255, 255);
-    // viewer->addCoordinateSystem (1.0);
-    // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "polygon");
-    // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-    //                                     pcl::visualization::PCL_VISUALIZER_SHADING_PHONG, "polygon");
-    // // viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 135, 135, 135, "polygon");
-    // // viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-    // //                                     pcl::visualization::PCL_VISUALIZER_SHADING_PHONG, "polygon");
-    // // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "meshes", 0);
-    // viewer->initCameraParameters ();
-    // // viewer->getRendererCollection()->InitTraversal()
-    // // viewer->setCameraPosition(0.0497412, -0.196849, -0.0978747, 0.0427789, -0.185814, 0.0496169, -0.0956887, -0.992963, 0.0697719);
-    // // viewer->setCameraFieldOfView(0.523599);
-    // // // viewer->setCameraClipDistances(0.00522511, 5.22511);
-    // // viewer->setPosition(1650, 152);
-    // // viewer->setSize(631, 491);
-    // viewer->setCameraPosition(0, 0, -1, 0, 0, 1, 0, -1, 0); // 1 m behind origo, focusing at (0,0,1)
+    // viewer->setCameraPosition(-549.621, 289.511, 241.76, -5.90318, 2.91587, 628.316, 0.0136751, -0.793928, -0.607858); // 1 m behind origo, focusing at (0,0,1)
     // while (!viewer->wasStopped ()){
     //     viewer->spinOnce (100);
     //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
     // }
-
-    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    // viewer->setBackgroundColor (0, 0, 0);
-    // viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-    // viewer->addCoordinateSystem (1.0);
-    // viewer->initCameraParameters ();
-
-    // covis::visu::Visu3D tmp;
-    // pcl::PCLPointCloud2 cloud2;
-    // pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
-    // pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
-    // // tmp.addPointCloud(cloud3);
-    // tmp.addMesh(objectMesh[this->objectIndex]);
-    // tmp.setBackgroundColor(255, 255, 255);
-    // tmp.setBackgroundGradient(false);
-    // tmp.setShowOrigo(true);
-    // tmp.show();
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )

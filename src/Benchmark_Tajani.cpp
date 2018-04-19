@@ -182,16 +182,16 @@ void Benchmark_Tejani::initialize()
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
     computeObjFeat( &objectMesh[this->objectIndex] );
 
-    covis::visu::Visu3D tmp;
-    pcl::PCLPointCloud2 cloud2;
-    pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
-    pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
+    //covis::visu::Visu3D tmp;
+    //pcl::PCLPointCloud2 cloud2;
+    //pcl::toPCLPointCloud2(*this->objectCloud, cloud2);
+    //pcl::PCLPointCloud2ConstPtr cloud3(&cloud2);
     // tmp.addPointCloud(cloud3);
-    tmp.addMesh(objectMesh[this->objectIndex]);
-    tmp.setBackgroundColor(255, 255, 255);
-    tmp.setBackgroundGradient(false);
-    tmp.setShowOrigo(true);
-    tmp.show();
+    //tmp.addMesh(objectMesh[this->objectIndex]);
+    //tmp.setBackgroundColor(255, 255, 255);
+    //tmp.setBackgroundGradient(false);
+    //tmp.setShowOrigo(true);
+    //tmp.show();
 }
 
 void Benchmark_Tejani::run( class posePrior *instance, std::string funcName )

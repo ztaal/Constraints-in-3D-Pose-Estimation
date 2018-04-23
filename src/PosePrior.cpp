@@ -171,6 +171,7 @@ covis::core::Detection posePrior::estimate()
     }
 
     // Loop over correspondences
+    // for( size_t i = 0; i < 1; i++ ) {
     for( size_t i = 0; i < this->corr->size(); i++ ) {
         int source_corr = (*this->corr)[i].query;
         int target_corr = (*this->corr)[i].match[0];
@@ -269,7 +270,8 @@ covis::core::Detection posePrior::estimate()
         tree->nearestKSearch(point, 1, nn_indices, nn_dists);
         double tgtCentroidDist = sqrt(nn_dists[0]);
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.7 ) // TODO add variable // 0.5 BEST
+        // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;

@@ -268,19 +268,20 @@ void Benchmark_Tejani::initialize()
     // // transformation = correction * transformation;
     //
     //
-    // pose = scenePose * pose;
+    // // pose = scenePose * pose;
     // // pose = moveToPlanePose * pose;
     // // pose = firstRotationPose * pose;
-    // // pose = initialPose * pose;
+    // pose = initialPose * pose;
     //
     // // Add Point Cloud
-    // // viewer->addPointCloud<PointT> (vizCloud, "scene_cloud");
+    // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 255, 0);
+    // viewer->addPointCloud<PointT> (vizCloud, single_color, "scene_cloud");
     //
     // // Apply transformations
     // CloudT::Ptr object (new CloudT);
     // CloudT::Ptr scene_object (new CloudT);
     // pcl::fromPCLPointCloud2(objectMesh[this->objectIndex]->cloud, *object);
-    // pcl::fromPCLPointCloud2(objectMesh[objectMesh.size() - 1]->cloud, *scene_object);
+    // pcl::fromPCLPointCloud2(objectMesh[objectMesh.size() - 2]->cloud, *scene_object);
     // covis::core::transform( *object, pose );
     // covis::core::transform( *scene_object, scenePose );
     //
@@ -342,20 +343,18 @@ void Benchmark_Tejani::initialize()
     // // viewer->addLine(center, z_axis, 0.0f, 1.0f, 0.0f, "line23");
     //
     // pcl::toPCLPointCloud2(*object, objectMesh[this->objectIndex]->cloud);
-    // pcl::toPCLPointCloud2(*scene_object, objectMesh[objectMesh.size() - 1]->cloud);
+    // pcl::toPCLPointCloud2(*scene_object, objectMesh[objectMesh.size() - 2]->cloud);
     //
-    // // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "object_data");
-    // viewer->addPolygonMesh(*objectMesh[objectMesh.size() - 1], "object_data2");
+    // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "object_data");
+    // viewer->addPolygonMesh(*objectMesh[objectMesh.size() - 2], "object_data2");
     //
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line1", 0);
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line2", 0);
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line3", 0);
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line21", 0);
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line22", 0);
-    // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line23", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 255, 0, 0, "line1", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0, 255, 0, "line2", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0, 0, 255, "line3", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line1", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line2", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line3", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line21", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line22", 0);
+    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line23", 0);
+    //
     // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 8, "scene_cloud");
     // viewer->initCameraParameters();
     // viewer->setBackgroundColor(255, 255, 255);

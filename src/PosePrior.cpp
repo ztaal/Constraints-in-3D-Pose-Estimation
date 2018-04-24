@@ -359,21 +359,22 @@ covis::core::Detection posePrior::estimate()
         pose_vector.push_back(pose);
 
         // Update result if updated model is the best so far
-        double prevInlierFrac = fe->inlierFraction();
+        // double prevInlierFrac = fe->inlierFraction();
         if(fe->inlierFraction() > result.inlierfrac && !pose.isZero(0)) {
-            // Constraint 8?
-            Eigen::Vector3f tgtPointEigen(tgtPoint.x, tgtPoint.y, tgtPoint.z);
-            Eigen::Vector4f srcNormal(srcPoint.normal_x, srcPoint.normal_y, srcPoint.normal_z, 1);
-            srcNormal = pose.inverse().transpose() * srcNormal;
-            Eigen::Vector3f dirVec = srcNormal.head<3>().cross(plane_normal.head<3>());
-            Eigen::Vector3f newPoseVec = pose.block<3,1>(0, 3) + (15 * dirVec);
-            Eigen::Matrix4f newPose = pose;
-            newPose(0,3) = newPoseVec[0];
-            newPose(1,3) = newPoseVec[1];
-            newPose(2,3) = newPoseVec[2];
-            fe->update( this->source, newPose, this->corr );
-            if (prevInlierFrac < fe->inlierFraction())
-                continue;
+            // // Constraint 8?
+            // Eigen::Vector3f tgtPointEigen(tgtPoint.x, tgtPoint.y, tgtPoint.z);
+            // Eigen::Vector4f srcNormal(srcPoint.normal_x, srcPoint.normal_y, srcPoint.normal_z, 1);
+            // srcNormal = pose.inverse().transpose() * srcNormal;
+            // Eigen::Vector3f dirVec = srcNormal.head<3>().cross(plane_normal.head<3>());
+            // Eigen::Vector3f newPoseVec = pose.block<3,1>(0, 3) + (15 * dirVec);
+            // Eigen::Matrix4f newPose = pose;
+            // newPose(0,3) = newPoseVec[0];
+            // newPose(1,3) = newPoseVec[1];
+            // newPose(2,3) = newPoseVec[2];
+            // fe->update( this->source, newPose, this->corr );
+            // if (prevInlierFrac < fe->inlierFraction() * 1.1)
+            //     continue;
+            // result.inlierfrac = prevInlierFrac;
 
             result.pose = pose;
             result.rmse = fe->rmse();

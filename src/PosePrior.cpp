@@ -170,8 +170,10 @@ covis::core::Detection posePrior::estimate()
             ++it;
     }
 
+    double avgColorDist = 0;
+    double colorCount = 0;
+
     // Loop over correspondences
-    // for( size_t i = 0; i < 1; i++ ) {
     for( size_t i = 0; i < this->corr->size(); i++ ) {
         int source_corr = (*this->corr)[i].query;
         int target_corr = (*this->corr)[i].match[0];
@@ -270,7 +272,7 @@ covis::core::Detection posePrior::estimate()
         tree->nearestKSearch(point, 1, nn_indices, nn_dists);
         double tgtCentroidDist = sqrt(nn_dists[0]);
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.7 ) // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.6 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
@@ -324,34 +326,38 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint6: Color
         // srcPoint
-        // int numberOfPoints = 20;
-        // std::vector<double> tgtRGB = {0, 0, 0};
-        // std::vector<double> srcRGB = {0, 0, 0};
-        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
-        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
-        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
-        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
-        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
-        // for (int i = 0; i < numberOfPoints; i++) {
-        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
-        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
-        //     tgtRGB[0] += int(tgtColorPoint.r);
-        //     tgtRGB[1] += int(tgtColorPoint.g);
-        //     tgtRGB[2] += int(tgtColorPoint.b);
-        //     srcRGB[0] += int(srcColorPoint.r);
-        //     srcRGB[1] += int(srcColorPoint.g);
-        //     srcRGB[2] += int(srcColorPoint.b);
-        // }
-        // tgtRGB[0] /= numberOfPoints;
-        // tgtRGB[1] /= numberOfPoints;
-        // tgtRGB[2] /= numberOfPoints;
-        // srcRGB[0] /= numberOfPoints;
-        // srcRGB[1] /= numberOfPoints;
-        // srcRGB[2] /= numberOfPoints;
-        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        int numberOfPoints = 20;
+        std::vector<double> tgtRGB = {0, 0, 0};
+        std::vector<double> srcRGB = {0, 0, 0};
+        // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
+        std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
+        std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
+        tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
+        srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
+        for (int i = 0; i < numberOfPoints; i++) {
+            PointT tgtColorPoint = this->target->points[tgtIndices[i]];
+            PointT srcColorPoint = this->source->points[srcIndices[i]];
+            tgtRGB[0] += int(tgtColorPoint.r);
+            tgtRGB[1] += int(tgtColorPoint.g);
+            tgtRGB[2] += int(tgtColorPoint.b);
+            srcRGB[0] += int(srcColorPoint.r);
+            srcRGB[1] += int(srcColorPoint.g);
+            srcRGB[2] += int(srcColorPoint.b);
+        }
+        tgtRGB[0] /= numberOfPoints;
+        tgtRGB[1] /= numberOfPoints;
+        tgtRGB[2] /= numberOfPoints;
+        srcRGB[0] /= numberOfPoints;
+        srcRGB[1] /= numberOfPoints;
+        srcRGB[2] /= numberOfPoints;
+        double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
+        avgColorDist += colorDist;
+        colorCount++;
+        if (colorDist > avgColorDist/colorCount)
+        // if (colorDist > 150)
         // if (colorDist > 70)
-        //     continue;
+            continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models
@@ -383,6 +389,7 @@ covis::core::Detection posePrior::estimate()
             result.penalty = fe->penalty();
         }
     }
+    std::cout << "Avd Color Dist: " << avgColorDist / colorCount << "\n";
 
     // Iterative Closest Point (refine pose)
     if (result) {

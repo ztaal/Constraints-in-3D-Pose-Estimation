@@ -274,7 +274,7 @@ void Benchmark_Tejani::initialize()
     // pose = initialPose * pose;
     //
     // // Add Point Cloud
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 255, 0);
+    // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 0, 255);
     // viewer->addPointCloud<PointT> (vizCloud, single_color, "scene_cloud");
     //
     // // Apply transformations

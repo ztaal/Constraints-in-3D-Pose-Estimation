@@ -325,8 +325,7 @@ covis::core::Detection posePrior::estimate()
         // // if (colorAngle > 0.1)
 
         // Constraint6: Color
-        // srcPoint
-        int numberOfPoints = 20;
+        int numberOfPoints = 1; // Hintertoisser // Best 20
         std::vector<double> tgtRGB = {0, 0, 0};
         std::vector<double> srcRGB = {0, 0, 0};
         // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
@@ -351,13 +350,14 @@ covis::core::Detection posePrior::estimate()
         srcRGB[1] /= numberOfPoints;
         srcRGB[2] /= numberOfPoints;
         double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
-        // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
         avgColorDist += colorDist;
         colorCount++;
-        if (colorDist > avgColorDist/colorCount)
+        // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
         // if (colorDist > 150)
         // if (colorDist > 70)
+        if (colorDist > avgColorDist/colorCount * 0.9)
             continue;
+
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models

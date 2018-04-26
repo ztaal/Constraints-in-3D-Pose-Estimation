@@ -222,15 +222,16 @@ void Benchmark::run( class ransac *instance, std::string funcName )
 
                 if (d[i][j]) {
                     // Calculate distance from GT
-                    CloudT gtCloud = *this->objectCloud[j];
-                    CloudT poseCloud = *this->objectCloud[j];
-
-                    covis::core::transform( poseCloud, d[i][j].pose );
-                    covis::core::transform( gtCloud, this->poses[i][j] );
+                    CloudT::Ptr gtCloud(new CloudT);
+                    CloudT::Ptr poseCloud(new CloudT);
+                    pcl::copyPointCloud(*this->objectCloud[j], *gtCloud);
+                    pcl::copyPointCloud(*this->objectCloud[j], *poseCloud);
+                    covis::core::transform( *poseCloud, d[i][j].pose );
+                    covis::core::transform( *gtCloud, this->poses[i][j] );
 
                     std::vector<double> distance;
                     for ( auto corr : *this->correspondences[i][j] )
-                    distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
+                        distance.push_back( pcl::euclideanDistance((*poseCloud)[corr.query], (*gtCloud)[corr.query]) );
 
                     medianDistance[i][j] = this->median( distance );
 

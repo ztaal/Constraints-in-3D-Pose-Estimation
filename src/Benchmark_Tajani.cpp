@@ -183,7 +183,6 @@ void Benchmark_Tejani::initialize()
     loadData( &objectMesh, &this->sceneMesh, &this->poses );
     computeObjFeat( &objectMesh[this->objectIndex] );
 
-
     // // Code below is used to make figures for the report
     // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     // // vtkSmartPointer<vtkPolyData> object_data;
@@ -240,6 +239,11 @@ void Benchmark_Tejani::initialize()
     //                 0.670453,   0.275611,  -0.687608,   888.807,
     //                 0,          0,          0,          1;
     //
+    // Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
+    // Eigen::Vector3f v = Eigen::Vector3f::UnitX();
+    // double theta = -40;
+    // correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    //
     // // Rotate to fit plane
     // firstRotationPose << 0.298724,   -0.948462,  -0.0891832, 0,
     //                      -0.676772,  -0.145618,  -0.720563,  0,
@@ -268,14 +272,16 @@ void Benchmark_Tejani::initialize()
     // // transformation = correction * transformation;
     //
     //
-    // // pose = scenePose * pose;
+    // pose = correctionT * Eigen::Matrix4f::Identity();
+    // pose = scenePose * pose;
     // // pose = moveToPlanePose * pose;
     // // pose = firstRotationPose * pose;
-    // pose = initialPose * pose;
+    // // pose = initialPose * pose;
     //
     // // Add Point Cloud
-    // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 0, 255);
-    // viewer->addPointCloud<PointT> (vizCloud, single_color, "scene_cloud");
+    // // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 0, 255);
+    // // viewer->addPointCloud<PointT> (vizCloud, single_color, "scene_cloud");
+    // viewer->addPointCloud<PointT> (vizCloud, "scene_cloud");
     //
     // // Apply transformations
     // CloudT::Ptr object (new CloudT);
@@ -346,7 +352,7 @@ void Benchmark_Tejani::initialize()
     // pcl::toPCLPointCloud2(*scene_object, objectMesh[objectMesh.size() - 2]->cloud);
     //
     // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "object_data");
-    // viewer->addPolygonMesh(*objectMesh[objectMesh.size() - 2], "object_data2");
+    // // viewer->addPolygonMesh(*objectMesh[objectMesh.size() - 2], "object_data2");
     //
     // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line1", 0);
     // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line2", 0);

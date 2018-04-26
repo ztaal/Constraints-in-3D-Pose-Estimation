@@ -262,7 +262,7 @@ covis::core::Detection posePrior::estimate()
         // if (angle > 0.05) // 0.2  // TODO add variable
             continue;
 
-        // Find closest point
+       // Find closest point
         PointT point;
         point.x = pose(0,3);
         point.y = pose(1,3);

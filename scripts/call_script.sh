@@ -1,24 +1,24 @@
 #!/bin/bash
 
-dataset_dir=$1
-object_id=$2
-save_dir=$3
-
 #!/bin/sh
 #SBATCH --partition=mmmi-default
 #SBATCH --time=10:00:00
 #SBATCH --account=robotics
 #SBATCH --mem-per-cpu=3584M
-#SBATCH --output=/data/msteenberg/log_dir/logs/-$object_id_%A.out
-#SBATCH --error=/data/msteenberg/log_dir/logs/-$object_id_%A.err
+#SBATCH --output=/data/msteenberg/log_dir/logs/msteenberg-%A.out
+#SBATCH --error=/data/msteenberg/log_dir/logs/msteenberg-%A.err
 ##SBATCH --error=/data/msteenberg/log_dir/logs/-%A_%a.err
 #SBATCH --cpus-per-task=8
 #SBATCH --mail-type=FAIL,REQUEUE,TIME_LIMIT
 #SBATCH --mail-user=mstee13@student.sdu.dk
-#SBATCH --nice=10000
+#SBATCH --nice=0
 
 ##SBATCH --job-name=constraints_in_3d_pose_estimation
 ##SBATCH --nodelist=sdur-cluster-2,sdur-cluster-9,sdur-cluster-3,sdur-cluster-0,sdur-cluster-1,sdur-cluster-4,sdur-cluster-5,sdur-cluster-6,sdur-cluster-8
+
+dataset_dir=$1
+object_id=$2
+save_dir=$3
 
 echo
 echo "********************************************************************************"

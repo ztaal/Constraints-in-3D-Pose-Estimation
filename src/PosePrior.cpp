@@ -261,8 +261,8 @@ covis::core::Detection posePrior::estimate()
         if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
             continue;
-
-        // Find closest point
+ 
+       // Find closest point
         PointT point;
         point.x = pose(0,3);
         point.y = pose(1,3);
@@ -352,12 +352,15 @@ covis::core::Detection posePrior::estimate()
         srcRGB[2] /= numberOfPoints;
         double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
-        avgColorDist += colorDist;
-        colorCount++;
+        // avgColorDist += colorDist;
+        // colorCount++;
         if (colorDist > avgColorDist/colorCount)
         // if (colorDist > 150)
         // if (colorDist > 70)
             continue;
+
+	avgColorDist += colorDist;
+        colorCount++;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models

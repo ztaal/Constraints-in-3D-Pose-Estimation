@@ -1,8 +1,6 @@
  /**  Todo list:
-  * TODO Try add color check to pose priror
   * TODO Test on T-less
   * TODO Add centroid distance threshold to RANSAC
-  * TODO Pose priors with two points
   * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
   * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
   * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses

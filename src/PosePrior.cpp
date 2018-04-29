@@ -29,6 +29,36 @@
 
 using namespace covis::detect;
 
+void rgb2hsv( double R, double G, double B, double *_H, double *_S, double *_V )
+{
+    double m = std::min(R, std::min(G, B));
+    double M = std::max(R, std::max(G, B));
+    double C = M - m;
+    double H = 0;
+    if (M == R)
+        H = 60 * (G - B) / C + 360;
+    else if (M == G)
+        H = 60 * (B - R) / C + 360;
+    else if (M == B)
+        H = 60 * (R - G) / C + 360;
+
+    double V = M;
+    // double L = 0.5 * (M + m);
+    double Sv = 0;
+    if (C != 0)
+        Sv = C / M;
+    // double Sl = 0;
+    // if (L <= 0.5 && C != 0)
+    //     Sl = C / (M + m);
+    // else if (L > 0.5 && C != 0)
+    //     Sl = C / (2 - M + m);
+
+    *_H = H;
+    *_S = Sv;
+    *_V = V;
+}
+
+
 covis::core::Detection posePrior::estimate()
 {
     // Instantiate fit evaluator
@@ -310,22 +340,58 @@ covis::core::Detection posePrior::estimate()
         // srcIntensity.z = src_m001 / src_m000;
         // Eigen::Vector3f tgtVector(tgtIntensity.x - tgtPoint.x, tgtIntensity.y - tgtPoint.y, tgtIntensity.z - tgtPoint.z);
         // Eigen::Vector3f srcVector(srcIntensity.x - srcPoint.x, srcIntensity.y - srcPoint.y, srcIntensity.z - srcPoint.z);
-        // // bool ignore = false;
-        // // if (tgtVector.norm() < 0.01 || srcVector.norm() < 0.01 )
-        // //     ignore = true;
+        // bool ignore = false;
+        // if (tgtVector.norm() < 0.01 || srcVector.norm() < 0.01 )
+        //     ignore = true;
+        // std::cout << "tgtVector.norm(): " << tgtVector.norm() << "\t\tsrcVector.norm(): " << srcVector.norm() << '\n';
         // tgtVector.normalize();
         // srcVector.normalize();
         // double tgtAngle = atan2( (target_normal.cross(tgtVector)).norm(), target_normal.dot(tgtVector) );
         // double srcAngle = atan2( (source_normal.head<3>().cross(srcVector)).norm(), source_normal.head<3>().dot(srcVector) );
         // double angleDiff = fabs(tgtAngle - srcAngle) / ((tgtAngle + srcAngle) / 2);
-        // // if (angleDiff > 0.01 && !ignore)
+        // if (angleDiff > 0.01 && !ignore)
         // if (angleDiff > 0.1)
         //     continue;
-        // // std::cout << "angleDiff: " << angleDiff << " \ttgtAngle: " << tgtAngle << " \tsrcAngle: " << srcAngle << '\n';
-        // // if (colorAngle > 0.1)
+        // std::cout << "angleDiff: " << angleDiff << " \ttgtAngle: " << tgtAngle << " \tsrcAngle: " << srcAngle << '\n';
+        // if (colorAngle > 0.1)
+
+        // // Constraint6: Color
+        // int numberOfPoints = 5; // Hintertoisser // Best 20
+        // std::vector<double> tgtRGB = {0, 0, 0};
+        // std::vector<double> srcRGB = {0, 0, 0};
+        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
+        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
+        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
+        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
+        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
+        // for (int i = 0; i < numberOfPoints; i++) {
+        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
+        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
+        //     tgtRGB[0] += int(tgtColorPoint.r);
+        //     tgtRGB[1] += int(tgtColorPoint.g);
+        //     tgtRGB[2] += int(tgtColorPoint.b);
+        //     srcRGB[0] += int(srcColorPoint.r);
+        //     srcRGB[1] += int(srcColorPoint.g);
+        //     srcRGB[2] += int(srcColorPoint.b);
+        // }
+        // tgtRGB[0] /= numberOfPoints;
+        // tgtRGB[1] /= numberOfPoints;
+        // tgtRGB[2] /= numberOfPoints;
+        // srcRGB[0] /= numberOfPoints;
+        // srcRGB[1] /= numberOfPoints;
+        // srcRGB[2] /= numberOfPoints;
+        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        // avgColorDist += colorDist;
+        // colorCount++;
+        // // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
+        // // if (colorDist > 150)
+        // // if (colorDist > 70)
+        // if (colorDist > avgColorDist/colorCount * 0.8)
+        //     continue;
 
         // Constraint6: Color
-        int numberOfPoints = 1; // Hintertoisser // Best 20
+        //  https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5548505
+        int numberOfPoints = 5; // Hintertoisser // Best 20
         std::vector<double> tgtRGB = {0, 0, 0};
         std::vector<double> srcRGB = {0, 0, 0};
         // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
@@ -336,12 +402,22 @@ covis::core::Detection posePrior::estimate()
         for (int i = 0; i < numberOfPoints; i++) {
             PointT tgtColorPoint = this->target->points[tgtIndices[i]];
             PointT srcColorPoint = this->source->points[srcIndices[i]];
-            tgtRGB[0] += int(tgtColorPoint.r);
-            tgtRGB[1] += int(tgtColorPoint.g);
-            tgtRGB[2] += int(tgtColorPoint.b);
-            srcRGB[0] += int(srcColorPoint.r);
-            srcRGB[1] += int(srcColorPoint.g);
-            srcRGB[2] += int(srcColorPoint.b);
+            double tgtH = 0, tgtS = 0, tgtV = 0;
+            double srcH = 0, srcS = 0, srcV = 0;
+            rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
+            rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
+            tgtRGB[0] += int(tgtH);
+            tgtRGB[1] += int(tgtS);
+            tgtRGB[2] += int(tgtV);
+            srcRGB[0] += int(srcH);
+            srcRGB[1] += int(srcS);
+            srcRGB[2] += int(srcV);
+            // tgtRGB[0] += int(tgtColorPoint.r);
+            // tgtRGB[1] += int(tgtColorPoint.g);
+            // tgtRGB[2] += int(tgtColorPoint.b);
+            // srcRGB[0] += int(srcColorPoint.r);
+            // srcRGB[1] += int(srcColorPoint.g);
+            // srcRGB[2] += int(srcColorPoint.b);
         }
         tgtRGB[0] /= numberOfPoints;
         tgtRGB[1] /= numberOfPoints;
@@ -349,13 +425,15 @@ covis::core::Detection posePrior::estimate()
         srcRGB[0] /= numberOfPoints;
         srcRGB[1] /= numberOfPoints;
         srcRGB[2] /= numberOfPoints;
-        double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
+        double dS = fabs(srcRGB[1] - tgtRGB[1]);
+        double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
+        double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
+        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         avgColorDist += colorDist;
         colorCount++;
-        // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
-        // if (colorDist > 150)
-        // if (colorDist > 70)
-        if (colorDist > avgColorDist/colorCount * 0.9)
+        // std::cout << "colorDist: " << colorDist << "\tthreshold: " << avgColorDist/colorCount * 0.8 << '\n';
+        if (colorDist > avgColorDist/colorCount * 0.8)
             continue;
 
 

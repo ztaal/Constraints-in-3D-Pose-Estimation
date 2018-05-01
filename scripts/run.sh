@@ -18,6 +18,6 @@ do
     OBJECT=${OBJECT::-1}
     CREATE_DIR="$SAVE_DIR/$OBJECT"
     mkdir -p $CREATE_DIR
-    sbatch -J $JOBNAME ./call_script.sh $BASE_PATH$DATASET $OBJECT $SAVE_DIR
+    sbatch -J $JOBNAME ./call_script.sh $dataset_name $BASE_PATH$DATASET $OBJECT $SAVE_DIR
   done
 done

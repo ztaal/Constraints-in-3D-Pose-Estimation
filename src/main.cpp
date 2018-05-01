@@ -42,7 +42,7 @@ using namespace covis;
 #include "../headers/Correspondence.hpp"
 #include "../headers/PosePrior.hpp"
 #include "../headers/yml_loader.hpp"
-#include "../headers/Benchmark_Tejani.hpp"
+#include "../headers/Benchmark_Sixd.hpp"
 
 // Point and feature types
 typedef pcl::PointXYZRGBNormal PointT;
@@ -113,7 +113,7 @@ int main( int argc, const char** argv )
     po.addOption("target", 't', "scenes", "mesh or point cloud file for target model");
     po.addOption("yml-file", 'y', "ground_truth", "path to yml file contaning ground truth poses");
     po.addOption("benchmark-file", 'b', "benchmark", "path to yml file contaning benchmark indices");
-    po.addFlag('t', "benchmark-tejani", "benchmark tejani");
+    po.addFlag('t', "benchmark-sixd", "benchmark sixd");
 
     // Benchmark
     po.addFlag('b', "benchmark", "benchmark ransac");
@@ -158,7 +158,7 @@ int main( int argc, const char** argv )
         class covis::detect::posePrior posePrior;
         class covis::detect::ransac ransac;
         class covis::detect::Benchmark benchmark;
-        class covis::detect::Benchmark_Tejani bt;
+        class covis::detect::Benchmark_Sixd bt;
 
         // Correspondence variables
         correspondence.setResolution( po.getValue<float>("resolution") );
@@ -237,7 +237,7 @@ int main( int argc, const char** argv )
             // }
         }
 
-        if( po.getFlag("benchmark-tejani") ) {
+        if( po.getFlag("benchmark-sixd") ) {
             // Benchmark Tejani variables
             bt.setRootPath( po.getValue("root-path") );
             bt.setObjectDir( po.getValue("object-dir") );

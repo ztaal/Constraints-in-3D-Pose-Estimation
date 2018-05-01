@@ -16,15 +16,17 @@
 ##SBATCH --job-name=constraints_in_3d_pose_estimation
 ##SBATCH --nodelist=sdur-cluster-2,sdur-cluster-9,sdur-cluster-3,sdur-cluster-0,sdur-cluster-1,sdur-cluster-4,sdur-cluster-5,sdur-cluster-6,sdur-cluster-8
 
-dataset_dir=$1
-object_id=$2
-save_dir=$3
+dataset_name=$1
+dataset_dir=$2
+object_id=$3
+save_dir=$4
 
 echo
 echo "********************************************************************************"
 echo
+echo "DATASET_NAME:       = "$dataset_name
 echo "OBJECT_ID:          = "$object_id
-echo "dataset_dir         = "$dataset_dir
+echo "DATASET_DIR         = "$dataset_dir
 echo
 echo "********************************************************************************"
 echo
@@ -48,7 +50,14 @@ echo
 echo "********************************************************************************"
 echo
 
-command="srun /home/msteenberg/Constraints-in-3D-Pose-Estimation/build/aout $dataset_dir/ -z --pose_prior --benchmark-tejani --object-dir=models --yml-file=gt.yml --benchmark-file=test_set_v1.yml --scene-dir=test/$object_id/ply --save-dir=$save_dir/ --save"
+if [[ $dataset_name == "tless" ]]
+then
+    command="srun /home/msteenberg/Constraints-in-3D-Pose-Estimation/build/aout $dataset_dir/t-less_v2/ -z --pose_prior --benchmark-sixd --object-dir=models_cad --yml-file=gt.yml --benchmark-file=test_set_v1.yml --scene-dir=test_primesense/$object_id/ply --save-dir=$save_dir/ --save"
+else
+    command="srun /home/msteenberg/Constraints-in-3D-Pose-Estimation/build/aout $dataset_dir/ -z --pose_prior --benchmark-sixd --object-dir=models --yml-file=gt.yml --benchmark-file=test_set_v1.yml --scene-dir=test/$object_id/ply --save-dir=$save_dir/ --save"
+fi
+
+# command="srun /home/msteenberg/Constraints-in-3D-Pose-Estimation/build/aout $dataset_dir/ -z --pose_prior --benchmark-sixd --object-dir=models --yml-file=gt.yml --benchmark-file=test_set_v1.yml --scene-dir=test/$object_id/ply --save-dir=$save_dir/ --save"
 
 echo "COMMAND:"
 echo $command

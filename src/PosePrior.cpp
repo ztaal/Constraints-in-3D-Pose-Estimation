@@ -390,7 +390,6 @@ covis::core::Detection posePrior::estimate()
         //     continue;
 
         // Constraint6: Color
-        //  https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5548505
         int numberOfPoints = 5; // Hintertoisser // Best 20
         std::vector<double> tgtRGB = {0, 0, 0};
         std::vector<double> srcRGB = {0, 0, 0};
@@ -402,22 +401,22 @@ covis::core::Detection posePrior::estimate()
         for (int i = 0; i < numberOfPoints; i++) {
             PointT tgtColorPoint = this->target->points[tgtIndices[i]];
             PointT srcColorPoint = this->source->points[srcIndices[i]];
-            double tgtH = 0, tgtS = 0, tgtV = 0;
-            double srcH = 0, srcS = 0, srcV = 0;
-            rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
-            rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
-            tgtRGB[0] += int(tgtH);
-            tgtRGB[1] += int(tgtS);
-            tgtRGB[2] += int(tgtV);
-            srcRGB[0] += int(srcH);
-            srcRGB[1] += int(srcS);
-            srcRGB[2] += int(srcV);
-            // tgtRGB[0] += int(tgtColorPoint.r);
-            // tgtRGB[1] += int(tgtColorPoint.g);
-            // tgtRGB[2] += int(tgtColorPoint.b);
-            // srcRGB[0] += int(srcColorPoint.r);
-            // srcRGB[1] += int(srcColorPoint.g);
-            // srcRGB[2] += int(srcColorPoint.b);
+            //double tgtH = 0, tgtS = 0, tgtV = 0;
+            //double srcH = 0, srcS = 0, srcV = 0;
+            //rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
+            //rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
+            //tgtRGB[0] += int(tgtH);
+            //tgtRGB[1] += int(tgtS);
+            //tgtRGB[2] += int(tgtV);
+            //srcRGB[0] += int(srcH);
+            //srcRGB[1] += int(srcS);
+            //srcRGB[2] += int(srcV);
+            tgtRGB[0] += int(tgtColorPoint.r);
+            tgtRGB[1] += int(tgtColorPoint.g);
+            tgtRGB[2] += int(tgtColorPoint.b);
+            srcRGB[0] += int(srcColorPoint.r);
+            srcRGB[1] += int(srcColorPoint.g);
+            srcRGB[2] += int(srcColorPoint.b);
         }
         tgtRGB[0] /= numberOfPoints;
         tgtRGB[1] /= numberOfPoints;
@@ -425,17 +424,16 @@ covis::core::Detection posePrior::estimate()
         srcRGB[0] /= numberOfPoints;
         srcRGB[1] /= numberOfPoints;
         srcRGB[2] /= numberOfPoints;
-        double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
-        double dS = fabs(srcRGB[1] - tgtRGB[1]);
-        double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
-        double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
-        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        //double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
+        //double dS = fabs(srcRGB[1] - tgtRGB[1]);
+        //double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
+        //double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
+        double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         avgColorDist += colorDist;
         colorCount++;
         // std::cout << "colorDist: " << colorDist << "\tthreshold: " << avgColorDist/colorCount * 0.8 << '\n';
         if (colorDist > avgColorDist/colorCount * 0.8)
             continue;
-
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models

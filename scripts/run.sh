@@ -10,7 +10,13 @@ mkdir -p "/data/msteenberg/log_dir/logs"
 for DATASET in $dataset_name
 do
   #echo $DATASET
-  OBJECT_IDS="$BASE_PATH/$DATASET/test/*/"
+  if [[ $dataset_name == "t-less" ]]
+  then
+      OBJECT_IDS="$BASE_PATH/$DATASET/t-less_v2/test_primesense/*/"
+  else
+      OBJECT_IDS="$BASE_PATH/$DATASET/test/*/"
+  fi
+  # OBJECT_IDS="$BASE_PATH/$DATASET/test/*/"
   SAVE_DIR="/data/msteenberg/log_dir/data_$DATASET"
   for OBJECT_ID in $OBJECT_IDS
   do

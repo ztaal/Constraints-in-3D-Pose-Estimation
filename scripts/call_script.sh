@@ -50,7 +50,7 @@ echo
 echo "********************************************************************************"
 echo
 
-if [[ $dataset_name == "tless" ]]
+if [[ $dataset_name == "t-less" ]]
 then
     command="srun /home/msteenberg/Constraints-in-3D-Pose-Estimation/build/aout $dataset_dir/t-less_v2/ -z --pose_prior --benchmark-sixd --object-dir=models_cad --yml-file=gt.yml --benchmark-file=test_set_v1.yml --scene-dir=test_primesense/$object_id/ply --save-dir=$save_dir/ --save"
 else

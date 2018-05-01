@@ -85,14 +85,26 @@ covis::core::Detection posePrior::estimate()
 
     // Correction of pose due to the models not being proberbly aligned with the axis TODO remove when correct models are used
     Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
-    // Eigen::Vector3f v = Eigen::Vector3f::UnitX();
-    // if (modelIndex == 1 || modelIndex == 3) {
-    //     double theta = -3;
-    //     correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
-    // } else if (modelIndex == 5) {
-    //     double theta = -10;
-    //     correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
-    // }
+    Eigen::Vector3f v = Eigen::Vector3f::UnitX();
+    if (this->dataset == "tejani") {
+        double theta = 0;
+        if (modelIndex == 1 || modelIndex == 3) {
+            theta = -3;
+        } else if (modelIndex == 5) {
+            theta = -10;
+        }
+        if (theta != 0)
+            correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    } else if (this->dataset == "t-less") {
+        double theta = 0;
+        if (modelIndex == 25) {
+            theta = 90;
+        } else if (modelIndex == 29) {
+            theta = 86;
+        }
+        if (theta != 0)
+            correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+    }
 
     // Instantiate kd tree
     pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
@@ -465,7 +477,6 @@ covis::core::Detection posePrior::estimate()
             result.penalty = fe->penalty();
         }
     }
-    std::cout << "Avd Color Dist: " << avgColorDist / colorCount << "\n";
 
     // Iterative Closest Point (refine pose)
     if (result) {

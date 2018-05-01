@@ -284,7 +284,7 @@ namespace covis {
                     std::vector<bool> failed;
                     std::vector<Eigen::Matrix4f> poses;
                     std::vector<std::string> sceneLabels;
-                    std::string objectLabel;
+                    int objectIndex;
                 };
 
                 /// Root path
@@ -312,13 +312,13 @@ namespace covis {
                 boost::once_flag flagInit = BOOST_ONCE_INIT;
 
                 /// Object features
-                feature::MatrixT objectFeat;
+                std::vector<feature::MatrixT> objectFeat;
 
                 /// Object cloud
-                CloudT::Ptr objectCloud;
+                std::vector<CloudT::Ptr> objectCloud;
 
                 /// Distance to the cloest point from centroid on the object
-                double centroidDist;
+                std::vector<double> centroidDist;
 
                 /// Scene meshes
                 std::vector<covis::util::DatasetLoader::ModelPtr> sceneMesh;
@@ -327,7 +327,10 @@ namespace covis {
                 CloudT::Ptr sceneCloud;
 
                 /// Ground truth poses
-                std::vector<std::vector<Eigen::Matrix4f> > poses;
+                std::vector<std::vector<std::vector<Eigen::Matrix4f> > > poses;
+
+                /// Object indices
+                std::vector<int> objIds;
 
                 /// Results of the benchmarks
                 std::vector<Result> results;
@@ -335,11 +338,8 @@ namespace covis {
                 /// Scene labels
                 std::vector<std::string> sceneLabels;
 
-                /// Object labels
-                std::string objectLabel;
-
-                /// Object index
-                int objectIndex;
+                /// Sequence labels
+                std::string sequence;
 
                 /// Scene indices
                 std::vector<int> sceneIdx;
@@ -365,11 +365,14 @@ namespace covis {
                 /// Feature estimation radius
                 float radiusFeature;
 
+                /// Resolution of scene and object clouds
+                std::vector<float> resolutionVec;
+
                 // Feature radius
-                float frad;
+                std::vector<float> frad;
 
                 // Normal radius
-                float nrad;
+                std::vector<float> nrad;
 
                 /// Cutoff % for the best correspondences for RANSAC based on feature distance
                 size_t cutoff;
@@ -390,10 +393,12 @@ namespace covis {
                  * @param pointer to objectMesh
                  * @param pointer to sceneMesh
                  * @param pointer to poses
+                 * @param pointer to object indices
                  */
                 void loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
                                 std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
-                                std::vector<std::vector<Eigen::Matrix4f> > *poses);
+                                std::vector<std::vector<std::vector<Eigen::Matrix4f> > > *poses,
+                                std::vector<int> *objIds);
 
                 /**
                  * Compute features of the object
@@ -406,7 +411,7 @@ namespace covis {
                 * @param pointer to sceneMesh
                 * @return correspondences
                 */
-                covis::core::Correspondence::VecPtr computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh);
+                covis::core::Correspondence::VecPtr computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh, int idx);
 
                 /**
                 * Compute the euclidean distance between the translation of two Matrix4f

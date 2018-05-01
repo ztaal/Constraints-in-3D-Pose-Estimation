@@ -31,7 +31,8 @@ using namespace covis::detect;
 
 void Benchmark_Sixd::loadData(std::vector<util::DatasetLoader::ModelPtr> *objectMesh,
                                 std::vector<util::DatasetLoader::ModelPtr> *sceneMesh,
-                                std::vector<std::vector<Eigen::Matrix4f> > *poses)
+                                std::vector<std::vector<std::vector<Eigen::Matrix4f> > > *poses,
+                                std::vector<int> *objIds)
 {
     // Load dataset
     util::DatasetLoader dataset(
@@ -53,16 +54,15 @@ void Benchmark_Sixd::loadData(std::vector<util::DatasetLoader::ModelPtr> *object
     for (size_t i = 0; i < this->sceneDir.length(); i++)
         if( isdigit(this->sceneDir[i]) )
             tmp += this->sceneDir[i];
-    this->objectIndex = std::atoi(tmp.c_str()) - 1;
-    this->objectLabel = tmp;
+    this->sequence = tmp;
     this->sceneLabels = dataset.getSceneLabels();
 
     // Load object cloud, scene clouds and GT poses
     std::string gtFilePath = this->rootPath + this->sceneDir + "/../" + this->poseFile;
     std::string benchmarkFilePath = this->rootPath + this->benchmarkFile;
     util::yml_loader yml;
-    yml.load_gt( gtFilePath, poses );
-    yml.load_benchmark( benchmarkFilePath, this->objectLabel, &this->sceneIdx );
+    yml.load_gt( gtFilePath, objIds, poses );
+    yml.load_benchmark( benchmarkFilePath, this->sequence, &this->sceneIdx );
     *objectMesh = dataset.getObjects();
     if ( dataset.size() <= this->sceneIdx.size() ) {
         this->sceneIdx.clear();
@@ -84,45 +84,46 @@ void Benchmark_Sixd::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 {
     // Surfaces and normals
     const bool resolutionInput = (this->resolution > 0.0f);
+    double _resolution = this->resolution;
     if(!resolutionInput)
-        this->resolution = detect::computeResolution(*objectMesh) * this->objectScale;
+        _resolution = detect::computeResolution(*objectMesh) * this->objectScale;
     if(this->objectScale != 1)
         *objectMesh = filter::scale(*objectMesh, this->objectScale);
 
     // const float nrad =
     //         this->radiusNormal > 0.0 ?
-    //         this->radiusNormal * this->resolution :
-    //         2 * this->resolution;
-    this->nrad =
+    //         this->radiusNormal * _resolution :
+    //         2 * _resolution;
+    float _nrad =
             this->radiusNormal <= 1.0 ?
             this->radiusNormal * covis::detect::computeDiagonal(*objectMesh) :
-            this->radiusNormal * this->resolution;
+            this->radiusNormal * _resolution;
 
     // Features and matching
     const float resQuery =
             this->resolutionQuery > 0.0 ?
-            this->resolutionQuery * this->resolution :
-            5 * this->resolution;
-    this->frad =
+            this->resolutionQuery * _resolution :
+            5 * _resolution;
+    float _frad =
                 this->radiusFeature <= 1.0 ?
                 this->radiusFeature * covis::detect::computeDiagonal(*objectMesh) :
-                this->radiusFeature * this->resolution;
+                this->radiusFeature * _resolution;
 
     // Preprocess
-    CloudT::Ptr objectSurf = filter::preprocess<PointT>(*objectMesh, 1, true, this->far, this->resolution,
-                                            nrad, false, false, false);
+    CloudT::Ptr objectSurf = filter::preprocess<PointT>(*objectMesh, 1, true, this->far, _resolution,
+                                                        _nrad, false, false, false);
     COVIS_ASSERT(!objectSurf->empty());
 
     // Generate feature points
-    this->objectCloud = filter::downsample<PointT>(objectSurf, resQuery);
-    COVIS_ASSERT(!this->objectCloud->empty());
+    CloudT::Ptr cloud = filter::downsample<PointT>(objectSurf, resQuery);
+    COVIS_ASSERT(!cloud->empty());
 
     // Compute features
-    this->objectFeat = feature::computeFeature<PointT>(this->feature, this->objectCloud, objectSurf, this->frad);
+    feature::MatrixT feat = feature::computeFeature<PointT>(this->feature, cloud, objectSurf, _frad);
 
     // Compute centroid
     Eigen::Vector4f centroid;
-    pcl::compute3DCentroid(*this->objectCloud, centroid);
+    pcl::compute3DCentroid(*cloud, centroid);
 
     // Find distance to closest point
     PointT point;
@@ -132,12 +133,18 @@ void Benchmark_Sixd::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
     std::vector<int> nn_indices(1);
     std::vector<float> nn_dists(1);
     pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
-    tree->setInputCloud(this->objectCloud);
+    tree->setInputCloud(cloud);
     tree->nearestKSearch(point, 1, nn_indices, nn_dists);
-    this->centroidDist = sqrt(nn_dists[0]);
+
+    this->objectCloud.push_back(cloud);
+    this->objectFeat.push_back(feat);
+    this->centroidDist.push_back(sqrt(nn_dists[0]));
+    this->nrad.push_back(_nrad);
+    this->frad.push_back(_frad);
+    this->resolutionVec.push_back(_resolution);
 }
 
-covis::core::Correspondence::VecPtr Benchmark_Sixd::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh)
+covis::core::Correspondence::VecPtr Benchmark_Sixd::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh, int idx)
 {
     // Surfaces and normals
     // const float nrad =
@@ -148,13 +155,13 @@ covis::core::Correspondence::VecPtr Benchmark_Sixd::computeCorrespondence(util::
     // Features and matching
     const float resTarget =
             this->resolutionTarget > 0.0 ?
-            this->resolutionTarget * this->resolution :
-            5 * this->resolution;
+            this->resolutionTarget * this->resolutionVec[idx] :
+            5 * this->resolutionVec[idx];
     COVIS_ASSERT(this->cutoff > 0 && this->cutoff <= 100);
 
     // Preprocess
-    CloudT::Ptr sceneSurf = filter::preprocess<PointT>(*sceneMesh, 1, true, this->far,  this->resolution,
-                                            this->nrad, false, false, false);
+    CloudT::Ptr sceneSurf = filter::preprocess<PointT>(*sceneMesh, 1, true, this->far,  this->resolutionVec[idx],
+                                            this->nrad[idx], false, false, false);
     COVIS_ASSERT(!sceneSurf->empty());
 
     // Generate feature points
@@ -162,10 +169,10 @@ covis::core::Correspondence::VecPtr Benchmark_Sixd::computeCorrespondence(util::
     COVIS_ASSERT(!this->sceneCloud->empty());
 
     // Compute features
-    feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, this->frad);
+    feature::MatrixT sceneFeat = feature::computeFeature<PointT>(this->feature, this->sceneCloud, sceneSurf, this->frad[idx]);
 
     // Match features
-    covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(this->objectFeat, sceneFeat);
+    covis::core::Correspondence::VecPtr correspondences = detect::computeRatioMatches(this->objectFeat[idx], sceneFeat);
 
     // Sort correspondences and cutoff at <cutoff> %
     covis::core::sort(*correspondences);
@@ -180,8 +187,10 @@ void Benchmark_Sixd::initialize()
     if(this->verbose)
         printf("Loading data\n");
     std::vector<covis::util::DatasetLoader::ModelPtr> objectMesh;
-    loadData( &objectMesh, &this->sceneMesh, &this->poses );
-    computeObjFeat( &objectMesh[this->objectIndex] );
+    loadData( &objectMesh, &this->sceneMesh, &this->poses, &this->objIds );
+    for (size_t i = 0; i < this->objIds.size(); i++)
+        computeObjFeat( &objectMesh[this->objIds[i] - 1] );
+
 
     // // Code below is used to make figures for the report
     // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
@@ -376,12 +385,15 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
     // Call init if it has not been called before
     boost::call_once([this]{initialize();}, this->flagInit);
 
-    // Instantiate result struct
-    Result result;
+    printf( "Benchmarking %s: \n", funcName.c_str() );
 
     // Benchmark
-    {
-        printf( "Benchmarking %s: \n", funcName.c_str() );
+    for (size_t k = 0; k < this->objIds.size(); k++ ) {
+        printf( "\nObject %d: \n", this->objIds[k] );
+
+        // Instantiate result struct
+        Result result;
+
         std::vector<double> time( this->sceneMesh.size() );
         std::vector<double> avgDistance( this->sceneMesh.size() );
         std::vector<double> medianDistance( this->sceneMesh.size() );
@@ -392,9 +404,13 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
         std::vector<Eigen::Matrix4f> poses( this->sceneMesh.size() );
 
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
-        instance->setSource( this->objectCloud );
-        instance->setSrcCentroidDist( this->centroidDist );
-        instance->setModelIndex( std::atoi(this->objectLabel.c_str()) );
+        instance->setSource( this->objectCloud[k] );
+        instance->setSrcCentroidDist( this->centroidDist[k] );
+        instance->setModelIndex( this->objIds[k] - 1 );
+        std::vector<std::string> datasets = {"tejani", "hinterstoisser", "t-less"};
+        for (auto &str : datasets)
+            if (this->rootPath.find(str) != std::string::npos)
+                instance->setDataset(str);
 
         // Start timer
         covis::core::Timer t;
@@ -403,7 +419,7 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
             t.intermediate();
             int sceneIndex = std::stoi(this->sceneLabels[this->sceneIdx[i]]);
-            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
+            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i], k );
 
             instance->setTarget( this->sceneCloud );
             instance->setCorrespondences( correspondence );
@@ -414,15 +430,17 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
 
             if (d[i]) {
                 // Calculate distance from GT
-                CloudT gtCloud = *this->objectCloud;
-                CloudT poseCloud = *this->objectCloud;
+                CloudT::Ptr gtCloud(new CloudT);
+                CloudT::Ptr poseCloud(new CloudT);
+                pcl::copyPointCloud(*this->objectCloud[k], *gtCloud);
+                pcl::copyPointCloud(*this->objectCloud[k], *poseCloud);
 
                 // Find gt pose closest to estimated pose
                 int poseIndex = 0;
                 double shortestDist = std::numeric_limits<double>::max();
-                for ( size_t j = 0; j < this->poses[sceneIndex].size(); j++ ) {
+                for ( size_t j = 0; j < this->poses[sceneIndex][k].size(); j++ ) {
                     // Find distance between translation
-                    double dist = norm( this->poses[sceneIndex][j], d[i].pose );
+                    double dist = norm( this->poses[sceneIndex][k][j], d[i].pose );
                     if (dist < shortestDist) {
                         shortestDist = dist;
                         poseIndex = j;
@@ -430,13 +448,13 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
                 }
 
                 // Transform clouds
-                covis::core::transform( poseCloud, d[i].pose );
-                covis::core::transform( gtCloud, this->poses[i][poseIndex] );
+                covis::core::transform( *poseCloud, d[i].pose );
+                covis::core::transform( *gtCloud, this->poses[i][k][poseIndex] );
 
                 // Calculate distances
                 std::vector<double> distance;
                 for ( auto corr : *correspondence )
-                    distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
+                    distance.push_back( pcl::euclideanDistance((*poseCloud)[corr.query], (*gtCloud)[corr.query]) );
 
                 medianDistance[i] = this->median( distance );
 
@@ -445,11 +463,11 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
                 avgDistance[i] = avgDistance[i] / distance.size();
 
                 // Find distance between translations
-                translationDist[i] = norm( this->poses[sceneIndex][poseIndex], d[i].pose );
+                translationDist[i] = norm( this->poses[sceneIndex][k][poseIndex], d[i].pose );
 
                 // Find angle between z-axis
                 Eigen::Vector3f poseTranslation = d[i].pose.block<3,1>(0, 2);
-                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][poseIndex].block<3,1>(0,2);
+                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][k][poseIndex].block<3,1>(0,2);
                 angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
 
                 // Check if pose is good or bad
@@ -466,7 +484,7 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
                     // std::cout << "Angle: " << angle[i] << '\n';
                     // COVIS_MSG( d[i].pose );
                     if ( this->verbose )
-                        visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
+                        visu::showDetection<PointT>( this->objectCloud[k], this->sceneCloud, d[i].pose );
                 }
             } else {
                 std::cout << "\n!Scene " << sceneIndex << " Failed!\n";
@@ -474,21 +492,22 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
         }
         result.d = d;
         result.time = time;
-        result.name = funcName;
+        result.name = funcName + "-" + this->sequence + "_" + std::to_string(this->objIds[k]);;
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
         result.translationDist = translationDist;
         result.angle = angle;
         result.failed = failed;
-        result.objectLabel = this->objectLabel;
+        result.objectIndex = this->objIds[k];
         result.sceneLabels = this->sceneLabels;
         result.poses = poses;
+
+        // Store results of the Benchmark
+        this->results.push_back( result );
     }
-    // Store results of the Benchmark
-    this->results.push_back( result );
 }
 
-
+/*
 void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
 {
     // Call init if it has not been called before
@@ -596,14 +615,14 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
         result.translationDist = translationDist;
         result.angle = angle;
         result.failed = failed;
-        result.objectLabel = this->objectLabel;
+        result.sequence = this->sequence;
         result.sceneLabels = this->sceneLabels;
         result.poses = poses;
     }
     // Store results of the Benchmark
     this->results.push_back( result );
 }
-
+*/
 
 void Benchmark_Sixd::printResults()
 {
@@ -703,8 +722,8 @@ void Benchmark_Sixd::savePoses( std::string path )
         "Run Benchmark() atleast once before calling saveResults( std::string )." );
 
     for( auto &result : this->results ) {
-        std::string objLabel = result.objectLabel;
-        std::string filePath = path + objLabel + "/";
+        std::string objLabel = std::to_string(result.objectIndex);
+        std::string filePath = path + this->sequence + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             ofstream file;
             file.open( filePath + result.sceneLabels[this->sceneIdx[i]] + "_" + objLabel + ".yml" );

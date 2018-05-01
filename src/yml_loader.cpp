@@ -29,21 +29,36 @@
 
 using namespace covis::util;
 
-void yml_loader::load_gt( std::string filePath, std::vector<std::vector<Eigen::Matrix4f> > *poses )
+void yml_loader::load_gt( std::string filePath, std::vector<int> *objIds,
+                            std::vector<std::vector<std::vector<Eigen::Matrix4f> > > *poses )
 {
     // Open file
     std::vector<YAML::Node> file = YAML::LoadAllFromFile( filePath );
     if (file[0].IsNull())
         COVIS_THROW("Cannot open file \"" << filePath << "\" for reading!");
 
-    // Loop over scenes
     YAML::Node scene = file[0];
+
+    // Find unique objects
+    for(size_t i = 0; i < scene[0].size(); i++)
+        (*objIds).push_back(scene[0][i]["obj_id"].as<int>());
+    objIds->erase( std::unique( objIds->begin(), objIds->end() ), objIds->end() );
+
+    // Resize vector
     poses->resize(scene.size());
+    for (size_t i = 0; i < scene.size(); i++)
+        (*poses)[i].resize(objIds->size());
+
+    // Loop over scenes
     for (size_t i = 0; i < scene.size(); i++) {
         for (size_t j = 0; j < scene[i].size(); j++) {
-            std::vector<double> R = scene[i][j]["cam_R_m2c"].as<std::vector<double> >();
-            std::vector<double> T = scene[i][j]["cam_t_m2c"].as<std::vector<double> >();
-            (*poses)[i].push_back( vec2eigen(R, T) );
+            for (size_t k = 0; k < objIds->size(); k++) {
+                if (scene[i][j]["obj_id"].as<int>() == (*objIds)[k]) {
+                    std::vector<double> R = scene[i][j]["cam_R_m2c"].as<std::vector<double> >();
+                    std::vector<double> T = scene[i][j]["cam_t_m2c"].as<std::vector<double> >();
+                    (*poses)[i][k].push_back( vec2eigen(R, T) );
+                }
+            }
         }
 	}
 }

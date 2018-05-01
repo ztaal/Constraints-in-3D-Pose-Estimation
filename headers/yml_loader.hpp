@@ -59,7 +59,8 @@ namespace covis {
                  * Load the ground truth poses from a yml file into a std::vector<std::vector<Eigen::Matrix4f> >
                  * @param vector vector Eigen matrix
                  */
-                void load_gt( std::string filePath, std::vector<std::vector<Eigen::Matrix4f> > *poses );
+                void load_gt( std::string filePath, std::vector<int> *objIds,
+                                std::vector<std::vector<std::vector<Eigen::Matrix4f> > > *poses );
 
                 /**
                  * Load the benchmark indices from a yml file into a std::vector<int> >

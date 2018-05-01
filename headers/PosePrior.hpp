@@ -150,10 +150,18 @@ namespace covis {
 
                 /**
                  * Set modelIndex
-                 * @param index [1, 2, 3, 4, 5, 6]
+                 * @param index
                  */
                 inline void setModelIndex( int _modelIndex ) {
                     modelIndex = _modelIndex;
+                }
+
+                /**
+                 * Set dataset
+                 * @param name ["tejani", "hinterstoisser", "tless"]
+                 */
+                inline void setDataset( std::string _dataset ) {
+                    dataset = _dataset;
                 }
 
                 /**
@@ -220,6 +228,9 @@ namespace covis {
 
                 /// Model index used for correcting axis
                 int modelIndex;
+
+                /// Dataset name
+                std::string dataset;
 
                 /**
                 * Compute the ortogonal basis from the plane normal

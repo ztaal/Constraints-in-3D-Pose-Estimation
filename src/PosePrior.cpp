@@ -88,20 +88,20 @@ covis::core::Detection posePrior::estimate()
     Eigen::Vector3f v = Eigen::Vector3f::UnitX();
     if (this->dataset == "tejani") {
         double theta = 0;
-        if (modelIndex == 1 || modelIndex == 3) {
+        if (this->modelIndex == 1 || this->modelIndex == 3)
             theta = -3;
-        } else if (modelIndex == 5) {
+        else if (this->modelIndex == 5)
             theta = -10;
-        }
         if (theta != 0)
             correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
     } else if (this->dataset == "t-less") {
         double theta = 0;
-        if (modelIndex == 25) {
-            theta = 90;
-        } else if (modelIndex == 29) {
-            theta = 86;
-        }
+        // if (this->sequence == 1) {
+            if (this->modelIndex == 25)
+                theta = 90;
+            else if (this->modelIndex == 29)
+                theta = 86;
+        // }
         if (theta != 0)
             correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
     }
@@ -283,26 +283,28 @@ covis::core::Detection posePrior::estimate()
         // Constraint2: Reject pose if it is below the plane
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
         // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani // TODO add variable
-        if ( pose_dist < (maxDist/2) * 0.8 ) // TODO add variable // 0.8 BEST
+        // if ( pose_dist < (maxDist/2) * 0.8 ) // Hinterstoisser TODO add variable // 0.8 BEST
+        if ( pose_dist < (maxDist/2) * 0.9 ) // T-less // 0.8 BEST
             continue;
 
         // Constraint3: Reject pose if it is above the plane
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
-        if ( pose_dist > (maxDist/2) * 1.2 ) // TODO add variable // 1.2 BEST
+        // if ( pose_dist > (maxDist/2) * 1.2 ) // Hinterstoisser // 1.2 BEST
+        if ( pose_dist > (maxDist/2) * 1.1 ) // T-less // 1.2 BEST
             continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        if (angle > 0.5) // TODO add variable // 0.5 BEST
+        // if (angle > 0.5) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
-            continue;
+            // continue;
 
         // Constraint4.5: Find angel between plane normal and source normal and reject pose if it is too large
         double planeAngle = atan2( (plane_normal.head<3>().cross(target_normal)).norm(), plane_normal.head<3>().dot(target_normal) );
-        if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
+        // if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
-            continue;
+            // continue;
 
        // Find closest point
         PointT point;
@@ -401,51 +403,51 @@ covis::core::Detection posePrior::estimate()
         // if (colorDist > avgColorDist/colorCount * 0.8)
         //     continue;
 
-        // Constraint6: Color
-        int numberOfPoints = 5; // Hintertoisser // Best 20
-        std::vector<double> tgtRGB = {0, 0, 0};
-        std::vector<double> srcRGB = {0, 0, 0};
-        // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
-        std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
-        std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
-        tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
-        srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
-        for (int i = 0; i < numberOfPoints; i++) {
-            PointT tgtColorPoint = this->target->points[tgtIndices[i]];
-            PointT srcColorPoint = this->source->points[srcIndices[i]];
-            //double tgtH = 0, tgtS = 0, tgtV = 0;
-            //double srcH = 0, srcS = 0, srcV = 0;
-            //rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
-            //rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
-            //tgtRGB[0] += int(tgtH);
-            //tgtRGB[1] += int(tgtS);
-            //tgtRGB[2] += int(tgtV);
-            //srcRGB[0] += int(srcH);
-            //srcRGB[1] += int(srcS);
-            //srcRGB[2] += int(srcV);
-            tgtRGB[0] += int(tgtColorPoint.r);
-            tgtRGB[1] += int(tgtColorPoint.g);
-            tgtRGB[2] += int(tgtColorPoint.b);
-            srcRGB[0] += int(srcColorPoint.r);
-            srcRGB[1] += int(srcColorPoint.g);
-            srcRGB[2] += int(srcColorPoint.b);
-        }
-        tgtRGB[0] /= numberOfPoints;
-        tgtRGB[1] /= numberOfPoints;
-        tgtRGB[2] /= numberOfPoints;
-        srcRGB[0] /= numberOfPoints;
-        srcRGB[1] /= numberOfPoints;
-        srcRGB[2] /= numberOfPoints;
-        //double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
-        //double dS = fabs(srcRGB[1] - tgtRGB[1]);
-        //double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
-        //double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
-        double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
-        avgColorDist += colorDist;
-        colorCount++;
-        // std::cout << "colorDist: " << colorDist << "\tthreshold: " << avgColorDist/colorCount * 0.8 << '\n';
-        if (colorDist > avgColorDist/colorCount * 0.8)
-            continue;
+        // // Constraint6: Color
+        // int numberOfPoints = 5; // Hintertoisser // Best 20
+        // std::vector<double> tgtRGB = {0, 0, 0};
+        // std::vector<double> srcRGB = {0, 0, 0};
+        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
+        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
+        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
+        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
+        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
+        // for (int i = 0; i < numberOfPoints; i++) {
+        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
+        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
+        //     //double tgtH = 0, tgtS = 0, tgtV = 0;
+        //     //double srcH = 0, srcS = 0, srcV = 0;
+        //     //rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
+        //     //rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
+        //     //tgtRGB[0] += int(tgtH);
+        //     //tgtRGB[1] += int(tgtS);
+        //     //tgtRGB[2] += int(tgtV);
+        //     //srcRGB[0] += int(srcH);
+        //     //srcRGB[1] += int(srcS);
+        //     //srcRGB[2] += int(srcV);
+        //     tgtRGB[0] += int(tgtColorPoint.r);
+        //     tgtRGB[1] += int(tgtColorPoint.g);
+        //     tgtRGB[2] += int(tgtColorPoint.b);
+        //     srcRGB[0] += int(srcColorPoint.r);
+        //     srcRGB[1] += int(srcColorPoint.g);
+        //     srcRGB[2] += int(srcColorPoint.b);
+        // }
+        // tgtRGB[0] /= numberOfPoints;
+        // tgtRGB[1] /= numberOfPoints;
+        // tgtRGB[2] /= numberOfPoints;
+        // srcRGB[0] /= numberOfPoints;
+        // srcRGB[1] /= numberOfPoints;
+        // srcRGB[2] /= numberOfPoints;
+        // //double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
+        // //double dS = fabs(srcRGB[1] - tgtRGB[1]);
+        // //double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
+        // //double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
+        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
+        // avgColorDist += colorDist;
+        // colorCount++;
+        // // std::cout << "colorDist: " << colorDist << "\tthreshold: " << avgColorDist/colorCount * 0.8 << '\n';
+        // if (colorDist > avgColorDist/colorCount * 0.8)
+        //     continue;
 
         // Find consensus set
         fe->update( this->source, pose, this->corr ); // Using full models

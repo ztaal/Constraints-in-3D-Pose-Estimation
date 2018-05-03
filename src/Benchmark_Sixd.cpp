@@ -406,7 +406,7 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
         instance->setSource( this->objectCloud[k] );
         instance->setSrcCentroidDist( this->centroidDist[k] );
-        instance->setModelIndex( this->objIds[k] - 1 );
+        instance->setModelIndex( this->objIds[k] );
         std::vector<std::string> datasets = {"tejani", "hinterstoisser", "t-less"};
         for (auto &str : datasets)
             if (this->rootPath.find(str) != std::string::npos)
@@ -723,6 +723,8 @@ void Benchmark_Sixd::savePoses( std::string path )
 
     for( auto &result : this->results ) {
         std::string objLabel = std::to_string(result.objectIndex);
+        if (result.objectIndex < 10)
+            objLabel = std::string(1, '0').append(objLabel);
         std::string filePath = path + this->sequence + "/";
         for ( unsigned int i = 0; i < this->sceneMesh.size(); i++ ) {
             ofstream file;

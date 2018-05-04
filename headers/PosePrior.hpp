@@ -165,6 +165,14 @@ namespace covis {
                 }
 
                 /**
+                 * Set sequence
+                 * @param sequence index
+                 */
+                inline void setSequence( int _sequence ) {
+                    sequence = _sequence;
+                }
+
+                /**
                  * Set verbose flag for printing
                  * @param verbose flag
                  */
@@ -231,6 +239,9 @@ namespace covis {
 
                 /// Dataset name
                 std::string dataset;
+
+                /// Seqquence name
+                int sequence;
 
                 /**
                 * Compute the ortogonal basis from the plane normal

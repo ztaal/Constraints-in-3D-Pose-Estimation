@@ -387,6 +387,8 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
 
     printf( "Benchmarking %s: \n", funcName.c_str() );
 
+    instance->setSequence( std::stoi(this->sequence) );
+
     // Benchmark
     for (size_t k = 0; k < this->objIds.size(); k++ ) {
         printf( "\nObject %d: \n", this->objIds[k] );

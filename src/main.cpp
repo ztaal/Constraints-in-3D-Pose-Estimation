@@ -1,4 +1,5 @@
  /**  Todo list:
+  * TODO Try different ICP on hinterstoisser
   * TODO Test on T-less
   * TODO Add centroid distance threshold to RANSAC
   * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points

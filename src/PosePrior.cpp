@@ -85,26 +85,91 @@ covis::core::Detection posePrior::estimate()
 
     // Correction of pose due to the models not being proberbly aligned with the axis TODO remove when correct models are used
     Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
-    Eigen::Vector3f v = Eigen::Vector3f::UnitX();
+    Eigen::Vector3f unitX = Eigen::Vector3f::UnitX();
+    Eigen::Vector3f unitY = Eigen::Vector3f::UnitY();
+    Eigen::Vector3f unitZ = Eigen::Vector3f::UnitZ();
+    double thetaX = 0, thetaY = 0, thetaZ = 0;
     if (this->dataset == "tejani") {
-        double theta = 0;
         if (this->modelIndex == 1 || this->modelIndex == 3)
-            theta = -3;
+            thetaX = -3;
         else if (this->modelIndex == 5)
-            theta = -10;
-        if (theta != 0)
-            correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+            thetaX = -10;
+
     } else if (this->dataset == "t-less") {
-        double theta = 0;
-        // if (this->sequence == 1) {
+        if (this->sequence == 1) {
             if (this->modelIndex == 25)
-                theta = 90;
+                thetaX = 90;
             else if (this->modelIndex == 29)
-                theta = 86;
-        // }
-        if (theta != 0)
-            correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
+                thetaX = 86;
+        } else if (this->sequence == 3) {
+            if (this->modelIndex == 5 || this->modelIndex == 8 || this->modelIndex == 11 || this->modelIndex == 12 )
+                thetaX = 90;
+            else if (this->modelIndex == 18)
+                thetaX = 180;
+        } else if (this->sequence == 4) {
+            if (this->modelIndex == 8)
+                thetaX = 180;
+        } else if (this->sequence == 5) {
+            if (this->modelIndex == 4)
+                thetaX = -75;
+            else if (this->modelIndex == 9)
+                thetaX = -68;
+        } else if (this->sequence == 6) {
+            if (this->modelIndex == 6)
+                thetaX = 90;
+            else if (this->modelIndex == 7 || this->modelIndex == 11)
+                thetaX = 180;
+        } else if (this->sequence == 7) {
+            if (this->modelIndex == 18) {
+                thetaZ = 30;
+                thetaX = 14;
+            }
+        } else if (this->sequence == 8) {
+            if (this->modelIndex == 22)
+                thetaY = -90;
+            else if (this->modelIndex == 23)
+                thetaX = 90;
+        } else if (this->sequence == 10) {
+            if (this->modelIndex == 20)
+                thetaY = 90;
+            else if (this->modelIndex == 21)
+                thetaY = -90;
+            else if (this->modelIndex == 24)
+                thetaY = 90;
+        } else if (this->sequence == 13) {
+            if (this->modelIndex == 19)
+                thetaY = 90;
+            else if (this->modelIndex == 20)
+                thetaX = 90;
+        } else if (this->sequence == 14) {
+            if (this->modelIndex == 19 || this->modelIndex == 20 )
+                thetaY = 90;
+        } else if (this->sequence == 15) {
+            if (this->modelIndex == 26)
+                thetaX = 90;
+        } else if (this->sequence == 16) {
+            if (this->modelIndex == 13)
+                thetaX = 86;
+            else if (this->modelIndex == 14)
+                thetaX = 85;
+            else if (this->modelIndex == 14)
+                thetaX = 85;
+        } else if (this->sequence == 19) {
+            if (this->modelIndex == 13 || this->modelIndex == 15 || this->modelIndex == 16 ||
+                this->modelIndex == 17 || this->modelIndex == 18)
+                thetaX = 180;
+            else if (this->modelIndex == 14)
+                thetaX = 85;
+        } else if (this->sequence == 20) {
+                thetaX = 85;
+        }
     }
+    if (thetaZ != 0)
+        correctionT = Eigen::AngleAxisf(thetaZ * M_PI / 180, unitZ) * correctionT;
+    if (thetaY != 0)
+        correctionT = Eigen::AngleAxisf(thetaY * M_PI / 180, unitY) * correctionT;
+    if (thetaX != 0)
+        correctionT = Eigen::AngleAxisf(thetaX * M_PI / 180, unitX) * correctionT;
 
     // Instantiate kd tree
     pcl::KdTree<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>);
@@ -158,13 +223,15 @@ covis::core::Detection posePrior::estimate()
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
             double dist = pcl::pointToPlaneDistance(corrPoint, normal);
             // if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
-            if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
+            // if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
+            if (dist > 20 && dist < 300) // T-less TODO Add threshold variables
                 pointsOnPlane++;
         }
         // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
         // std::cout << "Threshold: " << this->corr->size() * 0.18 << '\n';
         // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
-        if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
+        // if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
+        if (pointsOnPlane > this->corr->size() * 0.15) { // T-less TODO Add threshold variable
             // pcl::ExtractIndices<PointT> extract;
             // extract.setInputCloud(feCloud);
             // extract.setIndices(inliers);
@@ -182,7 +249,10 @@ covis::core::Detection posePrior::estimate()
 
         // Check if no plane was found
         if (tmp->size() < this->target->size() * 0.3)  // TODO add variable
+        {
+            std::cout << "Fisk" << '\n';
             return result;
+        }
     }
 
     // // Instantiate fit evaluator
@@ -290,8 +360,8 @@ covis::core::Detection posePrior::estimate()
         // Constraint3: Reject pose if it is above the plane
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Hinterstoisser // 1.2 BEST
-        if ( pose_dist > (maxDist/2) * 1.1 ) // T-less // 1.2 BEST
-            continue;
+        // if ( pose_dist > (maxDist/2) * 1.1 ) // T-less // 1.2 BEST
+            // continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
@@ -316,8 +386,8 @@ covis::core::Detection posePrior::estimate()
         tree->nearestKSearch(point, 1, nn_indices, nn_dists);
         double tgtCentroidDist = sqrt(nn_dists[0]);
         // Constraint5: If closest point is too far away reject pose
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;

@@ -224,7 +224,7 @@ covis::core::Detection posePrior::estimate()
             double dist = pcl::pointToPlaneDistance(corrPoint, normal);
             // if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
             // if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
-            if (dist > 20 && dist < 300) // T-less TODO Add threshold variables
+            if (dist > 15 && dist < 300) // T-less TODO Add threshold variables
                 pointsOnPlane++;
         }
         // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
@@ -232,11 +232,6 @@ covis::core::Detection posePrior::estimate()
         // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
         // if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
         if (pointsOnPlane > this->corr->size() * 0.15) { // T-less TODO Add threshold variable
-            // pcl::ExtractIndices<PointT> extract;
-            // extract.setInputCloud(feCloud);
-            // extract.setIndices(inliers);
-            // extract.setNegative(true);
-            // extract.filter(*feCloud);
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -249,23 +244,8 @@ covis::core::Detection posePrior::estimate()
 
         // Check if no plane was found
         if (tmp->size() < this->target->size() * 0.3)  // TODO add variable
-        {
-            std::cout << "Fisk" << '\n';
             return result;
-        }
     }
-
-    // // Instantiate fit evaluator
-    // detect::FitEvaluation<PointT>::Ptr fe( new detect::FitEvaluation<PointT>(feCloud) );
-    // fe->setOcclusionReasoning( !this->occlusionReasoning );
-    // fe->setViewAxis( this->viewAxis );
-    // if( this->occlusionReasoning )
-    //     fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS);
-    // else
-    //     fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
-    //
-    // fe->setInlierThreshold( this->inlierThreshold );
-    // fe->setTarget( feCloud );
 
     // Create ortogonal basis
     Eigen::Matrix3f target_frame = ortogonal_basis(coefficients);
@@ -354,7 +334,7 @@ covis::core::Detection posePrior::estimate()
         double pose_dist = plane_normal.dot( pose.block<4,1>(0, 3) );
         // if ( pose_dist < (maxDist/2) * 0.8 ) // Tejani // TODO add variable
         // if ( pose_dist < (maxDist/2) * 0.8 ) // Hinterstoisser TODO add variable // 0.8 BEST
-        if ( pose_dist < (maxDist/2) * 0.9 ) // T-less // 0.8 BEST
+        if ( pose_dist < (maxDist/2) * 0.8 ) // T-less // 0.8 BEST
             continue;
 
         // Constraint3: Reject pose if it is above the plane
@@ -387,63 +367,16 @@ covis::core::Detection posePrior::estimate()
         double tgtCentroidDist = sqrt(nn_dists[0]);
         // Constraint5: If closest point is too far away reject pose
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
+        // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Hinterstoisser // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.8 ) // Hinterstoisser // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
 
         // // Constraint6: Color
-        // int numberOfPoints = 10;
-        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
-        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
-        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
-        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
-        // double tgt_m000 = 0, tgt_m001 = 0, tgt_m010 = 0, tgt_m100 = 0;
-        // double src_m000 = 0, src_m001 = 0, src_m010 = 0, src_m100 = 0;
-        // for (int i = 0; i < numberOfPoints; i++) {
-        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
-        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
-        //     double tgtY = 0.2126 * int(tgtColorPoint.r) + 0.7156 * int(tgtColorPoint.g) + 0.0722 * int(tgtColorPoint.b);
-        //     double srcY = 0.2126 * int(srcColorPoint.r) + 0.7156 * int(srcColorPoint.g) + 0.0722 * int(srcColorPoint.b);
-        //     tgt_m000 += tgtY;
-        //     tgt_m100 += tgtColorPoint.x * tgtY;
-        //     tgt_m010 += tgtColorPoint.y * tgtY;
-        //     tgt_m001 += tgtColorPoint.z * tgtY;
-        //     src_m000 += srcY;
-        //     src_m100 += srcColorPoint.x * srcY;
-        //     src_m010 += srcColorPoint.y * srcY;
-        //     src_m001 += srcColorPoint.z * srcY;
-        // }
-        // PointT tgtIntensity;
-        // PointT srcIntensity;
-        // tgtIntensity.x = tgt_m100 / tgt_m000;
-        // tgtIntensity.y = tgt_m010 / tgt_m000;
-        // tgtIntensity.z = tgt_m001 / tgt_m000;
-        // srcIntensity.x = src_m100 / src_m000;
-        // srcIntensity.y = src_m010 / src_m000;
-        // srcIntensity.z = src_m001 / src_m000;
-        // Eigen::Vector3f tgtVector(tgtIntensity.x - tgtPoint.x, tgtIntensity.y - tgtPoint.y, tgtIntensity.z - tgtPoint.z);
-        // Eigen::Vector3f srcVector(srcIntensity.x - srcPoint.x, srcIntensity.y - srcPoint.y, srcIntensity.z - srcPoint.z);
-        // bool ignore = false;
-        // if (tgtVector.norm() < 0.01 || srcVector.norm() < 0.01 )
-        //     ignore = true;
-        // std::cout << "tgtVector.norm(): " << tgtVector.norm() << "\t\tsrcVector.norm(): " << srcVector.norm() << '\n';
-        // tgtVector.normalize();
-        // srcVector.normalize();
-        // double tgtAngle = atan2( (target_normal.cross(tgtVector)).norm(), target_normal.dot(tgtVector) );
-        // double srcAngle = atan2( (source_normal.head<3>().cross(srcVector)).norm(), source_normal.head<3>().dot(srcVector) );
-        // double angleDiff = fabs(tgtAngle - srcAngle) / ((tgtAngle + srcAngle) / 2);
-        // if (angleDiff > 0.01 && !ignore)
-        // if (angleDiff > 0.1)
-        //     continue;
-        // std::cout << "angleDiff: " << angleDiff << " \ttgtAngle: " << tgtAngle << " \tsrcAngle: " << srcAngle << '\n';
-        // if (colorAngle > 0.1)
-
-        // // Constraint6: Color
         // int numberOfPoints = 5; // Hintertoisser // Best 20
         // std::vector<double> tgtRGB = {0, 0, 0};
         // std::vector<double> srcRGB = {0, 0, 0};
-        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
         // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
         // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
         // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
@@ -464,54 +397,6 @@ covis::core::Detection posePrior::estimate()
         // srcRGB[0] /= numberOfPoints;
         // srcRGB[1] /= numberOfPoints;
         // srcRGB[2] /= numberOfPoints;
-        // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
-        // avgColorDist += colorDist;
-        // colorCount++;
-        // // std::cout << "colorDist: " << colorDist << "\tthreshold: " << 70 << '\n';
-        // // if (colorDist > 150)
-        // // if (colorDist > 70)
-        // if (colorDist > avgColorDist/colorCount * 0.8)
-        //     continue;
-
-        // // Constraint6: Color
-        // int numberOfPoints = 5; // Hintertoisser // Best 20
-        // std::vector<double> tgtRGB = {0, 0, 0};
-        // std::vector<double> srcRGB = {0, 0, 0};
-        // // std::vector<int> srcRGB = {int(srcPoint.r), int(srcPoint.g), int(srcPoint.b)};
-        // std::vector<int> tgtIndices(numberOfPoints), srcIndices(numberOfPoints);
-        // std::vector<float> tgtDists(numberOfPoints), srcDists(numberOfPoints);
-        // tree->nearestKSearch(tgtPoint, numberOfPoints, tgtIndices, tgtDists);
-        // srcTree->nearestKSearch(srcPoint, numberOfPoints, srcIndices, srcDists);
-        // for (int i = 0; i < numberOfPoints; i++) {
-        //     PointT tgtColorPoint = this->target->points[tgtIndices[i]];
-        //     PointT srcColorPoint = this->source->points[srcIndices[i]];
-        //     //double tgtH = 0, tgtS = 0, tgtV = 0;
-        //     //double srcH = 0, srcS = 0, srcV = 0;
-        //     //rgb2hsv(tgtColorPoint.r, tgtColorPoint.g, tgtColorPoint.b, &tgtH, &tgtS, &tgtV);
-        //     //rgb2hsv(srcColorPoint.r, srcColorPoint.g, srcColorPoint.b, &srcH, &srcS, &srcV);
-        //     //tgtRGB[0] += int(tgtH);
-        //     //tgtRGB[1] += int(tgtS);
-        //     //tgtRGB[2] += int(tgtV);
-        //     //srcRGB[0] += int(srcH);
-        //     //srcRGB[1] += int(srcS);
-        //     //srcRGB[2] += int(srcV);
-        //     tgtRGB[0] += int(tgtColorPoint.r);
-        //     tgtRGB[1] += int(tgtColorPoint.g);
-        //     tgtRGB[2] += int(tgtColorPoint.b);
-        //     srcRGB[0] += int(srcColorPoint.r);
-        //     srcRGB[1] += int(srcColorPoint.g);
-        //     srcRGB[2] += int(srcColorPoint.b);
-        // }
-        // tgtRGB[0] /= numberOfPoints;
-        // tgtRGB[1] /= numberOfPoints;
-        // tgtRGB[2] /= numberOfPoints;
-        // srcRGB[0] /= numberOfPoints;
-        // srcRGB[1] /= numberOfPoints;
-        // srcRGB[2] /= numberOfPoints;
-        // //double dH = std::min(fabs(srcRGB[0] - tgtRGB[0]), 360 - fabs(srcRGB[0] - tgtRGB[0]) /  180);
-        // //double dS = fabs(srcRGB[1] - tgtRGB[1]);
-        // //double dV = fabs(srcRGB[2] - tgtRGB[2]) / 255;
-        // //double colorDist = sqrt(dH * dH + dS * dS + dV * dV);
         // double colorDist = sqrt(pow(srcRGB[0] - tgtRGB[0], 2) + pow(srcRGB[1] - tgtRGB[1], 2) + pow(srcRGB[2] - tgtRGB[2], 2));
         // avgColorDist += colorDist;
         // colorCount++;
@@ -550,24 +435,24 @@ covis::core::Detection posePrior::estimate()
         }
     }
 
-    // Iterative Closest Point (refine pose)
-    if (result) {
-        pcl::IterativeClosestPoint<PointT, PointT> icp;
-        // pcl::IterativeClosestPointWithNormals<PointT, PointT> icp;
-        icp.setMaximumIterations( this->icpIterations );
-        icp.setInputSource( this->source );
-        icp.setInputTarget( this->target );
-        // icp.setMaxCorrespondenceDistance( 8 );
-        icp.setMaxCorrespondenceDistance( this->inlierThreshold );
-        CloudT tmp;
-        icp.align( tmp, result.pose );
-        if(icp.hasConverged()) {
-            result.pose = icp.getFinalTransformation();
-            result.rmse = icp.getFitnessScore();
-        } else {
-            result.clear();
-        }
-    }
+    // // Iterative Closest Point (refine pose)
+    // if (result) {
+    //     pcl::IterativeClosestPoint<PointT, PointT> icp;
+    //     // pcl::IterativeClosestPointWithNormals<PointT, PointT> icp;
+    //     icp.setMaximumIterations( this->icpIterations );
+    //     icp.setInputSource( this->source );
+    //     icp.setInputTarget( this->target );
+    //     // icp.setMaxCorrespondenceDistance( 8 );
+    //     icp.setMaxCorrespondenceDistance( this->inlierThreshold );
+    //     CloudT tmp;
+    //     icp.align( tmp, result.pose );
+    //     if(icp.hasConverged()) {
+    //         result.pose = icp.getFinalTransformation();
+    //         result.rmse = icp.getFitnessScore();
+    //     } else {
+    //         result.clear();
+    //     }
+    // }
 
     // Visualize translations
     bool show = false;

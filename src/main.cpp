@@ -78,7 +78,8 @@ int main( int argc, const char** argv )
     // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Tejani
     // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
     // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
-    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.3 BEST
+    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.3 BEST
+    po.addOption("radius-feature", 'f', 0.4, "feature estimation radius (<= 0 means 25 resolution units)"); // T-Less // 0.3 BEST
     // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
     po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
     po.addOption("object-scale", 1, "scale of object (1 is default)");

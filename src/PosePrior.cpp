@@ -256,7 +256,7 @@ covis::core::Detection posePrior::estimate()
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         // if (tgt_dist < 0)
-        if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
+        if (tgt_dist < 0 || tgt_dist > maxDist * 1.1)
             it = this->corr->erase(it);
         else
             ++it;
@@ -368,7 +368,7 @@ covis::core::Detection posePrior::estimate()
         // Constraint5: If closest point is too far away reject pose
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Hinterstoisser // TODO add variable // 0.5 BEST
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.8 ) // Hinterstoisser // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // T-Less // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
         // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
@@ -435,24 +435,24 @@ covis::core::Detection posePrior::estimate()
         }
     }
 
-    // // Iterative Closest Point (refine pose)
-    // if (result) {
-    //     pcl::IterativeClosestPoint<PointT, PointT> icp;
-    //     // pcl::IterativeClosestPointWithNormals<PointT, PointT> icp;
-    //     icp.setMaximumIterations( this->icpIterations );
-    //     icp.setInputSource( this->source );
-    //     icp.setInputTarget( this->target );
-    //     // icp.setMaxCorrespondenceDistance( 8 );
-    //     icp.setMaxCorrespondenceDistance( this->inlierThreshold );
-    //     CloudT tmp;
-    //     icp.align( tmp, result.pose );
-    //     if(icp.hasConverged()) {
-    //         result.pose = icp.getFinalTransformation();
-    //         result.rmse = icp.getFitnessScore();
-    //     } else {
-    //         result.clear();
-    //     }
-    // }
+    // Iterative Closest Point (refine pose)
+    if (result) {
+        pcl::IterativeClosestPoint<PointT, PointT> icp;
+        // pcl::IterativeClosestPointWithNormals<PointT, PointT> icp;
+        icp.setMaximumIterations( this->icpIterations );
+        icp.setInputSource( this->source );
+        icp.setInputTarget( this->target );
+        // icp.setMaxCorrespondenceDistance( 8 );
+        icp.setMaxCorrespondenceDistance( this->inlierThreshold );
+        CloudT tmp;
+        icp.align( tmp, result.pose );
+        if(icp.hasConverged()) {
+            result.pose = icp.getFinalTransformation();
+            result.rmse = icp.getFitnessScore();
+        } else {
+            result.clear();
+        }
+    }
 
     // Visualize translations
     bool show = false;

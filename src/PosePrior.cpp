@@ -255,8 +255,8 @@ covis::core::Detection posePrior::estimate()
         int target_corr = (*it).match[0];
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        // if (tgt_dist < 0)
-        if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
+        if (tgt_dist < 0)
+        // if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
             it = this->corr->erase(it);
         else
             ++it;
@@ -340,8 +340,8 @@ covis::core::Detection posePrior::estimate()
         // Constraint3: Reject pose if it is above the plane
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Hinterstoisser // 1.2 BEST
-        if ( pose_dist > (maxDist/2) * 1.2 ) // T-less // 1.2 BEST
-            continue;
+        // if ( pose_dist > (maxDist/2) * 1.2 ) // T-less // 1.2 BEST
+            // continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal

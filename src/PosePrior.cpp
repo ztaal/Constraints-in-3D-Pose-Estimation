@@ -222,16 +222,16 @@ covis::core::Detection posePrior::estimate()
             PointT corrPoint = this->target->points[(*this->corr)[i].match[0]];
             Eigen::Vector4f point(corrPoint.x, corrPoint.y, corrPoint.z, 1);
             double dist = pcl::pointToPlaneDistance(corrPoint, normal);
-            // if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
+            if (dist > 5 && dist < 200) // Tejani TODO Add threshold variables
             // if (dist > 50 && dist < 250) // Hintertoisser TODO Add threshold variables
-            if (dist > 15 && dist < 300) // T-less TODO Add threshold variables
+            // if (dist > 15 && dist < 300) // T-less TODO Add threshold variables
                 pointsOnPlane++;
         }
         // std::cout << "\npointsOnPlane: " << pointsOnPlane << '\n';
         // std::cout << "Threshold: " << this->corr->size() * 0.18 << '\n';
-        // if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
+        if (pointsOnPlane > this->corr->size() * 0.25) { // Tejani TODO Add threshold variable
         // if (pointsOnPlane > this->corr->size() * 0.15) { // Hintertoisser TODO Add threshold variable
-        if (pointsOnPlane > this->corr->size() * 0.15) { // T-less TODO Add threshold variable
+        // if (pointsOnPlane > this->corr->size() * 0.15) { // T-less TODO Add threshold variable
             plane_normal = normal;
             break;
         } else { // Remove plane
@@ -255,8 +255,8 @@ covis::core::Detection posePrior::estimate()
         int target_corr = (*it).match[0];
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        if (tgt_dist < 0)
-        // if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
+        // if (tgt_dist < 0)
+        if (tgt_dist < 0 || tgt_dist > maxDist * 1.2)
             it = this->corr->erase(it);
         else
             ++it;
@@ -271,22 +271,13 @@ covis::core::Detection posePrior::estimate()
         int target_corr = (*this->corr)[i].match[0];
         pose = correctionT * Eigen::Matrix4f::Identity();
 
-        // // Constraint0: ignore point if it is below the plane
-        // PointT srcPoint = this->source->points[source_corr];
-        // PointT tgtPoint = this->target->points[target_corr];
-        // double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        // // if (tgt_dist < 0)
-        // // if (tgt_dist < tgt_dist * -0.1) // -0.1
-        // // 	continue;
-
-        // Constraint1: ignore point if it is below the plane
+        // // Constraint1: ignore point if it is below the plane
         PointT srcPoint = this->source->points[source_corr];
         PointT tgtPoint = this->target->points[target_corr];
-        // double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
-        // if (tgt_dist < this->inlierThreshold)
-        // if (tgt_dist < 10)
-        // if (tgt_dist < tgt_dist * -0.1) // -0.1
-        	// continue;
+        double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
+        // // if (tgt_dist < 0)
+        if (tgt_dist < tgt_dist * -0.1) // -0.1
+        	continue;
 
         // Rotate source to fit target plane
         Eigen::Affine3f transformation = Eigen::Affine3f::Identity();
@@ -340,8 +331,8 @@ covis::core::Detection posePrior::estimate()
         // Constraint3: Reject pose if it is above the plane
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Tejani // TODO add variable
         // if ( pose_dist > (maxDist/2) * 1.2 ) // Hinterstoisser // 1.2 BEST
-        // if ( pose_dist > (maxDist/2) * 1.2 ) // T-less // 1.2 BEST
-            // continue;
+        if ( pose_dist > (maxDist/2) * 1.2 ) // T-less // 1.2 BEST
+            continue;
 
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
@@ -368,9 +359,9 @@ covis::core::Detection posePrior::estimate()
         // Constraint5: If closest point is too far away reject pose
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Hinterstoisser // TODO add variable // 0.5 BEST
-        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // T-Less // TODO add variable // 0.5 BEST
+        // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // T-Less // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
-        // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
+        if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
 
         // // Constraint6: Color

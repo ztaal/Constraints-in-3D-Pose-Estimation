@@ -276,8 +276,8 @@ covis::core::Detection posePrior::estimate()
         PointT tgtPoint = this->target->points[target_corr];
         double tgt_dist = pcl::pointToPlaneDistanceSigned( tgtPoint, plane_normal );
         // // if (tgt_dist < 0)
-        if (tgt_dist < tgt_dist * -0.1) // -0.1
-        	continue;
+        // if (tgt_dist < tgt_dist * -0.1) // -0.1
+        // 	continue;
 
         // Rotate source to fit target plane
         Eigen::Affine3f transformation = Eigen::Affine3f::Identity();
@@ -337,9 +337,9 @@ covis::core::Detection posePrior::estimate()
         // Constraint4: Find angel between normals and reject pose if it is too large
         source_normal = projected_transformation.matrix().inverse().transpose() * source_normal; // Transform normal
         double angle = atan2( (source_normal.head<3>().cross(target_normal)).norm(), source_normal.head<3>().dot(target_normal) );
-        // if (angle > 0.5) // TODO add variable // 0.5 BEST
+        if (angle > 0.5) // TODO add variable // 0.5 BEST
         // if (angle > 0.05) // 0.2  // TODO add variable
-            // continue;
+            continue;
 
         // Constraint4.5: Find angel between plane normal and source normal and reject pose if it is too large
         double planeAngle = atan2( (plane_normal.head<3>().cross(target_normal)).norm(), plane_normal.head<3>().dot(target_normal) );

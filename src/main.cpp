@@ -27,12 +27,6 @@
 // Get errors:
 // cat errors_05.yml | grep -E "0: 0.[3-9][0-9]*|0: 1." | sed -r 's/.{10}//' | sed 's/,.*//'
 
-// Hintertoisser Error 05
-//    9,   13,   36,   69,  161,  179,  219,  304,  318,  335,  450,  458,  471,  504,  552,
-//  628,  664,  665,  679,  827,  840,  951,  998, 1016, 1050, 1051, 1180, 1182
-
-// Errors: 38
-
 // Covis
 #include <covis/covis.h>
 using namespace covis;
@@ -91,8 +85,8 @@ int main( int argc, const char** argv )
     // po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
     po.addOption("inlier-threshold", 't', 8, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser // 8 BEST
     // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
-    po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
-    // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
+    // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
+    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");

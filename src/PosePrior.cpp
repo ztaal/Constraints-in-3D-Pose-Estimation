@@ -343,9 +343,9 @@ covis::core::Detection posePrior::estimate()
 
         // Constraint4.5: Find angel between plane normal and source normal and reject pose if it is too large
         double planeAngle = atan2( (plane_normal.head<3>().cross(target_normal)).norm(), plane_normal.head<3>().dot(target_normal) );
-        // if (planeAngle < 0.3) // TODO add variable // 0.5 BEST
+        if (planeAngle < 0.3) // TODO add variable // 0.5 BEST (not used in tejani)
         // if (angle > 0.05) // 0.2  // TODO add variable
-            // continue;
+            continue;
 
        // Find closest point
         PointT point;
@@ -359,9 +359,9 @@ covis::core::Detection posePrior::estimate()
         // Constraint5: If closest point is too far away reject pose
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Hinterstoisser // TODO add variable // 0.5 BEST
-        // if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // T-Less // TODO add variable // 0.5 BEST
+        if ( tgtCentroidDist < this->srcCentroidDist * 0.5 ) // T-Less // TODO add variable // 0.5 BEST
         // if ( tgtCentroidDist > this->srcCentroidDist * 3 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // TODO add variable
-        if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
+        // if ( tgtCentroidDist > this->srcCentroidDist * 2 || tgtCentroidDist < this->srcCentroidDist * 0.5 ) // Tejani TODO add variable
             continue;
 
         // Constraint6: Color
@@ -392,6 +392,7 @@ covis::core::Detection posePrior::estimate()
         avgColorDist += colorDist;
         colorCount++;
         // std::cout << "colorDist: " << colorDist << "\tthreshold: " << avgColorDist/colorCount * 0.8 << '\n';
+        // if (colorDist > avgColorDist/colorCount * 0.91) // Tejani
         if (colorDist > avgColorDist/colorCount * 0.8)
             continue;
 

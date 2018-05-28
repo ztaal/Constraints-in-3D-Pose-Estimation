@@ -244,27 +244,19 @@ namespace covis {
                  */
                 core::Detection estimate();
 
-                 /**
-                  * Benchmark prerejection methods and returns a binaryClassification
-                  * containing information about the quality of the prerejection method
-                  * @param ground truth pose
-                  * @return binaryClassification
-                  */
-                std::vector<binaryClassification> benchmark( Eigen::Matrix4f ground_truth );
-
                 /**
                  * Benchmark the correction method
                  * Ransac with correction (2 steps: sort good from bad then normal ransac)
-                 * @param ground truth pose
+                 * @return best detection, if any was found - this can be verified directly in a boolean expression:
                  */
-                void estimate_correction( Eigen::Matrix4f ground_truth );
+                covis::core::Detection estimate_correction();
 
                 /**
                  * Benchmark the correction method
                  * Ransac with correction (voting scheme and threshold)
-                 * @param ground truth pose
+                 * @return best detection, if any was found - this can be verified directly in a boolean expression:
                  */
-                void estimate_correction2( Eigen::Matrix4f ground_truth );
+                covis::core::Detection estimate_correction2();
 
             private:
                 /// Source point cloud

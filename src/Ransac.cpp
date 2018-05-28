@@ -32,7 +32,6 @@ using namespace covis::detect;
 
 covis::core::Detection ransac::estimate()
 {
-    // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
 
     // Instantiate pose sampler
@@ -51,14 +50,7 @@ covis::core::Detection ransac::estimate()
         fe->setPenaltyType(detect::FitEvaluation<PointT>::INLIERS_OUTLIERS_RMSE);
 
     // Instantiate fit evaluator
-    // if(!fe) // Not even created
-    // fe.reset(new covis::detect::FitEvaluation<PointT>);
     fe->setInlierThreshold( this->inlierThreshold );
-    // if(!fe->getSearch()) { // Not initialized with a search object
-    //     if(_search && _search->getTarget() == this->target) // Search object provided to this, and consistent
-    //         fe->setSearch(_search);
-    //     else // Nothing provided, set target for indexing
-    // }
     fe->setTarget(this->target);
 
     // Instantiate polygonal prerejector
@@ -170,7 +162,7 @@ covis::core::Detection ransac::estimate()
 
 
 /* Ransac with correction (2 steps: sort good from bad then normal ransac) */
-void ransac::estimate_correction( Eigen::Matrix4f ground_truth )
+covis::core::Detection ransac::estimate_correction()
 {
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
@@ -259,7 +251,7 @@ void ransac::estimate_correction( Eigen::Matrix4f ground_truth )
     }
 
     if (accepted.size() < 3)
-        return;
+        return result;
 
     // Loop through all permutations of accepted correspondeces
     for(size_t i = 0; i < accepted.size() * 3; ++i) {
@@ -319,11 +311,12 @@ void ransac::estimate_correction( Eigen::Matrix4f ground_truth )
             }
         }
     }
+    return result;
 }
 
 
 /* Ransac with correction (voting scheme and threshold) */
-void ransac::estimate_correction2( Eigen::Matrix4f ground_truth )
+covis::core::Detection ransac::estimate_correction2()
 {
     // detect::PointSearch<PointT>::Ptr _search;
     covis::core::Detection::Vec _allDetections;
@@ -368,6 +361,7 @@ void ransac::estimate_correction2( Eigen::Matrix4f ground_truth )
     // Output detection(s)
     core::Detection result;
     _allDetections.clear();
+
 
     // Start main loop
     for(size_t i = 0; i < this->iterations; ++i) {
@@ -462,18 +456,6 @@ void ransac::estimate_correction2( Eigen::Matrix4f ground_truth )
                     }
                 }
             }
-            // else if ( this->correction ) { // If inliers are too low
-            //     int erased = 0;
-            //     for (size_t j = 0; j < this->sampleSize; j++) {
-            //         corr_votes[idx[j]] += 1;
-            //         // if (corr_votes[idx[j]] > threshold) {
-            //         //     rejected.push_back(correspondences[idx[j] - erased]);
-            //         //     corr_votes.erase(corr_votes.begin() + idx[j] - erased);
-            //         //     correspondences.erase(correspondences.begin() + idx[j] - erased);
-            //         //     erased++;
-            //         // }
-            //     }
-            // }
 
             // Subtract if it was within the inlier fraction
             if ( this->correction ) {
@@ -482,8 +464,7 @@ void ransac::estimate_correction2( Eigen::Matrix4f ground_truth )
                 }
             }
 
-        }
-        else if ( this->correction ) { // If inliers are too low
+        } else if ( this->correction ) { // If inliers are too low
             int erased = 0;
             for (size_t j = 0; j < this->sampleSize; j++) {
                 corr_votes[idx[j]] += 1;
@@ -497,140 +478,5 @@ void ransac::estimate_correction2( Eigen::Matrix4f ground_truth )
         }
     }
 
-    // Get points from accepted and rejected correspondences
-    CloudT accepted_source, accepted_target;
-    for (size_t i = 0; i < correspondences.size(); i++) {
-        accepted_source.push_back(this->source->points[correspondences[i].query]);
-        accepted_target.push_back(this->target->points[correspondences[i].match[0]]);
-    }
-
-    CloudT rejected_source, rejected_target;
-    for (size_t i = 0; i < rejected.size(); i++) {
-        rejected_source.push_back(this->source->points[rejected[i].query]);
-        rejected_target.push_back(this->target->points[rejected[i].match[0]]);
-    }
-
-    // Transform using ground truth
-    covis::core::transform(accepted_source, ground_truth);
-    covis::core::transform(rejected_source, ground_truth);
-
-    // Find distances
-    std::vector<double> distance_accepted( correspondences.size() );
-    for (size_t i = 0; i < correspondences.size(); i++) {
-        double dist = pcl::euclideanDistance(accepted_source[i], accepted_target[i]);
-        // Floor to nearest half
-        dist = std::floor((dist * 2) + 0.5) / 2;
-        distance_accepted.push_back( dist );
-    }
-    std::sort (distance_accepted.begin(), distance_accepted.end());
-
-    std::vector<double> distance_rejected( rejected.size() );
-    for (size_t i = 0; i < rejected.size(); i++) {
-        double dist = pcl::euclideanDistance(rejected_source[i], rejected_target[i]);
-        // Floor to nearest half
-        dist = std::floor((dist * 2) + 0.5) / 2;
-        distance_rejected.push_back( dist );
-    }
-    std::sort (distance_rejected.begin(), distance_rejected.end());
-
-    // Write to file
-    ofstream accepted_file;
-    accepted_file.open ("../correction_accepted.txt");
-    for (auto &dist : distance_accepted)
-        accepted_file << dist << "\n";
-    accepted_file.close();
-
-    ofstream rejected_file;
-    rejected_file.open ("../correction_rejected.txt");
-    for (auto &dist : distance_rejected)
-        rejected_file << dist << "\n";
-    rejected_file.close();
-}
-
-
-std::vector<binaryClassification> ransac::benchmark( Eigen::Matrix4f ground_truth )
-{
-    // detect::PointSearch<PointT>::Ptr _search;
-    covis::core::Detection::Vec _allDetections;
-
-    // Instantiate pose sampler
-    covis::detect::PoseSampler<PointT> poseSampler;
-    poseSampler.setSource(this->source);
-    poseSampler.setTarget(this->target);
-    std::vector<int> sources( this->sampleSize );
-    std::vector<int> targets( this->sampleSize );
-
-    // Instantiate polygonal prerejector
-    pcl::registration::CorrespondenceRejectorPoly<PointT,PointT> poly;
-    poly.setInputSource( this->source );
-    poly.setInputTarget( this->target );
-    poly.setSimilarityThreshold( this->prerejectionSimilarity );
-
-    // Instantiate geometric prerejector
-    pcl::registration::CorrespondenceRejectorGeometric<PointT,PointT> geom;
-    geom.setInputSource( this->source );
-    geom.setInputTarget( this->target );
-
-    // Prerejection statistics
-    std::vector<binaryClassification> results;
-    binaryClassification dissimilarity;
-    binaryClassification geometric;
-
-    // Start main loop
-    for(size_t i = 0; i < this->iterations; ++i) {
-
-        bool rejectDissimilarity = false;
-        bool rejectGeometric = false;
-
-        // Create a sample from data
-        const core::Correspondence::Vec maybeInliers =
-                poseSampler.sampleCorrespondences(*this->corr, this->sampleSize);
-        for(size_t j = 0; j < this->sampleSize; ++j) {
-            sources[j] = maybeInliers[j].query;
-            targets[j] = maybeInliers[j].match[0];
-        }
-
-        // Prerejection dissimilarity
-        {
-            if( !poly.thresholdPolygon(sources, targets) )
-                rejectDissimilarity = true;
-        }
-
-        // Prerejection geometric
-        if ( this->prerejection_g ) {
-            if( !geom.geometricConstraint( sources, targets ) )
-                rejectGeometric = true;
-        }
-
-        // Sample a pose model
-        Eigen::Matrix4f pose = poseSampler.transformation( sources, targets );
-
-        // Calculate distance between pose and ground truth
-        CloudT poseCloud, gtCloud;
-        for (size_t j = 0; j < this->sampleSize; j++) {
-            poseCloud.push_back(this->source->points[sources[j]]);
-            gtCloud.push_back(this->source->points[sources[j]]);
-        }
-
-        covis::core::transform(poseCloud, pose);
-        covis::core::transform(gtCloud, ground_truth);
-        double distance = 0;
-        for (size_t i = 0; i < poseCloud.size(); i++) {
-            double point_dist = pcl::euclideanDistance(poseCloud[i], gtCloud[i]);
-            if (point_dist > distance)
-                distance = point_dist;
-        }
-
-        // Determine if rejections were correct
-        if ( distance < 5 ) {
-            if ( !rejectDissimilarity ) dissimilarity.tp++; else dissimilarity.fp++;
-            if ( !rejectGeometric ) geometric.tp++; else geometric.fp++;
-        } else {
-            if ( rejectDissimilarity ) dissimilarity.tn++; else dissimilarity.fn++;
-            if ( rejectGeometric ) geometric.tn++; else geometric.fn++;
-        }
-    }
-    results.push_back(dissimilarity);
-    results.push_back(geometric);
-    return results;
+    return result;
 }

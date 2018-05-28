@@ -90,10 +90,6 @@ void Benchmark_Sixd::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
     if(this->objectScale != 1)
         *objectMesh = filter::scale(*objectMesh, this->objectScale);
 
-    // const float nrad =
-    //         this->radiusNormal > 0.0 ?
-    //         this->radiusNormal * _resolution :
-    //         2 * _resolution;
     float _nrad =
             this->radiusNormal <= 1.0 ?
             this->radiusNormal * covis::detect::computeDiagonal(*objectMesh) :
@@ -146,12 +142,6 @@ void Benchmark_Sixd::computeObjFeat(util::DatasetLoader::ModelPtr *objectMesh)
 
 covis::core::Correspondence::VecPtr Benchmark_Sixd::computeCorrespondence(util::DatasetLoader::ModelPtr *sceneMesh, int idx)
 {
-    // Surfaces and normals
-    // const float nrad =
-    //         this->radiusNormal > 0.0 ?
-    //         this->radiusNormal * this->resolution :
-    //         2 * this->resolution;
-
     // Features and matching
     const float resTarget =
             this->resolutionTarget > 0.0 ?
@@ -190,194 +180,6 @@ void Benchmark_Sixd::initialize()
     loadData( &objectMesh, &this->sceneMesh, &this->poses, &this->objIds );
     for (size_t i = 0; i < this->objIds.size(); i++)
         computeObjFeat( &objectMesh[this->objIds[i] - 1] );
-
-
-    // // Code below is used to make figures for the report
-    // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    // // vtkSmartPointer<vtkPolyData> object_data;
-    // // pcl::io::mesh2vtk(*objectMesh[this->objectIndex],object_data);
-    // // viewer->addModelFromPolyData(object_data,"object_data",0);
-    // covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[0] );
-    //
-    // // Remove evertything above plane
-    // CloudT::Ptr vizCloud (new CloudT);
-    // pcl::copyPointCloud(*this->sceneCloud, *vizCloud);
-    // pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
-    // pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
-    // pcl::SACSegmentation<PointT> seg;
-    // seg.setOptimizeCoefficients(true);
-    // seg.setModelType(pcl::SACMODEL_PLANE);
-    // seg.setMethodType(pcl::SAC_RANSAC);
-    // seg.setMaxIterations(3000);
-    // seg.setDistanceThreshold(6);
-    // seg.setInputCloud(vizCloud);
-    // seg.segment(*inliers, *coefficients);
-    // pcl::ExtractIndices<PointT> extract;
-    // extract.setInputCloud(vizCloud);
-    // extract.setIndices(inliers);
-    // extract.setNegative(false);
-    // extract.filter(*vizCloud);
-    //
-    // // Add Correspondence
-    // // CloudT::Ptr corrCloud( new CloudT );
-    // // PointT point = this->sceneCloud->points[(*correspondence)[813].match[0]];
-    // // point.x -= 1;
-    // // point.y += 5;
-    // // point.z -= 1;
-    // // corrCloud->push_back(point);
-    // // pcl::visualization::PointCloudColorHandlerCustom<PointT> red(corrCloud, 255, 0, 0);
-    // // viewer->addPointCloud<PointT> (corrCloud, red, "corrCloud");
-    // // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 18, "corrCloud");
-    //
-    // // Poses
-    // Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
-    // Eigen::Matrix4f initialPose = Eigen::Matrix4f::Identity();
-    // Eigen::Matrix4f scenePose = Eigen::Matrix4f::Identity();
-    // Eigen::Matrix4f firstRotationPose = Eigen::Matrix4f::Identity();
-    // Eigen::Matrix4f moveToPlanePose = Eigen::Matrix4f::Identity();
-    //
-    // // Rotate to fit plane
-    // initialPose <<  1,  0,  0,  150,
-    //                 0,  1,  0,  -40,
-    //                 0,  0,  1,  650,
-    //                 0,  0,  0,  1;
-    //
-    // // Final pose
-    // scenePose <<    0.298724,   -0.948462,  -0.0891832, 34.9606,
-    //                 -0.676772,  -0.145618,  -0.720563,  -115.945,
-    //                 0.670453,   0.275611,  -0.687608,   888.807,
-    //                 0,          0,          0,          1;
-    //
-    // Eigen::Affine3f correctionT = Eigen::Affine3f::Identity();
-    // Eigen::Vector3f v = Eigen::Vector3f::UnitX();
-    // double theta = -40;
-    // correctionT = Eigen::AngleAxisf(theta * M_PI / 180, v) * correctionT;
-    //
-    // // Rotate to fit plane
-    // firstRotationPose << 0.298724,   -0.948462,  -0.0891832, 0,
-    //                      -0.676772,  -0.145618,  -0.720563,  0,
-    //                      0.670453,   0.275611,  -0.687608,   0,
-    //                      0,          0,          0,          1;
-    //
-    // // Move to plane
-    // moveToPlanePose <<   -0.99678 ,         0, -0.0567456,    95.496,
-    //                       0.042135 ,  0.667411 , -0.742525,   -77.4904,
-    //                      0.0378726 , -0.742525 , -0.667411 ,   840.824,
-    //                              0   ,       0    ,      0     ,     1;
-    //
-    //
-    //
-    // // int source_corr = (*this->corr)[813].query;
-    // // int target_corr = (*this->corr)[813].match[0];
-    // // PointT srcPoint = this->objectCloud->points[source_corr];
-    // // PointT tgtPoint = this->sceneCloud->points[target_corr];
-    // // Eigen::Affine3f transformation = Eigen::Affine3f::Identity();
-    // // Eigen::Vector4f corrPoint(srcPoint.x, srcPoint.y, srcPoint.z, 1);
-    // // transformation.translation() << tgtPoint.x - srcPoint.x,
-    // //                                 tgtPoint.y - srcPoint.y,
-    // //                                 tgtPoint.z - srcPoint.z;
-    // // Eigen::Affine3f correction = Eigen::Affine3f::Identity();
-    // // correction.translation() = corrPoint.head<3>() - (target_frame * corrPoint.head<3>());
-    // // transformation = correction * transformation;
-    //
-    //
-    // pose = correctionT * Eigen::Matrix4f::Identity();
-    // pose = scenePose * pose;
-    // // pose = moveToPlanePose * pose;
-    // // pose = firstRotationPose * pose;
-    // // pose = initialPose * pose;
-    //
-    // // Add Point Cloud
-    // // pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(vizCloud, 0, 0, 255);
-    // // viewer->addPointCloud<PointT> (vizCloud, single_color, "scene_cloud");
-    // viewer->addPointCloud<PointT> (vizCloud, "scene_cloud");
-    //
-    // // Apply transformations
-    // CloudT::Ptr object (new CloudT);
-    // CloudT::Ptr scene_object (new CloudT);
-    // pcl::fromPCLPointCloud2(objectMesh[this->objectIndex]->cloud, *object);
-    // pcl::fromPCLPointCloud2(objectMesh[objectMesh.size() - 2]->cloud, *scene_object);
-    // covis::core::transform( *object, pose );
-    // covis::core::transform( *scene_object, scenePose );
-    //
-    // // Draw frame
-    // pcl::MomentOfInertiaEstimation<PointT> feature_extractor;
-    // feature_extractor.setInputCloud(object);
-    // feature_extractor.compute();
-    //
-    // float major_value, middle_value, minor_value;
-    // Eigen::Vector3f major_vector, middle_vector, minor_vector, mass_center;
-    // feature_extractor.getEigenValues(major_value, middle_value, minor_value);
-    // feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
-    // feature_extractor.getMassCenter(mass_center);
-    //
-    // PointT center, x_axis, y_axis, z_axis;
-    // center.x = mass_center(0); center.y = mass_center(1); center.z = mass_center(2);
-    // x_axis.x = major_vector(0) + mass_center(0); x_axis.y = major_vector(1) + mass_center(1); x_axis.z = major_vector(2) + mass_center(2);
-    // y_axis.x = middle_vector(0) + mass_center(0); y_axis.y = middle_vector(1) + mass_center(1); y_axis.z = middle_vector(2) + mass_center(2);
-    // z_axis.x = minor_vector(0) + mass_center(0); z_axis.y = minor_vector(1) + mass_center(1); z_axis.z = minor_vector(2) + mass_center(2);
-    // Eigen::Vector3f xVec(center.x - x_axis.x,  center.y - x_axis.y, center.z - x_axis.z);
-    // Eigen::Vector3f yVec(center.x - y_axis.x,  center.y - y_axis.y, center.z - y_axis.z);
-    // Eigen::Vector3f zVec(center.x - z_axis.x,  center.y - z_axis.y, center.z - z_axis.z);
-    // int factor = 75;
-    // x_axis.x += factor * xVec[0]; x_axis.y += factor * xVec[1]; x_axis.z += factor * xVec[2];
-    // // x_axis.x -= factor * xVec[0]; x_axis.y -= factor * xVec[1]; x_axis.z -= factor * xVec[2];
-    // // y_axis.x += factor * yVec[0]; y_axis.y += factor * yVec[1]; y_axis.z += factor * yVec[2];
-    // y_axis.x -= factor * yVec[0]; y_axis.y -= factor * yVec[1]; y_axis.z -= factor * yVec[2];
-    // z_axis.x -= factor * zVec[0]; z_axis.y -= factor * zVec[1]; z_axis.z -= factor * zVec[2];
-    // // viewer->addLine(center, x_axis, 0.0f, 0.0f, 1.0f, "line1");
-    // // viewer->addLine(center, y_axis, 1.0f, 0.0f, 0.0f, "line2");
-    // // viewer->addLine(center, z_axis, 0.0f, 1.0f, 0.0f, "line3");
-    // // viewer->addLine(center, y_axis, 0.0f, 1.0f, 0.0f, "line2");
-    // // viewer->addLine(center, z_axis, 1.0f, 0.0f, 0.0f, "line3");
-    //
-    // CloudT::Ptr vizSceneCloud(new CloudT);
-    // pcl::copyPointCloud(*this->objectCloud, *vizSceneCloud);
-    // covis::core::transform( *vizSceneCloud, scenePose );
-    // // viewer->addPointCloud<PointT> (vizSceneCloud, "corrCloud");
-    // feature_extractor.setInputCloud(vizSceneCloud);
-    // feature_extractor.compute();
-    // feature_extractor.getEigenValues(major_value, middle_value, minor_value);
-    // feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
-    // feature_extractor.getMassCenter(mass_center);
-    // center.x = mass_center(0); center.y = mass_center(1); center.z = mass_center(2);
-    // x_axis.x = major_vector(0) + mass_center(0); x_axis.y = major_vector(1) + mass_center(1); x_axis.z = major_vector(2) + mass_center(2);
-    // y_axis.x = middle_vector(0) + mass_center(0); y_axis.y = middle_vector(1) + mass_center(1); y_axis.z = middle_vector(2) + mass_center(2);
-    // z_axis.x = minor_vector(0) + mass_center(0); z_axis.y = minor_vector(1) + mass_center(1); z_axis.z = minor_vector(2) + mass_center(2);
-    // Eigen::Vector3f xVec2(center.x - x_axis.x,  center.y - x_axis.y, center.z - x_axis.z);
-    // Eigen::Vector3f yVec2(center.x - y_axis.x,  center.y - y_axis.y, center.z - y_axis.z);
-    // Eigen::Vector3f zVec2(center.x - z_axis.x,  center.y - z_axis.y, center.z - z_axis.z);
-    // x_axis.x += factor * xVec2[0]; x_axis.y += factor * xVec2[1]; x_axis.z += factor * xVec2[2];
-    // // x_axis.x -= factor * xVec2[0]; x_axis.y -= factor * xVec2[1]; x_axis.z -= factor * xVec2[2];
-    // // y_axis.x += factor * yVec2[0]; y_axis.y += factor * yVec2[1]; y_axis.z += factor * yVec2[2];
-    // y_axis.x -= factor * yVec2[0]; y_axis.y -= factor * yVec2[1]; y_axis.z -= factor * yVec2[2];
-    // // z_axis.x += factor * zVec2[0]; z_axis.y += factor * zVec2[1]; z_axis.z += factor * zVec2[2];
-    // z_axis.x -= factor * zVec2[0]; z_axis.y -= factor * zVec2[1]; z_axis.z -= factor * zVec2[2];
-    // // viewer->addLine(center, x_axis, 0.0f, 0.0f, 1.0f, "line21");
-    // // viewer->addLine(center, y_axis, 1.0f, 0.0f, 0.0f, "line22");
-    // // viewer->addLine(center, z_axis, 0.0f, 1.0f, 0.0f, "line23");
-    //
-    // pcl::toPCLPointCloud2(*object, objectMesh[this->objectIndex]->cloud);
-    // pcl::toPCLPointCloud2(*scene_object, objectMesh[objectMesh.size() - 2]->cloud);
-    //
-    // viewer->addPolygonMesh(*objectMesh[this->objectIndex], "object_data");
-    // // viewer->addPolygonMesh(*objectMesh[objectMesh.size() - 2], "object_data2");
-    //
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line1", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line2", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line3", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line21", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line22", 0);
-    // // viewer->setShapeRenderingProperties (pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 8, "line23", 0);
-    //
-    // viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 8, "scene_cloud");
-    // viewer->initCameraParameters();
-    // viewer->setBackgroundColor(255, 255, 255);
-    // viewer->setCameraPosition(-160.574, 97.0393, 580.697, -31.2999, 3.52391, 686.054, -0.0391824, -0.770698, -0.635995);
-    // while (!viewer->wasStopped ()){
-    //     viewer->spinOnce (100);
-    //     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-    // }
 }
 
 void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
@@ -481,10 +283,7 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
                 }
 
                 if ( failed[i] || this->verbose ) {
-                    // std::cout << "\nFailed scene: " << sceneIndex << "\n";
-                    // std::cout << "Distance: " << translationDist[i] << '\n';
-                    // std::cout << "Angle: " << angle[i] << '\n';
-                    // COVIS_MSG( d[i].pose );
+                    COVIS_MSG( d[i].pose );
                     if ( this->verbose )
                         visu::showDetection<PointT>( this->objectCloud[k], this->sceneCloud, d[i].pose );
                 }
@@ -494,7 +293,7 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
         }
         result.d = d;
         result.time = time;
-        result.name = funcName + "-" + this->sequence + "_" + std::to_string(this->objIds[k]);;
+        result.name = funcName + "-" + this->sequence + "_" + std::to_string(this->objIds[k]);
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
         result.translationDist = translationDist;
@@ -509,18 +308,22 @@ void Benchmark_Sixd::run( class posePrior *instance, std::string funcName )
     }
 }
 
-/*
+
 void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
 {
     // Call init if it has not been called before
     boost::call_once([this]{initialize();}, this->flagInit);
 
-    // Instantiate result struct
-    Result result;
+    printf( "Benchmarking %s: \n", funcName.c_str() );
 
     // Benchmark
-    {
-        printf( "Benchmarking %s: \n", funcName.c_str() );
+    for (size_t k = 0; k < this->objIds.size(); k++ ) {
+        printf( "\nObject %d: \n", this->objIds[k] );
+
+        // Instantiate result struct
+        Result result;
+
+        // Benchmark
         std::vector<double> time( this->sceneMesh.size() );
         std::vector<double> avgDistance( this->sceneMesh.size() );
         std::vector<double> medianDistance( this->sceneMesh.size() );
@@ -531,7 +334,7 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
         std::vector<Eigen::Matrix4f> poses( this->sceneMesh.size() );
 
         covis::core::ProgressDisplay pd( this->sceneMesh.size(), true );
-        instance->setSource( this->objectCloud );
+        instance->setSource( this->objectCloud[k] );
 
         // Start timer
         covis::core::Timer t;
@@ -540,7 +343,7 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
         for ( size_t i = 0; i < this->sceneMesh.size(); i++, ++pd ) {
             t.intermediate();
             int sceneIndex = std::stoi(this->sceneLabels[this->sceneIdx[i]]);
-            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i] );
+            covis::core::Correspondence::VecPtr correspondence = computeCorrespondence( &this->sceneMesh[i], k );
 
             instance->setTarget( this->sceneCloud );
             instance->setCorrespondences( correspondence );
@@ -551,15 +354,17 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
 
             if (d[i]) {
                 // Calculate distance from GT
-                CloudT gtCloud = *this->objectCloud;
-                CloudT poseCloud = *this->objectCloud;
+                CloudT::Ptr gtCloud(new CloudT);
+                CloudT::Ptr poseCloud(new CloudT);
+                pcl::copyPointCloud(*this->objectCloud[k], *gtCloud);
+                pcl::copyPointCloud(*this->objectCloud[k], *poseCloud);
 
                 // Find gt pose closest to estimated pose
                 int poseIndex = 0;
                 double shortestDist = std::numeric_limits<double>::max();
-                for ( size_t j = 0; j < this->poses[sceneIndex].size(); j++ ) {
+                for ( size_t j = 0; j < this->poses[sceneIndex][k].size(); j++ ) {
                     // Find distance between translation
-                    double dist = norm( this->poses[sceneIndex][j], d[i].pose );
+                    double dist = norm( this->poses[sceneIndex][k][j], d[i].pose );
                     if (dist < shortestDist) {
                         shortestDist = dist;
                         poseIndex = j;
@@ -567,13 +372,13 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
                 }
 
                 // Transform clouds
-                covis::core::transform( poseCloud, d[i].pose );
-                covis::core::transform( gtCloud, this->poses[i][poseIndex] );
+                covis::core::transform( *poseCloud, d[i].pose );
+                covis::core::transform( *gtCloud, this->poses[i][k][poseIndex] );
 
                 // Calculate distances
                 std::vector<double> distance;
                 for ( auto corr : *correspondence )
-                    distance.push_back( pcl::euclideanDistance(poseCloud[corr.query], gtCloud[corr.query]) );
+                    distance.push_back( pcl::euclideanDistance((*poseCloud)[corr.query], (*gtCloud)[corr.query]) );
 
                 medianDistance[i] = this->median( distance );
 
@@ -582,11 +387,11 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
                 avgDistance[i] = avgDistance[i] / distance.size();
 
                 // Find distance between translations
-                translationDist[i] = norm( this->poses[sceneIndex][poseIndex], d[i].pose );
+                translationDist[i] = norm( this->poses[sceneIndex][k][poseIndex], d[i].pose );
 
                 // Find angle between z-axis
                 Eigen::Vector3f poseTranslation = d[i].pose.block<3,1>(0, 2);
-                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][poseIndex].block<3,1>(0,2);
+                Eigen::Vector3f gtTranslation = this->poses[sceneIndex][k][poseIndex].block<3,1>(0,2);
                 angle[i] = atan2( (gtTranslation.cross(poseTranslation)).norm(), gtTranslation.dot(poseTranslation) );
 
                 // Check if pose is good or bad
@@ -598,12 +403,9 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
                 }
 
                 if ( failed[i] || this->verbose ) {
-                    std::cout << "\nFailed scene: " << sceneIndex << "\n";
-                    // std::cout << "Distance: " << translationDist[i] << '\n';
-                    // std::cout << "Angle: " << angle[i] << '\n';
-                    // COVIS_MSG( d[i].pose );
+                    COVIS_MSG( d[i].pose );
                     if ( this->verbose )
-                        visu::showDetection<PointT>( this->objectCloud, this->sceneCloud, d[i].pose );
+                        visu::showDetection<PointT>( this->objectCloud[k], this->sceneCloud, d[i].pose );
                 }
             } else {
                 std::cout << "\n!Scene " << sceneIndex << " Failed!\n";
@@ -611,20 +413,21 @@ void Benchmark_Sixd::run( class ransac *instance, std::string funcName )
         }
         result.d = d;
         result.time = time;
-        result.name = funcName;
+        result.name = funcName + "-" + this->sequence + "_" + std::to_string(this->objIds[k]);
         result.avgDistance = avgDistance;
         result.medianDistance = medianDistance;
         result.translationDist = translationDist;
         result.angle = angle;
         result.failed = failed;
-        result.sequence = this->sequence;
+        result.objectIndex = this->objIds[k];
         result.sceneLabels = this->sceneLabels;
         result.poses = poses;
+
+        // Store results of the Benchmark
+        this->results.push_back( result );
     }
-    // Store results of the Benchmark
-    this->results.push_back( result );
 }
-*/
+
 
 void Benchmark_Sixd::printResults()
 {

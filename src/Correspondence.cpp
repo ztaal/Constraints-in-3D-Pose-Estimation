@@ -75,17 +75,6 @@ void correspondence::compute( std::string query, std::string target )
     this->targetCloud = filter::downsample<PointT>(targetSurf, resTarget);
     COVIS_ASSERT( !queryCloud->empty() && !targetCloud->empty() );
 
-    // // Filter x-value TODO Remove cropping only used to make tests easier
-    // pcl::PassThrough<PointT> pass;
-    // pass.setInputCloud(targetCloud);
-    // pass.setFilterFieldName("x");
-    // pass.setFilterLimits (-150, 200);
-    // pass.filter (*targetCloud);
-    // // Filter y-value TODO Remove cropping only used to make tests easier
-    // pass.setFilterFieldName("y");
-    // pass.setFilterLimits (-200, 50);
-    // pass.filter (*targetCloud);
-
     // Compute features
     feature::MatrixT objectFeat, sceneFeat;
     objectFeat = feature::computeFeature<PointT>(this->feature, this->queryCloud, querySurf, frad);

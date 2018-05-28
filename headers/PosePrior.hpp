@@ -204,21 +204,6 @@ namespace covis {
                 /// Distance to the cloest point from source centroid
                 double srcCentroidDist;
 
-                // double lower_plane_dist_threshold = 5
-                // double upper_plane_dist_threshold = 150
-                // double plane_inlier_threshold = 0.15
-                // double plane_rejection_threshold = 0.5
-                // bool constraint_1 = true
-                // dobule constraint_1_threshold = 0
-                // bool constraint_2 = true
-                // dobule constraint_2_threshold = 0.8
-                // bool constraint_3 = true
-                // dobule constraint_3_threshold = 1.2
-                // bool constraint_4 = true
-                // dobule constraint_4_threshold = 0.2
-                // bool constraint_5 = true
-                // dobule constraint_5_threshold = 2
-
                 /// Euclidean inlier threshold
                 float inlierThreshold;
 

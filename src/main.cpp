@@ -1,32 +1,3 @@
- /**  Todo list:
-  * TODO Try different ICP on hinterstoisser
-  * TODO Test on T-less
-  * TODO Add centroid distance threshold to RANSAC
-  * TODO Try to make a correspondence removal check by making a plane based on normal and looking at the number of surface points
-  * TODO Look into finding poses using the height map (heatmap) and sampling the points with the same height
-  * TODO Remove line 261 from dataset_loader.cpp to load datasets without poses
-  */
-
-// Guide on how run data on server
-    // Mount: sudo sshfs -o allow_other msteenberg@sdur-2.sandbox.tek.sdu.dk:/ /media/ztaal/sdur-2
-    // Connect: vglconnect -s msteenberg@sdur-2.sandbox.tek.sdu.dk
-    // Navigate: cd /workspace/sixd_toolkit/tools
-    // Run: vglrun python eval_calc_errors.py
-    // Run: vglrun python eval_loc.py
-    // Run: vglrun python vis_sixd_poses.py
-    // Inspect: cd /home/msteenberg/data
-    // Unmount: fusermount /media/ztaal/sdur-2 -u
-// Notes
-    // root folder needs to have lower case dataset name (e.g. data_tejani)
-    // eval_calc_errors.py && vis_sixd_poses.py
-        // Change result_base og result_path
-    // eval_loc.py
-        // Change error_bpath
-        // Set require_all_errors = false
-
-// Get errors:
-// cat errors_05.yml | grep -E "0: 0.[3-9][0-9]*|0: 1." | sed -r 's/.{10}//' | sed 's/,.*//'
-
 // Covis
 #include <covis/covis.h>
 using namespace covis;
@@ -58,37 +29,22 @@ int main( int argc, const char** argv )
     // Surfaces and normals
     po.addOption("resolution", 'r', 1, "downsample point clouds to this resolution (<= 0 for disabled)");
     po.addOption("far", -1, "do not consider target points beyond this depth (<= 0 for disabled)");
-    // po.addOption("radius-normal", 'n', 5, "normal estimation radius in mr (<= 0 means two resolution units)"); // UWA
-    // po.addOption("radius-normal", 'n', 15, "normal estimation radius in mr (<= 0 means two resolution units)"); // Tejani
-    // po.addOption("radius-normal", 'n', 6, "normal estimation radius in mr (<= 0 means two resolution units)"); // Hintertoisser // 6 BEST
-    po.addOption("radius-normal", 'n', 8, "normal estimation radius in mr (<= 0 means two resolution units)"); // T-Less // 6 BEST
+    po.addOption("radius-normal", 'n', 6, "normal estimation radius in mr (<= 0 means two resolution units)");
     po.addFlag('o', "orient-query-normals", "ensure consistent normal orientation for the query model");
 
     // Features and matching
-    // po.addOption("feature", "si", "choose which feature to use from this list: " + feature::FeatureNames); // si
-    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames); // ppf
-    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Hintertoisser // 5 BEST
-    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Hintertoisser // 5 BEST
-    // po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)"); // Tejani
-    // po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)"); // Tejani
-    // po.addOption("radius-feature", 'f', 25, "feature estimation radius (<= 0 means 25 resolution units)"); // UWA
-    // po.addOption("radius-feature", 'f', 50, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani
-    // po.addOption("radius-feature", 'f', 0.22, "feature estimation radius (<= 0 means 25 resolution units)"); // Tejani with color // 0.22 BEST
-    // po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // Hintertoisser // 0.3 BEST
-    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)"); // T-Less // 0.3 BEST
-    // po.addOption("cutoff", 50, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // UWA
-    po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC"); // Tejani
+    po.addOption("feature", "ppfhistfull", "choose which feature to use from this list: " + feature::FeatureNames);
+    po.addOption("resolution-query", 5, "resolution of query features in mr (<= 0 for five resolution units)");
+    po.addOption("resolution-target", 5, "resolution of target features in mr (<= 0 for five resolution units)");
+    po.addOption("radius-feature", 'f', 0.3, "feature estimation radius (<= 0 means 25 resolution units)");
+    po.addOption("cutoff", 100, "use the <cutoff> % best L2 ratio correspondences for RANSAC");
     po.addOption("object-scale", 1, "scale of object (1 is default)");
     po.addOption("sample-size", 3, "sample size used for RANSAC");
 
     // Estimation
-    po.addOption("iterations", 'i', 10000, "RANSAC iterations");
-    // po.addOption("inlier-threshold", 't', 5, "RANSAC inlier threshold (<= 0 for infinite)"); // UWA
-    // po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)"); // Tejani
-    po.addOption("inlier-threshold", 't', 8, "Inlier threshold (<= 0 for infinite)"); // Hintertoisser // 8 BEST
-    // po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // UWA
-    // po.addOption("inlier-fraction", 'a', 0.05, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Tejani
-    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis"); // Hintertoisser
+    po.addOption("iterations", 'i', 100000, "RANSAC iterations");
+    po.addOption("inlier-threshold", 't', 8, "RANSAC inlier threshold (<= 0 for infinite)");
+    po.addOption("inlier-fraction", 'a', 0.0, "RANSAC inlier fraction required for accepting a pose hypothesis");
     po.addFlag('u', "full-evaluation", "enable full pose evaluation during RANSAC, otherwise only the existing feature matches are used during verification");
     po.addFlag('d', "prerejectionD", "enable dissimilarity prerejection during RANSAC");
     po.addFlag('g', "prerejectionG", "enable geometric prerejection during RANSAC");
@@ -130,8 +86,8 @@ int main( int argc, const char** argv )
     // Misc.
     const bool verbose = po.getFlag("verbose");
 
-    // if (verbose)
-    //     po.print();
+    if (verbose)
+        po.print();
 
     // Estimation
     const int sampleSize = po.getValue<int>("sample-size");
@@ -156,7 +112,7 @@ int main( int argc, const char** argv )
         class covis::detect::posePrior posePrior;
         class covis::detect::ransac ransac;
         class covis::detect::Benchmark benchmark;
-        class covis::detect::Benchmark_Sixd bt;
+        class covis::detect::Benchmark_Sixd bs;
 
         // Correspondence variables
         correspondence.setResolution( po.getValue<float>("resolution") );
@@ -169,11 +125,6 @@ int main( int argc, const char** argv )
         correspondence.setCutoff( po.getValue<size_t>("cutoff") );
         correspondence.setFeature( po.getValue("feature") );
         correspondence.setVerbose( verbose );
-
-        // correspondence.compute( po.getValue("query"), po.getValue("target") );
-        // CloudT::Ptr queryCloud = correspondence.getQuery();
-        // CloudT::Ptr targetCloud = correspondence.getTarget();
-        // covis::core::Correspondence::VecPtr corr = correspondence.getCorrespondence();
 
         if( po.getFlag("pose_prior") ) {
             posePrior.setInlierThreshold( inlierThreshold );
@@ -217,58 +168,38 @@ int main( int argc, const char** argv )
             benchmark.setCutoff( po.getValue<size_t>("cutoff") );
             benchmark.setFeature( po.getValue("feature") );
             benchmark.setVerbose( verbose );
-            // benchmark.setBenchmarkPrerejection( true );
 
-            // for ( size_t i = 0; i < 1; i++ ) {
-                ransac.setPrerejectionD( true );
-                ransac.setPrerejectionG( true );
-                benchmark.run( &ransac, "Base case" );
-
-                // ransac.setCorrection( true );
-                // benchmark.run( &ransac, "Correction" );
-
-                benchmark.printResults();
-                // benchmark.saveResults("../test_data/");
-                // benchmark.printPrerejectionResults();
-                benchmark.clearResults();
-                benchmark.generateNewSeed();
-            // }
+            ransac.setCorrection( true );
+            ransac.setPrerejectionD( true );
+            ransac.setPrerejectionG( true );
         }
 
         if( po.getFlag("benchmark-sixd") ) {
             // Benchmark Tejani variables
-            bt.setRootPath( po.getValue("root-path") );
-            bt.setObjectDir( po.getValue("object-dir") );
-            bt.setSceneDir( po.getValue("scene-dir") );
-            bt.setPoseFile( po.getValue("yml-file") );
-            bt.setBenchmarkFile( po.getValue("benchmark-file") );
-            bt.setObjExt( po.getValue("object-ext") );
-            bt.setSceneExt( po.getValue("scene-ext") );
+            bs.setRootPath( po.getValue("root-path") );
+            bs.setObjectDir( po.getValue("object-dir") );
+            bs.setSceneDir( po.getValue("scene-dir") );
+            bs.setPoseFile( po.getValue("yml-file") );
+            bs.setBenchmarkFile( po.getValue("benchmark-file") );
+            bs.setObjExt( po.getValue("object-ext") );
+            bs.setSceneExt( po.getValue("scene-ext") );
 
-            bt.setResolution( po.getValue<float>("resolution") );
-            bt.setObjectScale( po.getValue<float>("object-scale") );
-            bt.setFar( po.getValue<float>("far") );
-            bt.setRadiusNormal( po.getValue<float>("radius-normal") );
-            bt.setResolutionQuery( po.getValue<float>("resolution-query") );
-            bt.setResolutionTarget( po.getValue<float>("resolution-target") );
-            bt.setRadiusFeature( po.getValue<float>("radius-feature") );
-            bt.setCutoff( po.getValue<size_t>("cutoff") );
-            bt.setFeature( po.getValue("feature") );
-            bt.setVerbose( verbose );
+            bs.setResolution( po.getValue<float>("resolution") );
+            bs.setObjectScale( po.getValue<float>("object-scale") );
+            bs.setFar( po.getValue<float>("far") );
+            bs.setRadiusNormal( po.getValue<float>("radius-normal") );
+            bs.setResolutionQuery( po.getValue<float>("resolution-query") );
+            bs.setResolutionTarget( po.getValue<float>("resolution-target") );
+            bs.setRadiusFeature( po.getValue<float>("radius-feature") );
+            bs.setCutoff( po.getValue<size_t>("cutoff") );
+            bs.setFeature( po.getValue("feature") );
 
-            // ransac.setPrerejectionD( true );
-            // ransac.setPrerejectionG( true );
-            // ransac.setPrerejectionD( false );
-            // ransac.setPrerejectionG( false );
-            // bt.run( &ransac, "Ransac" );
-            bt.run( &posePrior, "Pose Prior" );
-            bt.printResults();
+            // bs.run( &ransac, "Ransac" );
+            bs.run( &posePrior, "Pose Prior" );
+            bs.printResults();
             if (po.getFlag("save"))
-                bt.savePoses(po.getValue("save-dir"));
-                // bt.savePoses("../data_tejani/");
-                // bt.savePoses("../data_hinterstoisser/");
-                // bt.savePoses("../ransac_tejani/");
-            bt.clearResults();
+                bs.savePoses(po.getValue("save-dir"));
+            bs.clearResults();
         }
      }
 

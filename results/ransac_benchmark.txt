@@ -1,4 +1,22 @@
 Ransac Tejani
 
-Scene Recall: 1: 0.480, 2: 0.380, 3: 0.120, 4: 0.080, 5: 0.080, 6: 0.300
+Object Recall: 1: 0.480, 2: 0.380, 3: 0.120, 4: 0.080, 5: 0.080, 6: 0.300
 Total Recall: 0.2400
+
+
+
+Base case:
+Object Recall: 1: 0.480, 2: 0.740, 3: 0.220, 4: 0.380, 5: 0.420, 6: 0.620
+Total recall: 0.4767
+
+Dissiliarity:
+Object recalls: 1: 0.340, 2: 0.420, 3: 0.060, 4: 0.420, 5: 0.220, 6: 0.240
+Total recall: 0.2833
+
+Geometric:
+Total recall: 1: 0.560, 2: 0.840, 3: 0.320, 4: 0.720, 5: 0.660, 6: 0.780
+Object recalls: 0.6467
+
+Both:
+Object Recall: 1: 0.340, 2: 0.400, 3: 0.060, 4: 0.360, 5: 0.220, 6: 0.240
+Total recall: 0.2700

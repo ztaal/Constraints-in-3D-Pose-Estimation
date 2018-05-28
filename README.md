@@ -1,15 +1,15 @@
 # Constraints-in-3D-Pose-Estimation
 
-This repository constaints the code developed during a master project titled "Constraints in 3D Pose Estimation" at the University of Southern Denmark by Martin Staal Steenberg.
+This repository constains the code developed during a master project titled "Constraints in 3D Pose Estimation" at the University of Southern Denmark by Martin Staal Steenberg.
 
 Quick installation
 ==================
 
-The following guide has been tested on Ubuntu Linux.
+The following guide has been tested on Ubuntu Linux 17.10.
 All commands below should be entered in a terminal.
 
 First download and install CoViS: https://gitlab.com/caro-sdu/covis
-Then install ymal-cpp: https://github.com/jbeder/yaml-cpp
+Then download and install ymal-cpp: https://github.com/jbeder/yaml-cpp
 
 ```sh
 git clone https://github.com/ztaal/Constraints-in-3D-Pose-Estimation

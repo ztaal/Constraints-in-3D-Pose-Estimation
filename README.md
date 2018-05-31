@@ -8,8 +8,10 @@ Quick installation
 The following guide has been tested on Ubuntu Linux 17.10.
 All commands below should be entered in a terminal.
 
-First download and install CoViS: https://gitlab.com/caro-sdu/covis
-Then download and install ymal-cpp: https://github.com/jbeder/yaml-cpp
+First download and install CoViS: https://gitlab.com/caro-sdu/covis.
+Then download and install ymal-cpp: https://github.com/jbeder/yaml-cpp.
+
+To download and compile this repository:
 
 ```sh
 git clone https://github.com/ztaal/Constraints-in-3D-Pose-Estimation
